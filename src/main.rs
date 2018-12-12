@@ -1,13 +1,8 @@
-use std::string;
-
-mod sys_tool;
 pub mod net_tool;
-pub mod file_tool;
-
-use net_tool::{get_wan_name, get_local_ip};
-
+pub mod sys_tool;
 
 fn main() {
-    let res = get_wan_name().unwrap();
-    print!("{:?}", res);
+    let (res, code) = net_tool::http_get("http://www.baidu.com/");
+    println!("{}", res);
+    println!("{}", code);
 }

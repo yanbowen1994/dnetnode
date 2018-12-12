@@ -4,6 +4,14 @@ use std::time::Duration;
 
 use sys_tool::{cmd};
 
+//for url get
+extern crate curl;
+
+use std::io::{stdout, Write, Read};
+
+use self::curl::easy::Easy;
+
+
 pub fn get_wan_name() -> Option<String> {
     let local_ip = get_local_ip().unwrap().to_string();
 
@@ -29,6 +37,30 @@ pub fn get_local_ip() -> Result<IpAddr> {
     let ip = try!(socket.local_addr()).ip();
     Ok(ip)
 }
+
+
+pub fn http_get(url:&str) -> (String, u32) {
+    let mut res_data = Vec::new();
+
+    let mut easy = Easy::new();
+
+    easy.show_header(false).unwrap();
+    easy.url("https://www.rust-lang.org/").unwrap();
+    easy.perform().unwrap();
+
+    {
+        let mut tran = easy.transfer();
+        tran.write_function(|buf| {
+            res_data.extend_from_slice(buf);
+            Ok(buf.len())
+        });
+        tran.perform().unwrap();
+    }
+
+    let res_data = String::from_utf8_lossy(&res_data).into_owned();
+    return (res_data, easy.response_code().unwrap())
+}
+
 
 #[cfg(test)]
 mod tests {

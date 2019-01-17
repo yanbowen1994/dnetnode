@@ -39,13 +39,13 @@ pub fn get_local_ip() -> Result<IpAddr> {
 }
 
 
-pub fn http_get(url:&str) -> (String, u32) {
+pub fn fatch_url(url:&str) -> (String, u32) {
     let mut res_data = Vec::new();
 
     let mut easy = Easy::new();
 
     easy.show_header(false).unwrap();
-    easy.url("https://www.rust-lang.org/").unwrap();
+    easy.url(url).unwrap();
     easy.perform().unwrap();
 
     {

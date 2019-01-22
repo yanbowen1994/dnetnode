@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unknown_lints)]
+
 use std::net::{Ipv4Addr, SocketAddr, TcpStream, IpAddr};
 use std::io::Result;
 use std::time::Duration;
@@ -39,7 +44,7 @@ pub fn get_local_ip() -> Result<IpAddr> {
 }
 
 
-pub fn fatch_url(url:&str) -> (String, u32) {
+pub fn url_get(url:&str) -> (String, u32) {
     let mut res_data = Vec::new();
 
     let mut easy = Easy::new();
@@ -53,6 +58,30 @@ pub fn fatch_url(url:&str) -> (String, u32) {
         tran.write_function(|buf| {
             res_data.extend_from_slice(buf);
             Ok(buf.len())
+        });
+        tran.perform().unwrap();
+    }
+
+    let res_data = String::from_utf8_lossy(&res_data).into_owned();
+    return (res_data, easy.response_code().unwrap())
+}
+
+pub fn url_post(url: &str, data: &str) -> (String, u32) {
+    let mut send_data = data.as_bytes();
+    let mut res_data = Vec::new();
+
+    let mut easy = Easy::new();
+
+    easy.show_header(false).unwrap();
+    easy.post(true).unwrap();
+    easy.post_field_size(send_data.len() as u64).unwrap();
+    easy.url(url).unwrap();
+    easy.perform().unwrap();
+
+    {
+        let mut tran = easy.transfer();
+        tran.write_function(|buf| {
+            Ok(send_data.read(res_data).unwrap_or(0))
         });
         tran.perform().unwrap();
     }

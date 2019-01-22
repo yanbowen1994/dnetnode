@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unknown_lints)]
+
 //For File Struct
 use std::fs::{File, read_dir};
 
@@ -9,6 +14,9 @@ use std::path::Path;
 
 //For get current dir
 use std::env;
+
+use std::fs::metadata;
+use std::time::{SystemTime, Duration};
 
 ///Returns content of file
 pub fn read_file(filename: String) -> String {
@@ -27,13 +35,13 @@ pub fn write_file(filename: String, content: String) {
     drop(file);
 }
 
-pub fn file_exists(filename: String) -> bool {
+pub fn file_exists(filename: &String) -> bool {
     let path = Path::new(&filename);
     path.exists() && path.is_file()
 }
 
 
-pub fn dir_exists(filename: String) -> bool {
+pub fn dir_exists(filename: &String) -> bool {
     let path = Path::new(&filename);
     path.exists() && path.is_dir()
 }
@@ -52,6 +60,18 @@ pub fn list_dir() {
     }
 }
 
+pub fn file_modify_time(path :&str) -> Option<u64> {
+    let path = Path::new(path);
+    if let Ok(fs) = metadata(path) {
+        if let Ok(time) = fs.modified() {
+            if let Ok(now) = SystemTime::now().duration_since(time) {
+                return Some(now.as_secs());
+            }
+        }
+    }
+    return None;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -63,21 +83,21 @@ mod tests {
     }
     #[test]
     fn test_file_exists() {
-        assert_eq!(file_exists(String::from("E:\\Rust\\test\\file_for_test\\ForTestRead.txt")), true);
+        assert_eq!(file_exists(&String::from("E:\\Rust\\test\\file_for_test\\ForTestRead.txt")), true);
     }
     #[test]
     fn test_file_not_exists() {
-        assert_eq!(file_exists(String::from("E:\\Rust\\test\\file_for_test\\not_exists.txt")), false);
+        assert_eq!(file_exists(&String::from("E:\\Rust\\test\\file_for_test\\not_exists.txt")), false);
     }
 
     #[test]
     fn test_dir_exists() {
-        assert_eq!(dir_exists(String::from("E:\\Rust\\test\\file_for_test")), true);
+        assert_eq!(dir_exists(&String::from("E:\\Rust\\test\\file_for_test")), true);
     }
 
     #[test]
     fn test_dir_not_exists() {
-        assert_eq!(dir_exists(String::from("E:\\Rust\\test\\not_exists")), false);
+        assert_eq!(dir_exists(&String::from("E:\\Rust\\test\\not_exists")), false);
     }
 
     #[test]

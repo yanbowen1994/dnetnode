@@ -3,13 +3,34 @@ name = "ovrouter"
 version = "0.1.0"
 authors = ["yanbowen <bowen.yan@gitblit.com>"]
 
+[[bin]]
+name = "ovrouter"
+
+[[bin]]
+name = "test"
+
+[lib]
+name = "ovrouter"
+
 [dependencies]
+log = "0.4.5"
+simple_logger = "1.0.1"
+
+clap = "2.32.0"
+config = "~0.9.1"
+
+bytes = "0.4"
+
+json = "*"
+
+actix = "0.7"
+actix-web = "^0.7"
+
 chrono = "*"
 os_type = "*"
 regex = "*"
-foundationdb = "0.2.0"
-foundationdb-sys = "0.1.1"
 curl = "*"
 serde = "1.0.82"
 serde_json = "1.0.33"
+serde_derive = ""
 futures = "*"

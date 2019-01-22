@@ -1,0 +1,6 @@
+[tinc]
+home_path = "/root/tinc/"
+pub_key_path = "key/rsa_key.pub"
+
+[geo]
+url = "http://52.25.79.82:10000/geoip_json.php"

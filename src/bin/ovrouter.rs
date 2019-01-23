@@ -1,4 +1,5 @@
 use std::process::exit;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[macro_use]
 extern crate log;
@@ -10,7 +11,7 @@ extern crate ovrouter;
 use ovrouter::settings::Settings;
 use ovrouter::tinc_manager::check::*;
 use ovrouter::tinc_manager::install_tinc::create_pub_key;
-use ovrouter::tinc_manager::operate::start_tinc;
+use ovrouter::tinc_manager::Operater;
 use ovrouter::http_server_client::client::upload_proxy_status;
 
 fn main() {
@@ -37,13 +38,10 @@ fn main() {
     }
 
     let settings:Settings = Settings::load_config().expect("Error: can not parse settings.toml");
-    init(&settings);
-    main_loop();
-}
 
-fn init(settings: &Settings) {
-    let tinc_home = &settings.tinc.home_path[..];
-    let pub_key_path = &settings.tinc.pub_key_path[..];
+    let tince_operater = Arc::new(
+        Mutex::new(
+        Operater::new(&settings.tinc.home_path, &settings.tinc.pub_key_path)));
 
     if !check_tinc_complete(tinc_home) {
         println!("No tinc install in ".to_string() + tinc_home);
@@ -53,7 +51,6 @@ fn init(settings: &Settings) {
     if !check_pub_key(tinc_home, pub_key_path) {
         create_pub_key(tinc_home, pub_key_path)
     }
-
-    upload_proxy_status();
-    start_tinc(tinc_home);
+    web_server();
+    main_loop();
 }

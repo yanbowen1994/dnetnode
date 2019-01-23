@@ -7,21 +7,14 @@ use sys_tool;
 extern crate actix;
 extern crate actix_web;
 extern crate bytes;
-extern crate env_logger;
-extern crate futures;
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate json;
-
-use actix_web::{
+use self::actix_web::{
     error, http, middleware, server, App, AsyncResponder, Error, HttpMessage,
     HttpRequest, HttpResponse, Json,
 };
 
-use bytes::BytesMut;
-use futures::{Future, Stream};
+use self::bytes::BytesMut;
+use super::futures::{Future, Stream};
 use json::JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -106,8 +99,6 @@ fn index_mjsonrust(
 }
 
 fn web_server() {
-    ::std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
     let sys = actix::System::new("json-example");
 
     server::new(|| {

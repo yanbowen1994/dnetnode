@@ -68,7 +68,7 @@ pub fn url_get(url:&str) -> (String, u32) {
 
 pub fn url_post(url: &str, data: &str) -> (String, u32) {
     let mut send_data = data.as_bytes();
-    let mut res_data = Vec::new();
+    let mut res_data = &mut [0 as u8][..];
 
     let mut easy = Easy::new();
 
@@ -81,7 +81,7 @@ pub fn url_post(url: &str, data: &str) -> (String, u32) {
     {
         let mut tran = easy.transfer();
         tran.write_function(|buf| {
-            Ok(send_data.read(res_data).unwrap_or(0))
+            Ok(send_data.read( res_data).unwrap_or(0))
         });
         tran.perform().unwrap();
     }

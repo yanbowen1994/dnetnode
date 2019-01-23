@@ -9,14 +9,19 @@ pub struct Tinc {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct Conductor {
+    pub ip: String,
+
+}
+#[derive(Clone, Debug, Deserialize)]
 pub struct Geo {
     pub url: String,
-
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
     pub geo: Geo,
+    pub conductor: Conductor,
     pub tinc: Tinc,
 }
 

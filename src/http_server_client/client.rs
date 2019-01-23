@@ -1,6 +1,6 @@
 //! upload proxy status
 
-use json;
+use rustc_serialize::json;
 
 use net_tool::url_post;
 use domain::Info;
@@ -9,8 +9,8 @@ pub struct Client<'a> {
     url: String,
     info: &'a Info,
 }
-impl Client {
-    pub fn new(url: String, info: &Info) -> Self {
+impl <'a> Client<'a> {
+    pub fn new(url: String, info: &'a Info) -> Self {
         Client {
             url,
             info,
@@ -21,56 +21,54 @@ impl Client {
         let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(self.info).to_json();
-        let (res, code) = url_post(&url, &data);
-        true
+        let (_res, code) = url_post(&url, &data);
+        if code == 200 {
+            return true
+        }
+        false
     }
 
     pub fn proxy_heart_beat(&self) -> bool {
         let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
         let data = Heartbeat::new_from_info(self.info).to_json();
-        let (res, code) = url_post(&url, &data);
-        true
+        let (_res, code) = url_post(&url, &data);
+        if code == 200 {
+            return true
+        }
+        false
     }
 
-    pub fn proxy_location(&self) -> bool {
-        let post = "/vppn/api/v2/proxy/upLocation";
-        let url = self.url.to_string() + post;
-        let (res, code) = url_post(&url, &data);
-        true
-    }
-
-    pub fn proxy_bind(&self) -> bool {
-        let post = "/vppn/api/v2/proxy/bindproxy";
-        let url = self.url.to_string() + post;
-        let (res, code) = url_post(&url, &data);
-        true
-    }
-
-    pub fn proxy_unbind(&self) -> bool {
-        let post = "/vppn/api/v2/proxy/unbindproxy";
-        let url = self.url.to_string() + post;
-        let (res, code) = url_post(&url, &data);
-        true
-    }
-
-    pub fn proxy_modify(&self) -> bool {
-        let post = "POST /vppn/api/v2/proxy/modifyproxy";
-        let url = self.url.to_string() + post;
-        let (res, code) = url_post(&url, &data);
-        true
-    }
-
-//    pub fn upload_proxy_status(conductor_url: &str, info: &Info) -> bool {
-//    let data =
-//    let res = url_post(conductor_url, info);
-//        let post = "/vppn/api/v2/proxy/register";
+//    pub fn proxy_location(&self) -> bool {
+//        let post = "/vppn/api/v2/proxy/upLocation";
+//        let url = self.url.to_string() + post;
+//        let (res, code) = url_post(&url, &data);
+//        true
+//    }
+//
+//    pub fn proxy_bind(&self) -> bool {
+//        let post = "/vppn/api/v2/proxy/bindproxy";
+//        let url = self.url.to_string() + post;
+//        let (res, code) = url_post(&url, &data);
+//        true
+//    }
+//
+//    pub fn proxy_unbind(&self) -> bool {
+//        let post = "/vppn/api/v2/proxy/unbindproxy";
+//        let url = self.url.to_string() + post;
+//        let (res, code) = url_post(&url, &data);
+//        true
+//    }
+//
+//    pub fn proxy_modify(&self) -> bool {
+//        let post = "POST /vppn/api/v2/proxy/modifyproxy";
 //        let url = self.url.to_string() + post;
 //        let (res, code) = url_post(&url, &data);
 //        true
 //    }
 }
 
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct Register {
     auth_id: String,
     auth_type: String,
@@ -106,6 +104,7 @@ impl Register {
     }
 }
 
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct Heartbeat {
     auth_id: String,
     proxy_ip: String,

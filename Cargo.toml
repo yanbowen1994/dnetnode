@@ -7,6 +7,9 @@ authors = ["yanbowen <bowen.yan@gitblit.com>"]
 name = "ovrouter"
 
 [[bin]]
+name = "setup"
+
+[[bin]]
 name = "test"
 
 [lib]
@@ -36,3 +39,4 @@ serde_derive = ""
 futures = "*"
 
 uuid = "0.7.1"
+rustc-serialize = "0.3.24"

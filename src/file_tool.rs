@@ -38,10 +38,11 @@ impl File {
     }
 
     ///Overwrites file with content
-    pub fn write(&self, content: String) {
-        let mut file = fs::File::create(&self.path).expect("File could not be created");
-        file.write_all(content.as_bytes()).expect("File could not be described");
+    pub fn write(&self, content: String) -> bool {
+        let mut file = fs::File::create(&self.path).unwrap_or(return false);
+        file.write_all(content.as_bytes()).unwrap_or(return false);
         drop(file);
+        true
     }
 
     pub fn file_exists(&self) -> bool {

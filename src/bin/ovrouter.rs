@@ -13,9 +13,9 @@ extern crate ovrouter;
 use ovrouter::settings::Settings;
 use ovrouter::tinc_manager::check::*;
 use ovrouter::tinc_manager::Operater;
-use ovrouter::http_server_client::client::upload_proxy_status;
 use ovrouter::net_tool::url_get;
 use ovrouter::domain::Info;
+use ovrouter::http_server_client::Client;
 
 
 fn main() {
@@ -51,18 +51,25 @@ fn main() {
     if !check_pub_key(tinc_home, pub_key_path) {
         Operater::new(&settings.tinc.home_path, &settings.tinc.pub_key_path).create_pub_key();
     }
-    
+
     let tinc_operater = Arc::new(
         Mutex::new(
             Operater::new(&settings.tinc.home_path, &settings.tinc.pub_key_path)));
 
     let info = Info::new_from_local(&settings);
 
-    web_server();
-    main_loop(tinc_operater, "https://192.168.9.38/", &info);
+    let client = Arc::new(
+        Mutex::new(
+            Client::new("https://192.168.9.38/".to_string(), &info)));
+
+//    web_server();
+    main_loop(tinc_operater, client, &settings);
 }
 
-pub fn main_loop(tinc_lock: Arc<Mutex<Operater>>, conductor_url: &str, info: &Info) {
+fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
+                 client_arc: Arc<Mutex<Client>>,
+                 settings: &Settings,
+) {
     let heartbeat_frequency = Duration::from_secs(20);
     let landmark_frequency = Duration::from_secs(15600);
     let check_tinc_frequency = Duration::from_secs(3);
@@ -74,7 +81,8 @@ pub fn main_loop(tinc_lock: Arc<Mutex<Operater>>, conductor_url: &str, info: &In
 
     loop {
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
-            upload_proxy_status(conductor_url, info);
+            let client = client_arc.try_lock().unwrap();
+            client.proxy_heart_beat();
             heartbeat_time = now.clone();
         }
 
@@ -84,10 +92,13 @@ pub fn main_loop(tinc_lock: Arc<Mutex<Operater>>, conductor_url: &str, info: &In
         }
 
         if now.duration_since(check_tinc_time) > check_tinc_frequency {
-            tinc_lock.try_lock();
-            upload_proxy_status(conductor_url, info);
+            if check_tinc_status(&settings.tinc.home_path) {
+                let operater = tinc_operater.try_lock().unwrap();
+                operater.restart_tinc();
+            }
             check_tinc_time = now.clone();
         }
+
         sleep_ms(1);
         now = Instant::now();
 

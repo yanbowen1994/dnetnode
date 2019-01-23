@@ -1,8 +1,5 @@
-use std::path::Path;
-
 use file_tool::File;
 use sys_tool::cmd;
-use settings::Settings;
 
 pub fn check_tinc_complete(tinc_home: &str) -> bool {
     let file = File::new((tinc_home.to_string() + "/tincd").to_string());

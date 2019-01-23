@@ -1,8 +1,6 @@
 extern crate uuid;
 
-use net_tool::{url_get, get_local_ip, get_wan_name};
-
-use super::{TincInfo, GeoInfo};
+use net_tool::{get_local_ip};
 
 #[derive(Debug, Clone)]
 pub struct ProxyInfo {

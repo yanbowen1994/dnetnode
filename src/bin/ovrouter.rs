@@ -61,6 +61,8 @@ fn main() {
     let client = Arc::new(
         Mutex::new(
             Client::new("https://192.168.9.38/".to_string(), &info)));
+//    注册proxy
+//    client_arc.lock().unwrap()
 
 //    web_server();
     main_loop(tinc_operater, client, &settings);
@@ -81,9 +83,10 @@ fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
 
     loop {
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
-            let client = client_arc.try_lock().unwrap();
-            client.proxy_heart_beat();
-            heartbeat_time = now.clone();
+            if let Ok(client) = client_arc.try_lock() {
+                client.proxy_heart_beat();
+                heartbeat_time = now.clone();
+            }
         }
 
         if now.duration_since(landmark_time) > landmark_frequency {
@@ -92,11 +95,18 @@ fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
         }
 
         if now.duration_since(check_tinc_time) > check_tinc_frequency {
+            let mut lock_or_pass = true;
             if check_tinc_status(&settings.tinc.home_path) {
-                let operater = tinc_operater.try_lock().unwrap();
-                operater.restart_tinc();
+                if let Ok(operater) = tinc_operater.try_lock() {
+                    operater.restart_tinc();
+                }
+                else {
+                    lock_or_pass = false;
+                }
             }
-            check_tinc_time = now.clone();
+            if lock_or_pass {
+                check_tinc_time = now.clone();
+            }
         }
 
         sleep_ms(1);

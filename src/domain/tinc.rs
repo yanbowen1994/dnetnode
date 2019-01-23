@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use std::net::IpAddr;
-use std::fs::{File, read_to_string};
+use std::fs::File;
 use std::io::Read;
 
 #[derive(Debug, Clone)]

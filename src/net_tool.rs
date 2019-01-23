@@ -80,7 +80,7 @@ pub fn url_post(url: &str, data: &str) -> (String, u32) {
 
     {
         let mut tran = easy.transfer();
-        tran.write_function(|buf| {
+        let _ = tran.write_function(|buf| {
             Ok(send_data.read( res_data).unwrap_or(0))
         });
         tran.perform().unwrap();

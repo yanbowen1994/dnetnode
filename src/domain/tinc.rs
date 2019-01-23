@@ -5,8 +5,8 @@ use std::io::Read;
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {
-    vip: IpAddr,
-    pub_key: String,
+    pub vip: IpAddr,
+    pub pub_key: String,
 }
 impl TincInfo {
     pub fn new() -> Self {
@@ -20,7 +20,7 @@ impl TincInfo {
 
     // Load local tinc config file vpnserver for tinc vip and pub_key.
     // Success return true.
-    pub fn get_local(&mut self, tinc_home: &str, pub_key_path: &str) -> bool {
+    pub fn load_local(&mut self, tinc_home: &str, pub_key_path: &str) -> bool {
         let mut file = File::open(tinc_home.to_string() + "/hosts/vpnserver").unwrap_or(return false);
         let mut res = String::new();
         file.read_to_string(&mut res).unwrap_or(return false);

@@ -1,6 +1,5 @@
 extern crate config;
 use self::config::{ConfigError, Config, File};
-#[macro_use]
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tinc {

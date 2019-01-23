@@ -34,8 +34,8 @@ fn install_on_linux(settings: &Settings, operater: &Operater) -> i32 {
 
 fn cp_tinc_to_local(tinc_home: &str) {
     cmd_err_panic("rm -rf ".to_string() + tinc_home);
-
-    cmd_err_panic("cp -rf ../../tinc ".to_string() + tinc_home);
+    let path = cur_dir().replace("target/debug", "").replace("target/release", "");
+    cmd_err_panic("cp -rf ".to_string() + &path + "/tinc " + tinc_home);
 }
 
 fn add_dependent(app_name:&str) {
@@ -83,7 +83,7 @@ fn config_on_linux(tinc_home: &str) {
 
     cmd_err_panic("chmod 755 ".to_string() + tinc_home + "/start");
 
-    cmd_err_panic("chmod 755 ".to_string() + tinc_home + "/landmark");
+//    cmd_err_panic("chmod 755 ".to_string() + tinc_home + "/landmark");
 }
 
 #[test]

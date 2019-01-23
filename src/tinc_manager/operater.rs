@@ -1,5 +1,6 @@
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
+use super::check::check_tinc_status;
 
 pub struct Operater <'a> {
     tinc_home: &'a str,
@@ -22,13 +23,7 @@ impl <'a>  Operater <'a>  {
     }
 
     pub fn is_tinc_exist(&self) -> bool {
-        let (code, output) = cmd(
-            "sudo ps aux | grep ".to_string() + self.tinc_home + "tincd | grep -v 'grep'");
-
-        if output.len() > 0 {
-            return true;
-        };
-        return false;
+        check_tinc_status(self.tinc_home)
     }
 
     pub fn restart_tinc(&self) {

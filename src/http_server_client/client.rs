@@ -1,38 +1,37 @@
 //! upload proxy status
+#![allow(unreachable_code)]
 
 use rustc_serialize::json;
 
 use net_tool::url_post;
 use domain::Info;
 
-pub struct Client<'a> {
+pub struct Client {
     url: String,
-    info: &'a Info,
 }
-impl <'a> Client<'a> {
-    pub fn new(url: String, info: &'a Info) -> Self {
+impl Client {
+    pub fn new(url: String) -> Self {
         Client {
             url,
-            info,
         }
     }
     
-    pub fn proxy_register(&self) -> bool {
-        let post = "/vppn/api/v2/proxy/register";
+    pub fn proxy_register(&self, info: &Info) -> bool {
+        let post = "vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
-        let data = Register::new_from_info(self.info).to_json();
-        let (_res, code) = url_post(&url, &data);
-        if code == 200 {
+        let data = Register::new_from_info(info).to_json();
+        let (_res, _code) = url_post(&url, &data).unwrap_or(return false);
+        if _code == 200 {
             return true
         }
         false
     }
 
-    pub fn proxy_heart_beat(&self) -> bool {
-        let post = "/vppn/api/v2/proxy/hearBeat";
+    pub fn proxy_heart_beat(&self, info: &Info) -> bool {
+        let post = "vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
-        let data = Heartbeat::new_from_info(self.info).to_json();
-        let (_res, code) = url_post(&url, &data);
+        let data = Heartbeat::new_from_info(info).to_json();
+        let (_res, code) = url_post(&url, &data).unwrap_or(return false);
         if code == 200 {
             return true
         }

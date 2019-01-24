@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unknown_lints)]
+#![allow(unreachable_code)]
 
 //For File Struct
 use std::fs;

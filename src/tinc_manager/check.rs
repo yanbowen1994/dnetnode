@@ -20,7 +20,7 @@ pub fn check_pub_key(tinc_home: &str, pub_key_path: &str) -> bool {
 }
 
 pub fn check_tinc_status(tinc_home: &str) -> bool {
-    let (code, output) = cmd(
+    let (_code, output) = cmd(
         "sudo ps aux | grep ".to_string() + tinc_home + "tincd | grep -v 'grep'");
 
     if output.len() > 0 {

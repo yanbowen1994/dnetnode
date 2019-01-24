@@ -1,3 +1,4 @@
+#![allow(unreachable_code)]
 use std::str::FromStr;
 use std::net::IpAddr;
 use std::fs::File;

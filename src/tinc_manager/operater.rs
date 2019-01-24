@@ -1,4 +1,4 @@
-use sys_tool::{cmd_err_panic, cmd};
+use sys_tool::cmd_err_panic;
 use file_tool::File;
 use super::check::check_tinc_status;
 

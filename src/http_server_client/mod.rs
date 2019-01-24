@@ -1,5 +1,3 @@
-use net_tool;
-use sys_tool;
 //pub mod proxy_info;
 
 extern crate actix;

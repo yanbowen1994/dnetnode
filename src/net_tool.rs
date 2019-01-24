@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unknown_lints)]
+#![allow(unreachable_code)]
 
 use std::net::{Ipv4Addr, SocketAddr, TcpStream, IpAddr};
 use std::io::Result;
@@ -44,14 +45,14 @@ pub fn get_local_ip() -> Result<IpAddr> {
 }
 
 
-pub fn url_get(url:&str) -> (String, u32) {
+pub fn url_get(url:&str) -> Option<(String, u32)> {
     let mut res_data = Vec::new();
 
     let mut easy = Easy::new();
 
     easy.show_header(false).unwrap();
     easy.url(url).unwrap();
-    easy.perform().unwrap();
+    easy.perform().unwrap_or(return None);
 
     {
         let mut tran = easy.transfer();
@@ -59,35 +60,35 @@ pub fn url_get(url:&str) -> (String, u32) {
             res_data.extend_from_slice(buf);
             Ok(buf.len())
         });
-        tran.perform().unwrap();
+        tran.perform().unwrap_or(return None);
     }
 
     let res_data = String::from_utf8_lossy(&res_data).into_owned();
-    return (res_data, easy.response_code().unwrap())
+    return Some((res_data, easy.response_code().unwrap_or(return None)));
 }
 
-pub fn url_post(url: &str, data: &str) -> (String, u32) {
+pub fn url_post(url: &str, data: &str) -> Option<(String, u32)> {
     let mut send_data = data.as_bytes();
     let res_data = &mut [0 as u8][..];
 
     let mut easy = Easy::new();
 
-    easy.show_header(false).unwrap();
-    easy.post(true).unwrap();
-    easy.post_field_size(send_data.len() as u64).unwrap();
-    easy.url(url).unwrap();
-    easy.perform().unwrap();
+    easy.show_header(false).unwrap_or(return None);
+    easy.post(true).unwrap_or(return None);
+    easy.post_field_size(send_data.len() as u64).unwrap_or(return None);
+    easy.url(url).unwrap_or(return None);
+    easy.perform().unwrap_or(return None);
 
     {
         let mut tran = easy.transfer();
         let _ = tran.write_function(|buf| {
             Ok(send_data.read( res_data).unwrap_or(0))
         });
-        tran.perform().unwrap();
+        tran.perform().unwrap_or(return None);
     }
 
     let res_data = String::from_utf8_lossy(&res_data).into_owned();
-    return (res_data, easy.response_code().unwrap())
+    return Some((res_data, easy.response_code().unwrap_or(return None)))
 }
 
 

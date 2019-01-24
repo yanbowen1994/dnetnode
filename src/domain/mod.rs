@@ -9,6 +9,7 @@ pub use self::proxy::ProxyInfo;
 mod tinc;
 pub use self::tinc::TincInfo;
 
+#[derive(Debug, Clone)]
 pub struct Info {
     pub geo_info: GeoInfo,
     pub proxy_info: ProxyInfo,

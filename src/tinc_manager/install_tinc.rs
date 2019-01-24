@@ -10,7 +10,6 @@ pub fn install_tinc(settings: &Settings, operater: &Operater) {
 
 fn install_on_linux(settings: &Settings, operater: &Operater) -> i32 {
     let tinc_home  = &settings.tinc.home_path[..];
-    let pub_key_path = &settings.tinc.pub_key_path[..];
     cp_tinc_to_local(tinc_home);
     add_dependent("liblzo2-2");
     add_permission_dir(tinc_home);

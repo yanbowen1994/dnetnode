@@ -58,7 +58,7 @@ impl GeoInfo {
 }
 
 fn get_geo_json() -> Value {
-    let (res, _) = url_get("http://52.25.79.82:10000/geoip_json.php");
+    let (res, _) = url_get("http://52.25.79.82:10000/geoip_json.php").unwrap_or(("{}".to_string(), 0));
     let json: Value = serde_json::from_str(&res).unwrap();
     return json;
 }

@@ -9,9 +9,6 @@ name = "ovrouter"
 [[bin]]
 name = "setup"
 
-[[bin]]
-name = "test"
-
 [lib]
 name = "ovrouter"
 

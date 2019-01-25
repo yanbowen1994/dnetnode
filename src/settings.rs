@@ -8,19 +8,22 @@ pub struct Tinc {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Conductor {
-    pub ip: String,
+pub struct Server {
+    pub url: String,
+    pub geo_url: String,
 
 }
 #[derive(Clone, Debug, Deserialize)]
-pub struct Geo {
-    pub url: String,
+pub struct Client {
+    pub username: String,
+    pub password: String,
+    pub server_port: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
-    pub geo: Geo,
-    pub conductor: Conductor,
+    pub server: Server,
+    pub client: Client,
     pub tinc: Tinc,
 }
 

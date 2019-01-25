@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unknown_lints)]
-#![allow(unreachable_code)]
+
 
 //For File Struct
 use std::fs;
@@ -40,8 +40,8 @@ impl File {
 
     ///Overwrites file with content
     pub fn write(&self, content: String) -> bool {
-        let mut file = fs::File::create(&self.path).unwrap_or(return false);
-        file.write_all(content.as_bytes()).unwrap_or(return false);
+        let mut file = fs::File::create(&self.path).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
         drop(file);
         true
     }

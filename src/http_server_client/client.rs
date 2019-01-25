@@ -1,10 +1,11 @@
 //! upload proxy status
-#![allow(unreachable_code)]
 
+use rustc_serialize::json::{decode, encode};
 use rustc_serialize::json;
 
 use net_tool::url_post;
 use domain::Info;
+use settings::Settings;
 
 pub struct Client {
     url: String,
@@ -15,24 +16,42 @@ impl Client {
             url,
         }
     }
+
+    pub fn proxy_login(&self, settings: &Settings) -> Option<String> {
+        let post = "/login";
+        let url = self.url.to_string() + post;
+        let data = User::new_from_settings(settings).to_json();
+        let (_res, _code) = url_post(&url, data).unwrap();
+        if _code == 200 {
+            let login: Login = match decode(&_res) {
+                Ok(login) => login,
+                Err(e) => {
+                    debug!("{:?}", e);
+                    return None;
+                }
+            };
+            return Some(encode(&login).unwrap());
+        }
+        None
+    }
     
-    pub fn proxy_register(&self, info: &Info) -> bool {
-        let post = "vppn/api/v2/proxy/register";
+    pub fn proxy_register(&self, info: &Info) -> Option<String> {
+        let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
-        let (_res, _code) = url_post(&url, &data).unwrap_or(return false);
+        let (_res, _code) = url_post(&url, data).unwrap_or(return None);
         if _code == 200 {
-            return true
+            return Some(_res);
         }
-        false
+        None
     }
 
     pub fn proxy_heart_beat(&self, info: &Info) -> bool {
-        let post = "vppn/api/v2/proxy/hearBeat";
+        let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
         let data = Heartbeat::new_from_info(info).to_json();
-        let (_res, code) = url_post(&url, &data).unwrap_or(return false);
-        if code == 200 {
+        let (_res, _code) = url_post(&url, data).unwrap();
+        if _code == 200 {
             return true
         }
         false
@@ -123,4 +142,37 @@ impl Heartbeat {
     }
 }
 
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct User {
+    username: String,
+    password: String,
+}
+impl User {
+    fn new_from_settings(settings: &Settings) -> Self {
+        User {
+            username: settings.client.username.clone(),
+            password: settings.client.password.clone(),
+        }
+    }
+    fn to_json(&self) -> String {
+        return json::encode(self).unwrap();
+    }
+}
 
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct Login {
+    code: i32,
+    data: LoginUser,
+}
+
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct LoginUser {
+    userid:                         String,
+    username:                       String,
+    useremail:                      String,
+    photo:                          String,
+    devices:                        String,
+    enable_autogroup:               bool,
+    enable_autoothergroup:          bool,
+    enable_autonetworking:          bool,
+}

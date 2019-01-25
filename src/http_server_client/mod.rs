@@ -9,3 +9,4 @@ pub mod server;
 pub mod client;
 
 pub use self::client::Client;
+pub use self::server::web_server;

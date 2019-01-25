@@ -9,6 +9,9 @@ name = "ovrouter"
 [[bin]]
 name = "setup"
 
+[[bin]]
+name = "test"
+
 [lib]
 name = "ovrouter"
 
@@ -24,7 +27,7 @@ bytes = "0.4"
 json = "*"
 
 actix = "0.7"
-actix-web = "^0.7"
+actix-web = { version = "0.7", features=["ssl"] }
 
 chrono = "*"
 os_type = "*"
@@ -37,3 +40,6 @@ futures = "*"
 
 uuid = "0.7.1"
 rustc-serialize = "0.3.24"
+openssl = "0.10.16"
+
+reqwest="*"

@@ -1,5 +1,6 @@
 use super::serde_json::Value;
 use net_tool::url_get;
+use settings::Settings;
 
 #[derive(Debug, Clone)]
 pub struct GeoInfo {
@@ -22,26 +23,26 @@ pub struct GeoInfo {
 }
 impl GeoInfo {
     pub fn new() -> Self {
-        let json: Value = get_geo_json();
         GeoInfo {
-            country_code: json["country_code"].to_string(),
-            country_code3: json["country_code3"].to_string(),
-            country_name: json["country_name"].to_string(),
-            city: json["city"].to_string(),
-            region_code: json["region_code"].to_string(),
-            region_name: json["region_name"].to_string(),
-            postal_code: json["postal_code"].to_string(),
-            region: json["region"].to_string(),
-            latitude: json["latitude"].to_string(),
-            longitude: json["longitude"].to_string(),
-            ipaddr: json["ipaddr"].to_string(),
-            dma_code: json["dma_code"].to_string(),
-            area_code: json["area_code"].to_string(),
+            country_code:  String::new(),
+            country_code3: String::new(),
+            country_name:  String::new(),
+            city:          String::new(),
+            region_code:   String::new(),
+            region_name:   String::new(),
+            postal_code:   String::new(),
+            region:        String::new(),
+            latitude:      String::new(),
+            longitude:     String::new(),
+            ipaddr:        String::new(),
+            dma_code:      String::new(),
+            area_code:     String::new(),
         }
     }
 
-    pub fn flush_geo_info(&mut self) {
-        let json: Value = get_geo_json();
+    pub fn load_local(&mut self, settings: &Settings) {
+        let geo_url = &settings.server.geo_url;
+        let json: Value = get_geo_json(geo_url);
         self.country_code = json["country_code"].to_string();
         self.country_code3 = json["country_code3"].to_string();
         self.country_name = json["country_name"].to_string();
@@ -57,7 +58,7 @@ impl GeoInfo {
     }
 }
 
-fn get_geo_json() -> Value {
+fn get_geo_json(geo_url: &str) -> Value {
     let (res, _) = url_get("http://52.25.79.82:10000/geoip_json.php").unwrap_or(("{}".to_string(), 0));
     let json: Value = serde_json::from_str(&res).unwrap();
     return json;

@@ -53,12 +53,19 @@ fn main() {
     }
 
     let mut info = Info::new_from_local(&settings);
+    info.proxy_info.create_uid();
 
-    let client = Client::new("http://192.168.9.38/".to_string());
+    let client = Client::new(settings.server.url.clone());
+//    login
+    {
+        client.proxy_login(&settings);
+    }
+
 //    注册proxy
     {
-        if client.proxy_register(&info) {
+        if let Some(res) = client.proxy_register(&info) {
             info.proxy_info.isregister = true;
+            info.proxy_info.cookie = res;
         }
         else {
             println!("Proxy register failed");

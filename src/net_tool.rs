@@ -2,11 +2,18 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unknown_lints)]
-#![allow(unreachable_code)]
 
 use std::net::{Ipv4Addr, SocketAddr, TcpStream, IpAddr};
 use std::io::Result;
 use std::time::Duration;
+
+use rustc_serialize::json::{decode, encode};
+//use rustc_serialize::json;
+use serde_json::to_vec;
+
+use json;
+extern crate openssl;
+use self::openssl::ssl;
 
 use sys_tool::{cmd};
 
@@ -48,14 +55,15 @@ pub fn get_local_ip() -> Result<IpAddr> {
 pub fn url_get(url:&str) -> Option<(String, u32)> {
     let mut res_data = Vec::new();
 
-    let mut easy = Easy::new();
+    let mut handle = Easy::new();
 
-    easy.show_header(false).unwrap();
-    easy.url(url).unwrap();
-    easy.perform().unwrap_or(return None);
+    handle.timeout(Duration::new(5, 0));
+    handle.show_header(false).unwrap();
+    handle.url(url).unwrap();
+    handle.perform().unwrap_or(return None);
 
     {
-        let mut tran = easy.transfer();
+        let mut tran = handle.transfer();
         let _ = tran.write_function(|buf| {
             res_data.extend_from_slice(buf);
             Ok(buf.len())
@@ -64,33 +72,64 @@ pub fn url_get(url:&str) -> Option<(String, u32)> {
     }
 
     let res_data = String::from_utf8_lossy(&res_data).into_owned();
-    return Some((res_data, easy.response_code().unwrap_or(return None)));
+    return Some((res_data, handle.response_code().unwrap_or(return None)));
 }
 
-pub fn url_post(url: &str, data: &str) -> Option<(String, u32)> {
+pub fn url_post(url: &str, data: String) -> Option<(String, u32)> {
+    let data = http_json(data);
+
     let mut send_data = data.as_bytes();
-    let res_data = &mut [0 as u8][..];
 
-    let mut easy = Easy::new();
+    let mut res_data = Vec::new();
 
-    easy.show_header(false).unwrap_or(return None);
-    easy.post(true).unwrap_or(return None);
-    easy.post_field_size(send_data.len() as u64).unwrap_or(return None);
-    easy.url(url).unwrap_or(return None);
-    easy.perform().unwrap_or(return None);
+    let mut handle = Easy::new();
+
+    handle.timeout(Duration::new(10, 0));
+    handle.show_header(false).unwrap();
+    handle.post(true).unwrap();
+    handle.post_field_size(send_data.len() as u64).unwrap();
+    handle.url(url).unwrap();
+    handle.ssl_verify_host(false).unwrap();
+    handle.ssl_verify_peer(false).unwrap();
+//    use file_tool::File;
+//    let fd = File::new("/root/key.pem".to_string());
+//    handle.ssl_cert(fd.read());
 
     {
-        let mut tran = easy.transfer();
-        let _ = tran.write_function(|buf| {
-            Ok(send_data.read( res_data).unwrap_or(0))
+        let mut tracsfer = handle.transfer();
+        tracsfer.read_function(move |into| {
+            Ok(send_data.read(into).unwrap_or(0))
+        }).unwrap();
+
+        let _ = tracsfer.write_function(|buf| {
+            res_data.extend_from_slice(buf);
+            Ok(buf.len())
         });
-        tran.perform().unwrap_or(return None);
+
+        match tracsfer.perform() {
+            Ok(_) => (),
+            Err(E) => {
+                println!("{:?}", E);
+                return None;
+            }
+        };
     }
 
-    let res_data = String::from_utf8_lossy(&res_data).into_owned();
-    return Some((res_data, easy.response_code().unwrap_or(return None)))
+    let res = String::from_utf8_lossy(&res_data).into_owned();
+
+    let mag = res;
+    let code = handle.response_code().unwrap();
+    return Some((mag, code));
 }
 
+pub fn http_json(json_str: String) -> String {
+    let mut json_str = json_str.clone();
+    json_str.replace("\"", "")
+        .replace(":", "=")
+        .replace(",", "&")
+        .replace("{", "")
+        .replace("}", "")
+}
 
 #[cfg(test)]
 mod tests {

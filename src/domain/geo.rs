@@ -40,26 +40,41 @@ impl GeoInfo {
         }
     }
 
-    pub fn load_local(&mut self, settings: &Settings) {
+    pub fn load_local(&mut self, settings: &Settings) -> bool {
         let geo_url = &settings.server.geo_url;
-        let json: Value = get_geo_json(geo_url);
-        self.country_code = json["country_code"].to_string();
-        self.country_code3 = json["country_code3"].to_string();
-        self.country_name = json["country_name"].to_string();
-        self.city = json["city"].to_string();
-        self.region_code = json["region_code"].to_string();
-        self.region_name = json["region_name"].to_string();
-        self.postal_code = json["postal_code"].to_string();
-        self.latitude = json["latitude"].to_string();
-        self.longitude = json["longitude"].to_string();
-        self.ipaddr = json["ipaddr"].to_string();
-        self.dma_code = json["dma_code"].to_string();
-        self.area_code = json["area_code"].to_string();
+        let mut json: Value;
+        if let Some(json) = get_geo_json(geo_url) {
+            self.country_code = json["country_code"].to_string();
+            self.country_code3 = json["country_code3"].to_string();
+            self.country_name = json["country_name"].to_string();
+            self.city = json["city"].to_string();
+            self.region_code = json["region_code"].to_string();
+            self.region_name = json["region_name"].to_string();
+            self.postal_code = json["postal_code"].to_string();
+            self.latitude = json["latitude"].to_string();
+            self.longitude = json["longitude"].to_string();
+            self.ipaddr = json["ipaddr"].to_string();
+            self.dma_code = json["dma_code"].to_string();
+            self.area_code = json["area_code"].to_string();
+            return true;
+        }
+        else {
+            return false;
+        };
+
     }
 }
 
-fn get_geo_json(geo_url: &str) -> Value {
-    let (res, _) = url_get("http://52.25.79.82:10000/geoip_json.php").unwrap_or(("{}".to_string(), 0));
-    let json: Value = serde_json::from_str(&res).unwrap();
-    return json;
+fn get_geo_json(geo_url: &str) -> Option<Value> {
+    let res = match url_get("http://52.25.79.82:10000/geoip_json.php") {
+        Ok(res) => res,
+        Err(_) => return None,
+    };
+    if res.code == 200 {
+        let json: Value = serde_json::from_str(&res.data).unwrap();
+        return Some(json);
+    }
+    else {
+        return None
+    }
 }

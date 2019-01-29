@@ -58,7 +58,10 @@ fn main() {
     let client = Client::new(settings.server.url.clone());
 //    login
     {
-        client.proxy_login(&settings);
+        if !client.proxy_login(&settings, &mut info) {
+            println!("Proxy login failed");
+            std::process::exit(1);
+        };
     }
 
 //    注册proxy

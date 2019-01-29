@@ -1,11 +1,13 @@
 //! upload proxy status
 
-use rustc_serialize::json::{decode, encode};
+extern crate httparse;
+//use self::httparse::;
 use rustc_serialize::json;
 
 use net_tool::url_post;
 use domain::Info;
 use settings::Settings;
+use net_tool::http_json;
 
 pub struct Client {
     url: String,
@@ -17,31 +19,54 @@ impl Client {
         }
     }
 
-    pub fn proxy_login(&self, settings: &Settings) -> Option<String> {
+    pub fn proxy_login(&self, settings: &Settings, info: &mut Info) -> bool {
         let post = "/login";
         let url = self.url.to_string() + post;
-        let data = User::new_from_settings(settings).to_json();
-        let (_res, _code) = url_post(&url, data).unwrap();
-        if _code == 200 {
-            let login: Login = match decode(&_res) {
+        let data = http_json(User::new_from_settings(settings).to_json());
+
+        let res = match url_post(&url, data, "".to_string()) {
+            Ok(res) => res,
+            Err(e) => {
+                println!("{:?}", e);
+                return false;
+            }
+        };
+
+        if res.code == 200 {
+            let header = res.header;
+            let cookie = header_cookie(header);
+            info.proxy_info.cookie = cookie;
+
+            let res_data = res.data;
+
+            let login: Login = match json::decode(&res_data) {
                 Ok(login) => login,
                 Err(e) => {
-                    debug!("{:?}", e);
-                    return None;
+                    println!("{:?}", e);
+                    return false;
                 }
             };
-            return Some(encode(&login).unwrap());
+//            info.proxy_info.isregister = login.data.enable_autogroup
+//            login.data.username
+
+            return true;
         }
-        None
+        return false;
     }
     
     pub fn proxy_register(&self, info: &Info) -> Option<String> {
         let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
-        let (_res, _code) = url_post(&url, data).unwrap_or(return None);
-        if _code == 200 {
-            return Some(_res);
+        let res = match url_post(&url, data, info.proxy_info.cookie.clone()) {
+            Ok(res) => res,
+            Err(e) => {
+                println!("{:?}", e);
+                return None;
+            }
+        };
+        if res.code == 200 {
+            return Some(res.data);
         }
         None
     }
@@ -50,9 +75,16 @@ impl Client {
         let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
         let data = Heartbeat::new_from_info(info).to_json();
-        let (_res, _code) = url_post(&url, data).unwrap();
-        if _code == 200 {
-            return true
+        let res = match url_post(&url, data, info.proxy_info.cookie.clone()) {
+            Ok(res) => res,
+            Err(e) => {
+                println!("{:?}", e);
+                return false;
+            }
+        };
+        if res.code == 200 {
+//            return Some(res.data);
+            return true;
         }
         false
     }
@@ -84,6 +116,18 @@ impl Client {
 //        let (res, code) = url_post(&url, &data);
 //        true
 //    }
+}
+
+fn header_cookie(mut header: Vec<String>) -> String {
+    let mut headers_str = String::new();
+    for i in 0..header.len() {
+        let slice = header[i].clone();
+        if let Some(_) = slice.find("Set-Cookie") {
+            headers_str += &slice.replace("Set-Cookie: ", "");
+            break
+        }
+    }
+    headers_str
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
@@ -171,8 +215,18 @@ struct LoginUser {
     username:                       String,
     useremail:                      String,
     photo:                          String,
-    devices:                        String,
+    devices:                        Vec<Device>,
     enable_autogroup:               bool,
     enable_autoothergroup:          bool,
     enable_autonetworking:          bool,
+}
+
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct Device {
+    deviceid:    String,
+    devicename:  String,
+    devicetype:  i32,
+    lan:         String,
+    wan:         String,
+    ip:          String,
 }

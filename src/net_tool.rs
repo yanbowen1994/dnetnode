@@ -9,12 +9,7 @@ use std::net::{Ipv4Addr, SocketAddr, TcpStream, IpAddr};
 use std::time::Duration;
 
 use rustc_serialize::json::{decode, encode};
-//use rustc_serialize::json;
 use serde_json::to_vec;
-
-use json;
-extern crate openssl;
-use self::openssl::ssl;
 
 use sys_tool::{cmd};
 
@@ -130,14 +125,14 @@ pub fn get_mac() -> Option<String> {
 
 }
 
-//! http 请求返回结果
+/// http 请求返回结果
 pub struct  HttpResult {
     pub code: u32,
     pub data: String,
     pub header: Vec<String>,
 }
 
-//! https get请求
+/// https get请求
 pub fn url_get(url:&str) -> Result<HttpResult, Error> {
     let mut res_data = Vec::new();
     let mut headers = Vec::new();
@@ -170,7 +165,7 @@ pub fn url_get(url:&str) -> Result<HttpResult, Error> {
     return Ok(res);
 }
 
-//! https post请求
+/// https post请求
 pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Error> {
     let mut send_data = data.as_bytes();
     let cookie = cookie.clone().replace("\r\n", "");
@@ -211,7 +206,7 @@ pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Err
         match transfer.perform() {
             Ok(_) => (),
             Err(e) => {
-                println!("{:?}", e);
+                error!("{:?}", e);
                 return Err(e);
             }
         };
@@ -229,7 +224,7 @@ pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Err
     return Ok(res);
 }
 
-//! 将json 解析成 a=1&b=2 格式
+/// 将json 解析成 a=1&b=2 格式
 pub fn http_json(json_str: String) -> String {
     let json_str = json_str.clone();
     json_str.replace("\\\"", "")
@@ -239,7 +234,7 @@ pub fn http_json(json_str: String) -> String {
         .replace("{", "")
         .replace("}", "")
 }
-//! 创建post请求handle
+/// 创建post请求handle
 fn post_handle(url: &str, post_size: usize) -> Result<Easy, Error> {
     let mut handle = get_handle(url)?;
     handle.post(true)?;
@@ -247,7 +242,7 @@ fn post_handle(url: &str, post_size: usize) -> Result<Easy, Error> {
     Ok(handle)
 }
 
-//! 创建get请求handle
+/// 创建get请求handle
 fn get_handle(url: &str) -> Result<Easy, Error> {
     let mut handle = Easy::new();
     handle.timeout(Duration::new(5, 0))?;

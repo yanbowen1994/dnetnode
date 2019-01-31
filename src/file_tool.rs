@@ -57,7 +57,7 @@ impl File {
         path.exists() && path.is_dir()
     }
 
-    //! 获取文件最后修改时间
+    /// 获取文件最后修改时间
     pub fn file_modify_time(&self) -> Option<u64> {
         let path = Path::new(&self.path);
         if let Ok(fs) = metadata(path) {
@@ -71,7 +71,7 @@ impl File {
     }
 }
 
-//! 获取当前运行文件夹
+/// 获取当前运行文件夹
 pub fn cur_dir() -> String {
     let path = env::current_dir()
         .ok()
@@ -82,6 +82,6 @@ pub fn cur_dir() -> String {
 pub fn list_dir() {
     let paths = read_dir("./").unwrap();
     for path in paths {
-        println!("Name: {}", path.unwrap().path().display())
+        info!("Name: {}", path.unwrap().path().display())
     }
 }

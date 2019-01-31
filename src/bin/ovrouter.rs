@@ -73,7 +73,7 @@ fn main() {
     // Client Login
     {
         if !client.proxy_login(&settings, &mut info) {
-            println!("Proxy login failed");
+            error!("Proxy login failed");
             std::process::exit(1);
         };
     }
@@ -81,14 +81,14 @@ fn main() {
     // 注册proxy
     info!("proxy_register");
     if !client.proxy_register(&mut info) {
-        println!("Proxy register failed");
+        error!("Proxy register failed");
         std::process::exit(1);
     }
 
     // 初次上传heartbeat
     info!("proxy_heart_beat");
     if !client.proxy_heart_beat(&info) {
-        println!("Proxy heart beat send failed");
+        error!("Proxy heart beat send failed");
         std::process::exit(1);
     };
 

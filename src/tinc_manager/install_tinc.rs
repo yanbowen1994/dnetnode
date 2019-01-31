@@ -20,13 +20,13 @@ fn install_on_linux(settings: &Settings, tinc: &Tinc) -> i32 {
         tinc.start_tinc();
         if tinc.is_tinc_exist() {
             tinc.stop_tinc();
-            println!("{}", "Success install tinc");
+            info!("{}", "Success install tinc");
         } else {
-            println!("{}", "Failed install tinc");
+            info!("{}", "Failed install tinc");
             return -1;
         }
     } else {
-        println!("tinc is running");
+        info!("tinc is running");
     }
 //    install_landmark();
     return 0;
@@ -42,7 +42,7 @@ fn add_dependent(app_name:&str) {
     if "Ubuntu" == &(current_platform().1) {
         cmd_err_panic("sudo dpkg --get-selections | grep ".to_string() + app_name);
 
-        println!("{}", "**** install Dependency package ".to_string() + app_name);
+        info!("{}", "**** install Dependency package ".to_string() + app_name);
         cmd_err_panic("sudo apt-get install -y ".to_string() + app_name);
     }
 }

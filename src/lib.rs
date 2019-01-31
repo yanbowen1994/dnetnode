@@ -7,8 +7,6 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate rustc_serialize;
 
-extern crate json;
-
 pub mod file_tool;
 pub mod net_tool;
 pub mod sys_tool;

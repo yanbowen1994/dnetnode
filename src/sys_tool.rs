@@ -163,7 +163,7 @@ fn retrieve() -> Option<WindowsVer> {
         Err(_) => return None
     };
     let stdout = String::from_utf8_lossy(&output.stdout);
-    println!("{}", stdout);
+    info!("{}", stdout);
     Some(parse(stdout.to_string()))
 }
 

@@ -42,7 +42,7 @@ impl Tinc {
         }
     }
 
-    //! 添加子设备
+    /// 添加子设备
     pub fn add_hosts(&self, hosts_name: &str, vip: &str) -> bool {
         let file = File::new(self.tinc_home.clone() + "/hosts/" + hosts_name);
         file.write(vip.to_string())
@@ -54,7 +54,7 @@ impl Tinc {
             + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
     }
 
-    //! 从pub_key文件读取pub_key
+    /// 从pub_key文件读取pub_key
     pub fn get_pub_key(&self) -> String {
         let file = File::new(self.tinc_home.clone() + &self.pub_key_path);
         file.read()
@@ -65,7 +65,7 @@ impl Tinc {
         file.write(pub_key.to_string())
     }
 
-    //! 修改tinc虚拟ip
+    /// 修改tinc虚拟ip
     pub fn change_vip(&self, vip: String) -> bool {
         {
             let buf = "Address = ".to_string()

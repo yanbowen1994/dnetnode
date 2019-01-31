@@ -11,6 +11,7 @@
 ### run
     Only support ubuntu 16.04
     需要在运行目录有Settings.toml文件，或者修改settings.rs，Settings.toml文件地址
+    cp ./Settings.toml.example ./Settings.toml
     cargo build --release
     ./ovrouter -d 2
     

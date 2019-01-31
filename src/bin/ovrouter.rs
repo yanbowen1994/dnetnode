@@ -113,10 +113,10 @@ fn main() {
     let tinc_arc_clone = tinc_arc.clone();
 
     // 启动web_server,线程
-    spawn(move ||web_server(info_arc_clone, tinc_arc_clone));
-
-    // 进入主循环
-    main_loop(tinc_arc, client_arc, info_arc, &settings)
+    let handle_web_server = spawn(move ||web_server(info_arc_clone, tinc_arc_clone));
+    let handle_main_loop = spawn(move ||main_loop(tinc_arc, client_arc, info_arc, &settings));
+    handle_web_server.join().unwrap();
+    handle_main_loop.join().unwrap();
 }
 
 fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,

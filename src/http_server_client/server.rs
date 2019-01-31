@@ -242,5 +242,5 @@ pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<Tinc>>) {
     }).bind_ssl(get_local_ip().unwrap().to_string() + ":8443", builder)
         .unwrap()
         .start();
-    let _ = sys.run();
+//    let _ = sys.run();
 }

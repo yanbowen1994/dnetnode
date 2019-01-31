@@ -1,29 +1,29 @@
-use sys_tool::cmd_err_panic;
+use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use super::check::check_tinc_status;
 
-pub struct Operater <'a> {
-    tinc_home: &'a str,
-    pub_key_path:  &'a str,
+pub struct Tinc {
+    tinc_home: String,
+    pub_key_path:  String,
 }
-impl <'a>  Operater <'a>  {
-    pub fn new(tinc_home: &'a str, pub_key_path: &'a str) -> Self {
-        Operater {
+impl Tinc {
+    pub fn new(tinc_home: String, pub_key_path: String) -> Self {
+        Tinc {
             tinc_home,
             pub_key_path,
         }
     }
 
     pub fn start_tinc(&self) {
-        cmd_err_panic(self.tinc_home.to_string() + "/start");
+        cmd_err_panic(self.tinc_home.clone() + "/start");
     }
 
     pub fn stop_tinc(&self) {
-        cmd_err_panic("killall tincd".to_string());
+        cmd("killall tincd".to_string());
     }
 
     pub fn is_tinc_exist(&self) -> bool {
-        check_tinc_status(self.tinc_home)
+        check_tinc_status(&self.tinc_home)
     }
 
     pub fn restart_tinc(&self) {
@@ -42,19 +42,24 @@ impl <'a>  Operater <'a>  {
         }
     }
 
+    pub fn add_hosts(&self, hosts_name: &str, vip: &str) -> bool {
+        let file = File::new(self.tinc_home.clone() + "/hosts/" + hosts_name);
+        file.write(vip.to_string())
+    }
+
     pub fn create_pub_key(&self) {
-        cmd_err_panic("chmod 755 ".to_string() + self.tinc_home + "key/build-key-tinc.exp");
-        cmd_err_panic(self.tinc_home.to_string() + "key/build-key-tinc.exp " + self.tinc_home
-            + "key/rsa_key.priv " + self.tinc_home + self.pub_key_path);
+        cmd_err_panic("chmod 755 ".to_string() + &self.tinc_home + "key/build-key-tinc.exp");
+        cmd_err_panic(self.tinc_home.clone() + "key/build-key-tinc.exp " + &self.tinc_home
+            + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
     }
 
     pub fn get_pub_key(&self) -> String {
-        let file = File::new(self.tinc_home.to_string() + self.pub_key_path);
+        let file = File::new(self.tinc_home.clone() + &self.pub_key_path);
         file.read()
     }
 
     pub fn set_pub_key(&mut self, pub_key: &str) -> bool {
-        let file = File::new(self.tinc_home.to_string() + self.pub_key_path);
+        let file = File::new(self.tinc_home.clone() + &self.pub_key_path);
         file.write(pub_key.to_string())
     }
 
@@ -68,7 +73,7 @@ impl <'a>  Operater <'a>  {
                 + &self.tinc_home
                 + &self.pub_key_path;
 
-            let file = File::new(self.tinc_home.to_string() + "/hosts/vpnserver");
+            let file = File::new(self.tinc_home.clone() + "/hosts/vpnserver");
             if !file.write(buf.to_string()) {
                 return false;
             }
@@ -81,7 +86,7 @@ impl <'a>  Operater <'a>  {
             ifconfig ${dev} ${vpngw} netmask 255.0.0.0\n
             iptables -t nat -F\n
             iptables -t nat -A POSTROUTING -s ${vpngw}/8 -o enp0s3 -j MASQUERADE\nexit 0";
-            let file = File::new(self.tinc_home.to_string() + "/tinc-up");
+            let file = File::new(self.tinc_home.clone() + "/tinc-up");
             if !file.write(buf.to_string()) {
                 return false;
             }

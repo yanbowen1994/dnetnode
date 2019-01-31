@@ -7,9 +7,6 @@ authors = ["yanbowen <bowen.yan@gitblit.com>"]
 name = "ovrouter"
 
 [[bin]]
-name = "setup"
-
-[[bin]]
 name = "test"
 
 [lib]

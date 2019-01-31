@@ -4,21 +4,21 @@ use net_tool::{get_wan_name};
 use super::operater::*;
 use settings::Settings;
 
-pub fn install_tinc(settings: &Settings, operater: &Operater) {
-    install_on_linux(settings, operater);
+pub fn install_tinc(settings: &Settings, tinc: &Tinc) {
+    install_on_linux(settings, tinc);
 }
 
-fn install_on_linux(settings: &Settings, operater: &Operater) -> i32 {
+fn install_on_linux(settings: &Settings, tinc: &Tinc) -> i32 {
     let tinc_home  = &settings.tinc.home_path[..];
     cp_tinc_to_local(tinc_home);
     add_dependent("liblzo2-2");
     add_permission_dir(tinc_home);
     config_on_linux(tinc_home);
-    operater.create_pub_key();
-    if !operater.is_tinc_exist() {
-        operater.start_tinc();
-        if operater.is_tinc_exist() {
-            operater.stop_tinc();
+    tinc.create_pub_key();
+    if !tinc.is_tinc_exist() {
+        tinc.start_tinc();
+        if tinc.is_tinc_exist() {
+            tinc.stop_tinc();
             println!("{}", "Success install tinc");
         } else {
             println!("{}", "Failed install tinc");
@@ -88,8 +88,8 @@ fn config_on_linux(tinc_home: &str) {
 #[test]
 fn test_cp() {
     let settings = Settings::load_config().unwrap();
-    let operater = Operater::new(
-        &settings.tinc.home_path,
-        &settings.tinc.pub_key_path);
-    install_tinc(&settings, &operater);
+    let tinc = Tinc::new(
+        settings.tinc.home_path.clone(),
+        settings.tinc.pub_key_path.clone());
+    install_tinc(&settings, &tinc);
 }

@@ -1,6 +1,7 @@
 #![allow(unused_variables)]
-extern crate serde_json;
+use std::sync::{Arc, Mutex};
 
+extern crate serde_json;
 extern crate actix;
 extern crate actix_web;
 extern crate bytes;
@@ -8,42 +9,71 @@ extern crate openssl;
 
 use self::actix_web::{
     error, http, middleware, server, App, AsyncResponder, Error, HttpMessage,
-    HttpRequest, HttpResponse, Json,
+    HttpRequest, HttpResponse
 };
 use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
 use self::bytes::BytesMut;
 use super::futures::{Future, Stream};
-use json::JsonValue;
 use rustc_serialize::json::encode;
 
-#[derive(Debug, Serialize, Deserialize, RustcDecodable, RustcEncodable)]
-struct Response {
-    code: u32,
-    msg: String,
+use net_tool::get_local_ip;
+use domain::Info;
+use tinc_manager::Tinc;
+
+#[derive(Clone)]
+struct AppState {
+    info: Arc<Mutex<Info>>,
+    tinc: Arc<Mutex<Tinc>>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, RustcDecodable, RustcEncodable)]
+pub struct KeyReport {
+    mac:            String,
+    vip:            String,
+    pub_key:        String,
+    proxy_pub_key:  String,
+}
+impl KeyReport {
+    pub fn new() -> Self {
+        KeyReport{
+            mac:                     "".to_string(),
+            vip:                     "".to_string(),
+            pub_key:                 "".to_string(),
+            proxy_pub_key:           "".to_string(),
+        }
+    }
+
+    fn new_from_info(info :&Info) -> Self {
+        KeyReport{
+            mac:                     "".to_string(),
+            vip:                     info.tinc_info.vip.to_string(),
+            pub_key:                 info.tinc_info.pub_key.clone(),
+            proxy_pub_key:           "".to_string(),
+        }
+    }
+    fn to_json(&self) -> String {
+        return encode(self).unwrap();
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, RustcDecodable, RustcEncodable)]
-struct MyObj {
-    username: String,
-    password: String,
+struct Response {
+    code:   u32,
+    msg:    String,
 }
 
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 
-/// This handler manually load request payload and parse json object
-fn index_manual(req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    println!("ressss");
-    // HttpRequest::payload() is stream of Bytes objects
-    req.payload()
-        // `Future::from_err` acts like `?` in that it coerces the error type from
-        // the future into the final error type
-        .from_err()
+//fn report_key((info_arc, req): (Arc<Mutex<Info>>, &HttpRequest)
+//) -> Box<Future<Item = HttpResponse, Error = Error>> {
+fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
+    let info = info_arc.lock().unwrap();
+    let key_report = KeyReport::new_from_info(&info);
 
-        // `fold` will asynchronously read each chunk of the request body and
-        // call supplied closure, then it resolves to result of closure
+    req.payload()
+        .from_err()
         .fold(BytesMut::new(), move |mut body, chunk| {
-            // limit max size of in-memory payload
             if (body.len() + chunk.len()) > MAX_SIZE {
                 Err(error::ErrorBadRequest("overflow"))
             } else {
@@ -51,31 +81,81 @@ fn index_manual(req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Er
                 Ok(body)
             }
         })
-        // `Future::and_then` can be used to merge an asynchronous workflow with a
-        // synchronous workflow
-        .and_then(|body| {
+        .and_then(move |body| {
             let by = &body.to_vec()[..];
             let req = String::from_utf8_lossy(by);
-            println!("{}", req);
-
-            let obj = MyObj{
-                username: "444444444444".to_string(),
-                password: "1".to_string(),
-            };
             let response = Response {
-                code: 200,
-                msg: encode(&obj).unwrap(),
+                code:   200,
+                msg:    key_report.to_json(),
             };
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()
 }
 
-pub fn web_server() {
+fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
+    let info = info_arc.lock().unwrap();
+    let key_report = KeyReport::new_from_info(&info);
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(|body| {
+            let by = &body.to_vec()[..];
+            let req = String::from_utf8_lossy(by);
+            let response = Response {
+                code:   200,
+                msg:    "".to_string(),
+            };
+            Ok(HttpResponse::Ok().json(response)) // <- send response
+        })
+        .responder()
+}
+
+fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
+    let msg;
+    {
+        let info = info_arc.lock().unwrap();
+        msg = info.tinc_info.vip.to_string();
+    }
+
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(|body| {
+            let by = &body.to_vec()[..];
+            let req = String::from_utf8_lossy(by);
+            let response = Response {
+                code:   200,
+                msg,
+            };
+            Ok(HttpResponse::Ok().json(response)) // <- send response
+        })
+        .responder()
+}
+
+pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<Tinc>>) {
     if ::std::env::var("RUST_LOG").is_err() {
         ::std::env::set_var("RUST_LOG", "actix_web=info");
     }
-    let sys = actix::System::new("ws-example");
+    let sys = actix::System::new("webserver");
 
     // load ssl keys
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
@@ -84,19 +164,25 @@ pub fn web_server() {
         .unwrap();
     builder.set_certificate_chain_file("cert.pem").unwrap();
 
-    server::new(|| {
-        App::new()
-            // enable logger
+    server::new(move || {
+        App::with_state(AppState {info: info_arc.clone(), tinc: tinc_arc.clone()})
+
             .middleware(middleware::Logger::default())
 
-            .resource("/login", |r| {
-                r.method(http::Method::POST).f(index_manual)
+            .resource("/vppn/tinc/api/v2/proxy/keyreport", |r|
+                r.method(http::Method::POST).with(report_key)
+            )
+
+            .resource("/vppn/tinc/api/v2/proxy/checkpublickey", |r| {
+                r.method(http::Method::POST).with(check_key)
             })
 
-    }).bind_ssl("192.168.1.17:8443", builder)
+            .resource("/vppn/tinc/api/v2/proxy/getpublickey", |r| {
+                r.method(http::Method::GET).with(get_key)
+            })
+
+    }).bind_ssl(get_local_ip().unwrap().to_string() + ":8443", builder)
         .unwrap()
         .start();
-
-    println!("Started http server: 127.0.0.1:8443");
     let _ = sys.run();
 }

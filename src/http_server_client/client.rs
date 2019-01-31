@@ -24,7 +24,7 @@ impl Client {
         let url = self.url.to_string() + post;
         let data = http_json(User::new_from_settings(settings).to_json());
 
-        let res = match url_post(&url, data, "".to_string()) {
+        let res = match url_post(&url, data, "") {
             Ok(res) => res,
             Err(e) => {
                 println!("{:?}", e);
@@ -39,55 +39,148 @@ impl Client {
 
             let res_data = res.data;
 
-            let login: Login = match json::decode(&res_data) {
+            let _login: Login = match json::decode(&res_data) {
                 Ok(login) => login,
                 Err(e) => {
                     println!("{:?}", e);
                     return false;
                 }
             };
-//            info.proxy_info.isregister = login.data.enable_autogroup
-//            login.data.username
-
             return true;
         }
         return false;
     }
     
-    pub fn proxy_register(&self, info: &Info) -> Option<String> {
+    pub fn proxy_register(&self, info: &mut Info) -> bool {
         let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
-        let res = match url_post(&url, data, info.proxy_info.cookie.clone()) {
+        let res = match url_post(&url, data, &info.proxy_info.cookie) {
             Ok(res) => res,
             Err(e) => {
-                println!("{:?}", e);
-                return None;
+                error!("{:?}", e);
+                return false;
             }
         };
         if res.code == 200 {
-            return Some(res.data);
+            let recv: Recv = match json::decode(&res.data) {
+                Ok(x) => x,
+                Err(e) => {
+                    error!("{:?}", e);
+                    return false;
+                }
+            };
+            if recv.code == 200 {
+                info.proxy_info.isregister = true;
+                return true;
+            }
         }
-        None
+        false
     }
 
     pub fn proxy_heart_beat(&self, info: &Info) -> bool {
         let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
         let data = Heartbeat::new_from_info(info).to_json();
-        let res = match url_post(&url, data, info.proxy_info.cookie.clone()) {
+        let res = match url_post(&url, data, &info.proxy_info.cookie) {
             Ok(res) => res,
             Err(e) => {
-                println!("{:?}", e);
+                error!("{:?}", e);
                 return false;
             }
         };
         if res.code == 200 {
-//            return Some(res.data);
-            return true;
+            let recv: Recv = match json::decode(&res.data) {
+                Ok(x) => x,
+                Err(e) => {
+                    error!("{:?}", e);
+                    return false;
+                }
+            };
+            if recv.code == 200 {
+                return true;
+            }
         }
         false
     }
+
+//    pub fn proxy_report_key(&self, info: &Info) -> bool {
+//        let post = "/vppn/tinc/api/v2/proxy/keyreport";
+//        let url = self.url.to_string() + post;
+//        let data = KeyReport::new_from_info(info).to_json();
+//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
+//            Ok(res) => res,
+//            Err(e) => {
+//                error!("{:?}", e);
+//                return false;
+//            }
+//        };
+//        if res.code == 200 {
+//            let recv: Recv = match json::decode(&res.data) {
+//                Ok(x) => x,
+//                Err(e) => {
+//                    error!("{:?}", e);
+//                    return false;
+//                }
+//            };
+//            if recv.code == 200 {
+//                return true;
+//            }
+//        }
+//        false
+//    }
+//    pub fn proxy_check_key(&self, info: &Info) -> bool {
+//        let post = "/vppn/tinc/api/v2/proxy/checkpublickey";
+//        let url = self.url.to_string() + post;
+//        let data = KeyReport::new_from_info(info).to_json();
+//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
+//            Ok(res) => res,
+//            Err(e) => {
+//                error!("{:?}", e);
+//                return false;
+//            }
+//        };
+//        if res.code == 200 {
+//            let recv: Recv = match json::decode(&res.data) {
+//                Ok(x) => x,
+//                Err(e) => {
+//                    error!("{:?}", e);
+//                    return false;
+//                }
+//            };
+//            if recv.code == 200 {
+//                return true;
+//            }
+//        }
+//        false
+//    }
+//
+//    pub fn proxy_get_key(&self, info: &Info) -> bool {
+//        let post = "/vppn/tinc/api/v2/proxy/getpublickey";
+//        let url = self.url.to_string() + post;
+//        let data = KeyReport::new_from_info(info).to_json();
+//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
+//            Ok(res) => res,
+//            Err(e) => {
+//                error!("{:?}", e);
+//                return false;
+//            }
+//        };
+//        if res.code == 200 {
+//            let recv: Recv = match json::decode(&res.data) {
+//                Ok(x) => x,
+//                Err(e) => {
+//                    error!("{:?}", e);
+//                    return false;
+//                }
+//            };
+//            if recv.code == 200 {
+//                return true;
+//            }
+//        }
+//        false
+//    }
+
 
 //    pub fn proxy_location(&self) -> bool {
 //        let post = "/vppn/api/v2/proxy/upLocation";
@@ -118,7 +211,7 @@ impl Client {
 //    }
 }
 
-fn header_cookie(mut header: Vec<String>) -> String {
+fn header_cookie(header: Vec<String>) -> String {
     let mut headers_str = String::new();
     for i in 0..header.len() {
         let slice = header[i].clone();
@@ -175,9 +268,9 @@ struct Heartbeat {
 impl Heartbeat {
     fn new_from_info(info :&Info) -> Self {
         Heartbeat {
-            auth_id: info.proxy_info.uid.to_string(),
-            proxy_ip: info.proxy_info.proxy_ip.to_string(),
-            pub_key: info.tinc_info.pub_key.to_string(),
+            auth_id:    info.proxy_info.uid.to_string(),
+            proxy_ip:   info.proxy_info.proxy_ip.to_string(),
+            pub_key:    info.tinc_info.pub_key.to_string(),
         }
     }
 
@@ -205,8 +298,8 @@ impl User {
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct Login {
-    code: i32,
-    data: LoginUser,
+    code:    i32,
+    data:    LoginUser,
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
@@ -229,4 +322,11 @@ struct Device {
     lan:         String,
     wan:         String,
     ip:          String,
+}
+
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct Recv {
+    code:        i32,
+    msg:         Option<String>,
+    data:        Option<String>,
 }

@@ -1,8 +1,8 @@
-use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
-use std::thread::sleep_ms;
+use std::thread::sleep;
 
+#[macro_use]
 extern crate log;
 extern crate simple_logger;
 extern crate clap;
@@ -11,10 +11,10 @@ use clap::{App, Arg};
 extern crate ovrouter;
 use ovrouter::settings::Settings;
 use ovrouter::tinc_manager::check::*;
-use ovrouter::tinc_manager::Operater;
-use ovrouter::net_tool::url_get;
+use ovrouter::tinc_manager::Tinc;
 use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
+use ovrouter::tinc_manager::install_tinc;
 
 
 fn main() {
@@ -42,16 +42,20 @@ fn main() {
 
     let settings:Settings = Settings::load_config().expect("Error: can not parse settings.toml");
 
+    let tinc = Tinc::new(settings.tinc.home_path.clone(), settings.tinc.pub_key_path.clone());
+
+    info!("check_tinc_complete");
     if !check_tinc_complete(&settings.tinc.home_path) {
-        println!("{}", "No tinc install in ".to_string() + &settings.tinc.home_path);
-        exit(1);
+        info!("install_tinc");
+        install_tinc(&settings, &tinc);
     }
 
-    let operater = Operater::new(&settings.tinc.home_path, &settings.tinc.pub_key_path);
+    info!("check_pub_key");
     if !check_pub_key(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
-        operater.create_pub_key();
+        tinc.create_pub_key();
     }
 
+    info!("Get local info.");
     let mut info = Info::new_from_local(&settings);
     info.proxy_info.create_uid();
 
@@ -65,34 +69,46 @@ fn main() {
     }
 
 //    注册proxy
-    {
-        if let Some(res) = client.proxy_register(&info) {
-            info.proxy_info.isregister = true;
-            info.proxy_info.cookie = res;
-        }
-        else {
-            println!("Proxy register failed");
-            std::process::exit(1);
-        }
+    info!("proxy_register");
+
+    if !client.proxy_register(&mut info) {
+        println!("Proxy register failed");
+        std::process::exit(1);
     }
+
+//    heartbeat
+    info!("proxy_heart_beat");
+    if !client.proxy_heart_beat(&info) {
+        println!("Proxy heart beat send failed");
+        std::process::exit(1);
+    };
 
     let client_arc = Arc::new(
         Mutex::new(client));
 
-    let tinc_operater = Arc::new(
-        Mutex::new(operater));
+    let tinc_arc = Arc::new(
+        Mutex::new(tinc));
 
     let info_arc = Arc::new(
         Mutex::new(info));
 
-//    web_server();
-    main_loop(tinc_operater, client_arc, info_arc, &settings);
+    use std::thread::spawn;
+    use ovrouter::http_server_client::web_server;
+
+    let info_arc_clone = info_arc.clone();
+    let tinc_arc_clone = tinc_arc.clone();
+    let web_handle = spawn(
+        move ||web_server(info_arc_clone, tinc_arc_clone));
+
+//    let main_handle = spawn(
+//        move ||    main_loop(tinc_arc, client_arc, info_arc, &settings));
+    main_loop(tinc_arc, client_arc, info_arc, &settings)
 }
 
-fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
-             client_arc: Arc<Mutex<Client>>,
-             info_arc: Arc<Mutex<Info>>,
-             settings: &Settings,
+fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
+             client_arc:       Arc<Mutex<Client>>,
+             info_arc:         Arc<Mutex<Info>>,
+             settings:         &Settings,
 ) {
     let heartbeat_frequency = Duration::from_secs(20);
 //    let landmark_frequency = Duration::from_secs(15600);
@@ -107,22 +123,21 @@ fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
             if let Ok(client) = client_arc.try_lock() {
                 if let Ok(info) = info_arc.try_lock() {
-                    client.proxy_heart_beat(&info);
+                    info!("proxy_heart_beat");
+                    if !client.proxy_heart_beat(&info){
+                        error!("Heart beat send failed.")
+                    };
                     heartbeat_time = now.clone();
                 }
             }
         }
 
-//        if now.duration_since(landmark_time) > landmark_frequency {
-//            upload_proxy_status(conductor_url, info);
-//            landmark_time = now.clone();
-//        }
-
         if now.duration_since(check_tinc_time) > check_tinc_frequency {
             let mut lock_or_pass = true;
+            info!("check_tinc_status");
             if check_tinc_status(&settings.tinc.home_path) {
-                if let Ok(operater) = tinc_operater.try_lock() {
-                    operater.restart_tinc();
+                if let Ok(tinc) = tinc_arc.try_lock() {
+                    tinc.restart_tinc();
                 }
                 else {
                     lock_or_pass = false;
@@ -133,7 +148,7 @@ fn main_loop(tinc_operater: Arc<Mutex<Operater>>,
             }
         }
 
-        sleep_ms(1);
+        sleep(Duration::new(1, 0));
         now = Instant::now();
 
     }

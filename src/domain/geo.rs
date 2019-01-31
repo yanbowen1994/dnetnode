@@ -42,7 +42,6 @@ impl GeoInfo {
 
     pub fn load_local(&mut self, settings: &Settings) -> bool {
         let geo_url = &settings.server.geo_url;
-        let mut json: Value;
         if let Some(json) = get_geo_json(geo_url) {
             self.country_code = json["country_code"].to_string();
             self.country_code3 = json["country_code3"].to_string();
@@ -66,7 +65,7 @@ impl GeoInfo {
 }
 
 fn get_geo_json(geo_url: &str) -> Option<Value> {
-    let res = match url_get("http://52.25.79.82:10000/geoip_json.php") {
+    let res = match url_get(geo_url) {
         Ok(res) => res,
         Err(_) => return None,
     };

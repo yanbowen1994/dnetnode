@@ -7,7 +7,6 @@ use domain::Info;
 use settings::Settings;
 use net_tool::http_json;
 
-//!
 pub struct Client {
     url: String,
 }
@@ -26,7 +25,7 @@ impl Client {
         let res = match url_post(&url, data, "") {
             Ok(res) => res,
             Err(e) => {
-                println!("{:?}", e);
+                error!("{:?}", e);
                 return false;
             }
         };
@@ -41,7 +40,7 @@ impl Client {
             let _login: Login = match json::decode(&res_data) {
                 Ok(login) => login,
                 Err(e) => {
-                    println!("{:?}", e);
+                    error!("{:?}", e);
                     return false;
                 }
             };
@@ -209,12 +208,12 @@ struct LoginUser {
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct Device {
-    deviceid:    String,
-    devicename:  String,
-    devicetype:  i32,
-    lan:         String,
-    wan:         String,
-    ip:          String,
+    deviceid:    Option<String>,
+    devicename:  Option<String>,
+    devicetype:  Option<i32>,
+    lan:         Option<String>,
+    wan:         Option<String>,
+    ip:          Option<String>,
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]

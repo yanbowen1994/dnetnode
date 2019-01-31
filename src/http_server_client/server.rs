@@ -100,12 +100,12 @@ impl Request {
 
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 
-// req: http请求
-//     req,state() return AppState
-//     req.payload() return  tokio 异步操作
-//         add_then()中，为body解析方法，可以为闭包或函数
-//             HttpResponse::Ok().json(response) 以json格式返回struct Response
-//
+//! req: http请求
+//!     req,state() return AppState
+//!     req.payload() return  tokio 异步操作
+//!         add_then()中，为body解析方法，可以为闭包或函数
+//!             HttpResponse::Ok().json(response) 以json格式返回struct Response
+//!
 fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
     let info = info_arc.lock().unwrap().clone();

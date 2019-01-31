@@ -1,7 +1,5 @@
 //! upload proxy status
 
-extern crate httparse;
-//use self::httparse::;
 use rustc_serialize::json;
 
 use net_tool::url_post;
@@ -9,6 +7,7 @@ use domain::Info;
 use settings::Settings;
 use net_tool::http_json;
 
+//!
 pub struct Client {
     url: String,
 }
@@ -103,112 +102,6 @@ impl Client {
         }
         false
     }
-
-//    pub fn proxy_report_key(&self, info: &Info) -> bool {
-//        let post = "/vppn/tinc/api/v2/proxy/keyreport";
-//        let url = self.url.to_string() + post;
-//        let data = KeyReport::new_from_info(info).to_json();
-//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-//            Ok(res) => res,
-//            Err(e) => {
-//                error!("{:?}", e);
-//                return false;
-//            }
-//        };
-//        if res.code == 200 {
-//            let recv: Recv = match json::decode(&res.data) {
-//                Ok(x) => x,
-//                Err(e) => {
-//                    error!("{:?}", e);
-//                    return false;
-//                }
-//            };
-//            if recv.code == 200 {
-//                return true;
-//            }
-//        }
-//        false
-//    }
-//    pub fn proxy_check_key(&self, info: &Info) -> bool {
-//        let post = "/vppn/tinc/api/v2/proxy/checkpublickey";
-//        let url = self.url.to_string() + post;
-//        let data = KeyReport::new_from_info(info).to_json();
-//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-//            Ok(res) => res,
-//            Err(e) => {
-//                error!("{:?}", e);
-//                return false;
-//            }
-//        };
-//        if res.code == 200 {
-//            let recv: Recv = match json::decode(&res.data) {
-//                Ok(x) => x,
-//                Err(e) => {
-//                    error!("{:?}", e);
-//                    return false;
-//                }
-//            };
-//            if recv.code == 200 {
-//                return true;
-//            }
-//        }
-//        false
-//    }
-//
-//    pub fn proxy_get_key(&self, info: &Info) -> bool {
-//        let post = "/vppn/tinc/api/v2/proxy/getpublickey";
-//        let url = self.url.to_string() + post;
-//        let data = KeyReport::new_from_info(info).to_json();
-//        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-//            Ok(res) => res,
-//            Err(e) => {
-//                error!("{:?}", e);
-//                return false;
-//            }
-//        };
-//        if res.code == 200 {
-//            let recv: Recv = match json::decode(&res.data) {
-//                Ok(x) => x,
-//                Err(e) => {
-//                    error!("{:?}", e);
-//                    return false;
-//                }
-//            };
-//            if recv.code == 200 {
-//                return true;
-//            }
-//        }
-//        false
-//    }
-
-
-//    pub fn proxy_location(&self) -> bool {
-//        let post = "/vppn/api/v2/proxy/upLocation";
-//        let url = self.url.to_string() + post;
-//        let (res, code) = url_post(&url, &data);
-//        true
-//    }
-//
-//    pub fn proxy_bind(&self) -> bool {
-//        let post = "/vppn/api/v2/proxy/bindproxy";
-//        let url = self.url.to_string() + post;
-//        let (res, code) = url_post(&url, &data);
-//        true
-//    }
-//
-//    pub fn proxy_unbind(&self) -> bool {
-//        let post = "/vppn/api/v2/proxy/unbindproxy";
-//        let url = self.url.to_string() + post;
-//        let (res, code) = url_post(&url, &data);
-//        true
-//    }
-//
-//    pub fn proxy_modify(&self) -> bool {
-//        let post = "POST /vppn/api/v2/proxy/modifyproxy";
-//        let url = self.url.to_string() + post;
-//        let (res, code) = url_post(&url, &data);
-//        true
-//    }
 }
 
 fn header_cookie(header: Vec<String>) -> String {

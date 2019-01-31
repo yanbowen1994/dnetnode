@@ -1,3 +1,10 @@
+//! 这个模块用于记录Ovrouter运行信息
+//! GeoInfo：本机地理地址信息
+//! ProxyInfo：公网ip， uuid等
+//! TincInfo： 本机tinc运行参数
+//! new() 创建空的结构体
+//! load_local() 根据本地信息创建结构体，将会读取tinc公钥，ip，vip等
+
 use serde_json;
 
 use settings::Settings;

@@ -57,6 +57,7 @@ impl File {
         path.exists() && path.is_dir()
     }
 
+    //! 获取文件最后修改时间
     pub fn file_modify_time(&self) -> Option<u64> {
         let path = Path::new(&self.path);
         if let Ok(fs) = metadata(path) {
@@ -70,7 +71,7 @@ impl File {
     }
 }
 
-
+//! 获取当前运行文件夹
 pub fn cur_dir() -> String {
     let path = env::current_dir()
         .ok()
@@ -84,38 +85,3 @@ pub fn list_dir() {
         println!("Name: {}", path.unwrap().path().display())
     }
 }
-
-//#[cfg(test)]
-//mod tests {
-//    use super::*;
-//    #[test]
-//    fn test_write_read() {
-//        self::write_file(String::from("E:\\Rust\\test\\file_for_test\\ForTestRead.txt"), String::from("Hello World!"));
-//        let a:String = self::read_file(String::from("E:\\Rust\\test\\file_for_test\\ForTestRead.txt"));
-//        assert_eq!(a, "Hello World!");
-//    }
-//    #[test]
-//    fn test_file_exists() {
-//        assert_eq!(file_exists(&String::from("E:\\Rust\\test\\file_for_test\\ForTestRead.txt")), true);
-//    }
-//    #[test]
-//    fn test_file_not_exists() {
-//        assert_eq!(file_exists(&String::from("E:\\Rust\\test\\file_for_test\\not_exists.txt")), false);
-//    }
-//
-//    #[test]
-//    fn test_dir_exists() {
-//        assert_eq!(dir_exists(&String::from("E:\\Rust\\test\\file_for_test")), true);
-//    }
-//
-//    #[test]
-//    fn test_dir_not_exists() {
-//        assert_eq!(dir_exists(&String::from("E:\\Rust\\test\\not_exists")), false);
-//    }
-//
-//    #[test]
-//    fn test_cur_dir() {
-//        let a:String = cur_dir();
-//        assert_eq!(a, "E:\\Rust\\test");
-//    }
-//}

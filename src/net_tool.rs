@@ -86,7 +86,7 @@ pub fn get_wan_name() -> Option<String> {
     Some(output)
 }
 
-// 连接8.8.8.8:53 获取信号输出网卡ip，多网卡取路由表默认外网连接ip
+// 连接8.8.8.8 或8.8.4.4 获取信号输出网卡ip，多网卡取路由表默认外网连接ip
 // get_localip().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)))
 pub fn get_local_ip() -> std::io::Result<IpAddr> {
     let timeout = Duration::new(3 as u64, 0 as u32);
@@ -130,13 +130,14 @@ pub fn get_mac() -> Option<String> {
 
 }
 
-
+//! http 请求返回结果
 pub struct  HttpResult {
     pub code: u32,
     pub data: String,
     pub header: Vec<String>,
 }
 
+//! https get请求
 pub fn url_get(url:&str) -> Result<HttpResult, Error> {
     let mut res_data = Vec::new();
     let mut headers = Vec::new();
@@ -169,6 +170,7 @@ pub fn url_get(url:&str) -> Result<HttpResult, Error> {
     return Ok(res);
 }
 
+//! https post请求
 pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Error> {
     let mut send_data = data.as_bytes();
     let cookie = cookie.clone().replace("\r\n", "");
@@ -186,7 +188,6 @@ pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Err
 
         handle.post_field_size( (send_data.len()) as u64)?;
         handle.http_content_decoding(true)?;
-//        handle.cookie(&cookie)?;
     } else {
         handle.post_field_size(send_data.len() as u64)?;
     }
@@ -228,6 +229,7 @@ pub fn url_post(url: &str, data: String, cookie: &str) -> Result<HttpResult, Err
     return Ok(res);
 }
 
+//! 将json 解析成 a=1&b=2 格式
 pub fn http_json(json_str: String) -> String {
     let json_str = json_str.clone();
     json_str.replace("\\\"", "")
@@ -237,7 +239,7 @@ pub fn http_json(json_str: String) -> String {
         .replace("{", "")
         .replace("}", "")
 }
-
+//! 创建post请求handle
 fn post_handle(url: &str, post_size: usize) -> Result<Easy, Error> {
     let mut handle = get_handle(url)?;
     handle.post(true)?;
@@ -245,6 +247,7 @@ fn post_handle(url: &str, post_size: usize) -> Result<Easy, Error> {
     Ok(handle)
 }
 
+//! 创建get请求handle
 fn get_handle(url: &str) -> Result<Easy, Error> {
     let mut handle = Easy::new();
     handle.timeout(Duration::new(5, 0))?;

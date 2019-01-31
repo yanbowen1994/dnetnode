@@ -1,3 +1,5 @@
+//! tinc相关的操作
+
 pub mod install_tinc;
 pub mod check;
 pub mod operater;

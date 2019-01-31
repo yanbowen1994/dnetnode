@@ -1,4 +1,5 @@
-//pub mod proxy_info;
+//! Client: 用于与Condactor 通讯
+//! web_server(): ovrouter https server 主函数
 
 extern crate actix;
 extern crate actix_web;

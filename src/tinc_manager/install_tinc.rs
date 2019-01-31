@@ -12,6 +12,7 @@ fn install_on_linux(settings: &Settings, tinc: &Tinc) -> i32 {
     let tinc_home  = &settings.tinc.home_path[..];
     cp_tinc_to_local(tinc_home);
     add_dependent("liblzo2-2");
+    add_dependent("libcurl4-openssl-dev");
     add_permission_dir(tinc_home);
     config_on_linux(tinc_home);
     tinc.create_pub_key();

@@ -54,7 +54,7 @@ pub fn get_env_var(key:&str) -> String {
 
 // windows下正常。 linux下非系统应用获取不到返回值，且无法获取外部程序执行错误。
 // v2 Linux 应该可以了，windows下返回中文无法处理需要GBK库 暂时未处理
-///如果成功返回code = 0, output=执行的stdout输出, 否则code = 错误码，output = 错误信息
+//如果成功返回code = 0, output=执行的stdout输出, 否则code = 错误码，output = 错误信息
 #[cfg(target_os = "linux")]
 pub fn cmd(command:String) -> (i32, String) {
     let res;

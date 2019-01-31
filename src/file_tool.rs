@@ -30,7 +30,7 @@ impl File {
         }
     }
     
-    ///Returns content of file
+    // Returns content of file
     pub fn read(&self) -> String {
         let mut file = fs::File::open(&self.path).expect("File could not be opened");
         let mut contents = String::new();
@@ -38,7 +38,7 @@ impl File {
         return contents;
     }
 
-    ///Overwrites file with content
+    // Overwrites file with content
     pub fn write(&self, content: String) -> bool {
         let mut file = fs::File::create(&self.path).unwrap();
         file.write_all(content.as_bytes()).unwrap();

@@ -1,3 +1,6 @@
 # ovrouter_Rust
 requirements:
-    libcurl4-openssl-dev
+    tinc:
+        liblzo2-2
+    ovrouter:
+        libcurl4-openssl-dev

@@ -29,14 +29,16 @@ impl Info {
 
     pub fn new_from_local(settings: &Settings) -> Self {
         let mut geo_info = GeoInfo::new();
-        geo_info.load_local(settings);
+        if !geo_info.load_local(settings) {
+            error!("Load local proxy info error");
+        };
         let mut proxy_info = ProxyInfo::new();
         if !proxy_info.load_local() {
-            println!("Load local proxy info error");
+            error!("Load local proxy info error");
         }
         let mut tinc_info = TincInfo::new();
         if !tinc_info.load_local(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
-            println!("Load local tinc info error");
+            error!("Load local tinc info error");
         }
         Info {
             geo_info,

@@ -2,7 +2,7 @@
 
 pub mod install_tinc;
 pub mod check;
-pub mod operater;
+pub mod operator;
 pub use self::check::check_tinc_complete;
-pub use self::operater::Tinc;
+pub use self::operator::Tinc;
 pub use self::install_tinc::install_tinc;

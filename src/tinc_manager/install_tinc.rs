@@ -1,7 +1,7 @@
 use file_tool::*;
 use sys_tool::*;
 use net_tool::{get_wan_name};
-use super::operater::*;
+use super::operator::*;
 use settings::Settings;
 
 pub fn install_tinc(settings: &Settings, tinc: &Tinc) {

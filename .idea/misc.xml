@@ -8,6 +8,6 @@
   </component>
   <component name="RustProjectSettings">
     <option name="explicitPathToStdlib" value="/usr/lib/rustlib/src/rust" />
-    <option name="toolchainHomeDirectory" value="/usr/bin" />
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
   </component>
 </project>

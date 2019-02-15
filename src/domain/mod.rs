@@ -47,6 +47,11 @@ impl Info {
         if !tinc_info.load_local(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
             error!("Load local tinc info error");
         }
+
+        debug!("geo_info: {:?}",geo_info);
+        debug!("proxy_info: {:?}",proxy_info);
+        debug!("tinc_info: {:?}",tinc_info);
+
         Info {
             geo_info,
             proxy_info,

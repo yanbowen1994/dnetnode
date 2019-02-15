@@ -69,7 +69,7 @@ fn main() {
 
     // 初始化上报操作
     let client = Client::new(settings.server.url.clone());
-
+    debug!("{:?}",client);
     // Client Login
     {
         if !client.proxy_login(&settings, &mut info) {
@@ -94,20 +94,17 @@ fn main() {
 
     // 添加多线程 同步操作锁
     // 目前client，仅用于main loop，上传心跳
-    let client_arc = Arc::new(
-        Mutex::new(client));
+    let client_arc = Arc::new(Mutex::new(client));
 
     // tinc操作 main loop：监测tinc运行，修改pub key
     // web_server：添加hosts
-    let tinc_arc = Arc::new(
-        Mutex::new(tinc));
+    let tinc_arc = Arc::new(Mutex::new(tinc));
 
     // 信息包括 geo信息：初次启动获取，目前初始化后无更新
     //          tinc信息： 本机tinc运行参数
     //          proxy信息：公网ip， uuid等
     //          目前 初始化后 main loop 和web_server 都只做读取
-    let info_arc = Arc::new(
-        Mutex::new(info));
+    let info_arc = Arc::new(Mutex::new(info));
 
     let info_arc_clone = info_arc.clone();
     let tinc_arc_clone = tinc_arc.clone();

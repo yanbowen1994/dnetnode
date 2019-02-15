@@ -31,16 +31,16 @@ struct AppState {
 pub struct KeyReport {
     mac:            String,
     vip:            String,
-    pub_key:        String,
-    proxy_pub_key:  String,
+    pubKey:        String,
+    proxypubKey:  String,
 }
 impl KeyReport {
     pub fn new() -> Self {
         KeyReport{
             mac:                     "".to_string(),
             vip:                     "".to_string(),
-            pub_key:                 "".to_string(),
-            proxy_pub_key:           "".to_string(),
+            pubKey:                 "".to_string(),
+            proxypubKey:           "".to_string(),
         }
     }
 
@@ -48,8 +48,8 @@ impl KeyReport {
         KeyReport{
             mac:                     "".to_string(),
             vip:                     info.tinc_info.vip.to_string(),
-            pub_key:                 info.tinc_info.pub_key.clone(),
-            proxy_pub_key:           "".to_string(),
+            pubKey:                 info.tinc_info.pub_key.clone(),
+            proxypubKey:           "".to_string(),
         }
     }
     fn to_json(&self) -> String {
@@ -60,27 +60,31 @@ impl KeyReport {
 #[derive(Debug, Serialize, Deserialize, RustcDecodable, RustcEncodable)]
 struct Response {
     code:   u32,
-    msg:    String,
+    data:   Option<String>,
+    msg:    Option<String>,
 }
 impl Response {
     fn succeed(msg: String) -> Self {
         Response {
             code:  200,
-            msg,
+            data: None,
+            msg: Some(msg),
         }
     }
 
     fn uid_failed() -> Self {
         Response {
             code:  401,
-            msg:   "No authentication or authentication failure".to_string(),
+            data: None,
+            msg:   Some("No authentication or authentication failure".to_string()),
         }
     }
 
     fn not_found() -> Self {
         Response {
             code:  404,
-            msg:   "Not Found".to_string(),
+            data: None,
+            msg:   Some("Not Found".to_string()),
         }
     }
 }
@@ -97,6 +101,10 @@ impl Request {
     }
 }
 
+#[derive(Debug,Serialize, Deserialize, RustcDecodable, RustcEncodable)]
+struct VirtualIp{
+    vip: String,
+}
 
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 
@@ -108,6 +116,8 @@ const MAX_SIZE: usize = 262_144; // max payload size is 256k
 fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
     let info = info_arc.lock().unwrap().clone();
+
+    debug!("http_report_key - response url : {:?}",req.uri());
 
     req.payload()
         .from_err()
@@ -121,18 +131,22 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
         })
         .and_then(move |body| {
             let by = &body.to_vec()[..];
-            let req_str = String::from_utf8_lossy(by);
+            let req_str = String::from_utf8_lossy(by).replace("\n","");
 
-            let res: Option<Request> = match decode(&req_str) {
-                Ok(x) => Some(x),
-                _ => None,
-            };
+            debug!("http_report_key - response data : {:?}",req_str);
 
-            let response:Response = match res {
-                Some(res) => {
+            let response:Response  = match req.headers().get("apikey"){
+                Some(apikey) => {
+
+                    debug!("http_report_key - response apikey: {:?}",apikey);
+
                     let response;
-                    if res.uid == info.proxy_info.uid {
-                        let key_report = KeyReport::new_from_info(&info);
+                    if apikey.to_str().unwrap() == info.proxy_info.uid {
+                        let key_report:KeyReport = decode(req_str.as_str()).unwrap();
+                        debug!("http_report_key - key_report: {:?}",key_report);
+                        let operator = Tinc::new("/root/tinc".to_string(),"hosts".to_string());
+                        let filename = operator.get_filename_by_virtual_ip(key_report.vip.as_str());
+                        operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
                         response = Response::succeed(key_report.to_json())
                     } else {
                         response = Response::uid_failed()
@@ -140,9 +154,13 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
                     response
                 }
                 None => {
+
+                    debug!("http_report_key - apikey not found");
+
                     Response::not_found()
                 }
             };
+
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()
@@ -153,6 +171,8 @@ fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Erro
     let info = info_arc.lock().unwrap();
     let key_report = KeyReport::new_from_info(&info);
 
+    debug!("http_report_key - response url : {:?}",req.uri());
+
     req.payload()
         .from_err()
         .fold(BytesMut::new(), move |mut body, chunk| {
@@ -165,10 +185,15 @@ fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Erro
         })
         .and_then(|body| {
             let by = &body.to_vec()[..];
-            let req = String::from_utf8_lossy(by);
+            let req_str = String::from_utf8_lossy(by);
+
+
+            debug!("check_key - response data : {:?}",req_str);
+
             let response = Response {
                 code:   200,
-                msg:    "".to_string(),
+                data:   None,
+                msg:    Some("".to_string()),
             };
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
@@ -177,12 +202,13 @@ fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Erro
 
 fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
-    let msg;
-    {
-        let info = info_arc.lock().unwrap();
-        msg = info.tinc_info.vip.to_string();
-    }
+//    let msg;
+//    {
+//        let info = info_arc.lock().unwrap();
+//        msg = info.tinc_info.vip.to_string();
+//    }
 
+    debug!("http_report_key - response url : {:?}",req.uri());
 
     req.payload()
         .from_err()
@@ -196,11 +222,39 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
         })
         .and_then(|body| {
             let by = &body.to_vec()[..];
-            let req = String::from_utf8_lossy(by);
-            let response = Response {
-                code:   200,
-                msg,
+            let req_str = String::from_utf8_lossy(by);
+
+            debug!("get_key - response data : {:?}",req_str);
+
+            let virtualIp:Option<VirtualIp> = match decode(&req_str){
+                Ok(virtualip) => {
+                    Some(virtualip)
+                },
+                Err(e) =>{
+                    error!("get_key - resolve json : {:?}",e);
+                    None
+                }
             };
+
+            let response:Response = match virtualIp{
+                Some(virtualip) =>{
+                    debug!("get_key - response vip : {}",virtualip.vip);
+                    let operator = Tinc::new("/root/tinc".to_string(),"".to_string());
+                    let filename = operator.get_filename_by_virtual_ip(virtualip.vip.as_str());
+                    let pubkey = operator.get_host_pub_key(filename.as_str());
+                    debug!("get_key - response msg : {}",pubkey);
+                    let response = Response {
+                        code:   200,
+                        data: Some(pubkey),
+                        msg: None,
+                    };
+                    response
+                },
+                None=>{
+                    Response::not_found()
+                }
+            };
+
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()

@@ -42,16 +42,36 @@ impl Tinc {
         }
     }
 
+    /// 根据IP地址获取文件名
+    pub fn get_filename_by_virtual_ip(&self,virtual_ip:&str) -> String{
+        let splits = virtual_ip.split(".").collect::<Vec<&str>>();
+        let mut filename = String::new();
+        filename.push_str(splits[0]);
+        filename.push_str("_");
+        filename.push_str(splits[1]);
+        filename.push_str("_");
+        filename.push_str(splits[2]);
+        filename.push_str("_");
+        filename.push_str(splits[3]);
+        filename
+    }
+
     /// 添加子设备
-    pub fn add_hosts(&self, hosts_name: &str, vip: &str) -> bool {
-        let file = File::new(self.tinc_home.clone() + "/hosts/" + hosts_name);
-        file.write(vip.to_string())
+    pub fn add_hosts(&self, host_name: &str, pub_key: &str) -> bool {
+        let file:File = File::new(format!("{}/{}/{}",self.tinc_home.clone() , "hosts",host_name));
+        file.write(pub_key.to_string())
+    }
+
+    /// 获取子设备公钥
+    pub fn get_host_pub_key(&self,host_name:&str) -> String{
+        debug!("get_host_pub_key: {}",format!("{}/{}/{}",self.tinc_home.clone() , "hosts",host_name));
+        let file = File::new(format!("{}/{}/{}",self.tinc_home.clone() , "hosts",host_name));
+        file.read()
     }
 
     pub fn create_pub_key(&self) {
         cmd_err_panic("chmod 755 ".to_string() + &self.tinc_home + "key/build-key-tinc.exp");
-        cmd_err_panic(self.tinc_home.clone() + "key/build-key-tinc.exp " + &self.tinc_home
-            + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
+        cmd_err_panic(self.tinc_home.clone() + "key/build-key-tinc.exp " + &self.tinc_home + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
     }
 
     /// 从pub_key文件读取pub_key

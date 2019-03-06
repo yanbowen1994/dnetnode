@@ -15,7 +15,7 @@ impl Tinc {
     }
 
     pub fn start_tinc(&self) {
-        cmd_err_panic(self.tinc_home.clone() + "/start");
+        cmd_err_panic(self.tinc_home.clone() + "/start &");
     }
 
     pub fn stop_tinc(&self) {

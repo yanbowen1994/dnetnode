@@ -43,7 +43,7 @@ fn main() {
         None => ()
     }
 
-    // 解析Settings.toml文件
+    // 解析settings.toml文件
     let settings:Settings = Settings::load_config().expect("Error: can not parse settings.toml");
 
     // 初始化tinc操作

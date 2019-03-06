@@ -32,7 +32,7 @@ impl Settings {
         let mut settings = Config::new();
 
         settings
-            .merge(File::with_name("Settings.toml"))
+            .merge(File::with_name("settings.toml"))
             .expect("Error: Can not parse settings.");
 
         settings.try_into()

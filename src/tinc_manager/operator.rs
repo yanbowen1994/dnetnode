@@ -1,6 +1,7 @@
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use super::check::check_tinc_status;
+use domain::{Info, TincInfo, ProxyInfo};
 
 pub struct Tinc {
     tinc_home: String,
@@ -115,5 +116,9 @@ impl Tinc {
             }
         }
         true
+    }
+
+    pub fn check_info(info: &Info) {
+
     }
 }

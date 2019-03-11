@@ -1,9 +1,12 @@
 //! upload proxy status
+use std::net::IpAddr;
+use std::str::FromStr;
 
 use rustc_serialize::json;
 
 use net_tool::url_post;
 use domain::Info;
+use domain::OnlineProxy;
 use settings::Settings;
 use net_tool::http_json;
 
@@ -98,6 +101,66 @@ impl Client {
         false
     }
 
+    pub fn proxy_get_online_proxy(&self, info: &mut Info) -> bool {
+        let post = "/vppn/api/v2/proxy/getonlineproxy";
+        let url = self.url.to_string() + post;
+        let data = Register::new_from_info(info).to_json();
+
+        debug!("proxy_get_online_proxy - request info: {:?}",info);
+        debug!("proxy_get_online_proxy - request url: {}",url);
+        debug!("proxy_get_online_proxy - request data: {}",data);
+
+        let res = match url_post(&url, data, &info.proxy_info.cookie) {
+            Ok(res) => res,
+            Err(e) => {
+                error!("proxy_get_online_proxy - response: {:?}", e);
+                return false;
+            }
+        };
+
+        debug!("proxy_get_online_proxy - response code: {}",res.code);
+        debug!("proxy_get_online_proxy - response data: {:#?}",res.data);
+
+        if res.code == 200 {
+            let recv: GetOnlinePorxyRecv = match json::decode(&res.data) {
+                Ok(x) => x,
+                Err(e) => {
+                    error!("proxy_get_online_proxy - resolve json: {:?}", e);
+                    return false;
+                }
+            };
+            if recv.code == 200 {
+                let proxy_vec: Vec<Proxy> = recv.data;
+                let self_id = &info.proxy_info.uid[..];
+                let mut other_proxy = vec![];
+                for proxy in proxy_vec {
+                    if proxy.id == &info.proxy_info.uid[..] {
+                        if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
+                            info.tinc_info.vip = vip;
+                        }
+                        else {
+                            error!("proxy_get_online_proxy - get online proxy data invalid");
+                            return false;
+                        }
+                    }
+                    else {
+                        if let Ok(other_ip) = IpAddr::from_str(&proxy.ip) {
+                            if let Ok(other_vip) = IpAddr::from_str(&proxy.vip) {
+                                let other = OnlineProxy::from(other_ip, other_vip, proxy.pubkey);
+                                other_proxy.push(other);
+                                continue
+                            }
+                        }
+                        error!("proxy_get_online_proxy - get online proxy data invalid");
+                    }
+                }
+                info.proxy_info.online_porxy = other_proxy;
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn proxy_heart_beat(&self, info: &Info) -> bool {
         let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
@@ -184,6 +247,28 @@ impl Register {
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct VecProxy {
+    inner: Vec<Proxy>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct Proxy {
+    id:                 String,
+    ip:                 String,
+    country:            String,
+    region:             String,
+    city:               String,
+    username:           Option<String>,
+    teamcount:          u32,
+    ispublic:           bool,
+    vip:                String,
+    pubkey:             String,
+
+}
+
+#[allow(non_snake_case)]
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct Heartbeat {
     authID: String,
     proxyIp: String,
@@ -253,4 +338,11 @@ struct Recv {
     code:        i32,
     msg:         Option<String>,
     data:        Option<String>,
+}
+
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct GetOnlinePorxyRecv {
+    code:        i32,
+    msg:         Option<String>,
+    data:        Vec<Proxy>,
 }

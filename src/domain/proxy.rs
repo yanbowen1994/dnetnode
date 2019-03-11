@@ -1,6 +1,33 @@
+use std::net::IpAddr;
+use std::str::FromStr;
+
 extern crate uuid;
 
 use net_tool::{get_local_ip};
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone)]
+pub struct OnlineProxy {
+    pub ip:                 IpAddr,
+    pub vip:                IpAddr,
+    pub pubkey:             String,
+}
+impl OnlineProxy {
+    pub fn new() -> Self {
+        Self {
+            ip:     IpAddr::from_str("255.255.255.255").unwrap(),
+            vip:    IpAddr::from_str("255.255.255.255").unwrap(),
+            pubkey: String::new(),
+        }
+    }
+    pub fn from(ip:IpAddr, vip:IpAddr, pubkey:String) -> Self {
+        Self {
+            ip,
+            vip,
+            pubkey,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ProxyInfo {
@@ -13,6 +40,7 @@ pub struct ProxyInfo {
     pub server_type: String,
     pub proxy_ip: String,
     pub ssh_port: String,
+    pub online_porxy: Vec<OnlineProxy>,
 }
 impl ProxyInfo {
     pub fn new() -> Self {
@@ -26,6 +54,7 @@ impl ProxyInfo {
             server_type: String::new(),
             proxy_ip: "0.0.0.0".to_string(),
             ssh_port: String::new(),
+            online_porxy: Vec::new(),
         }
     }
 

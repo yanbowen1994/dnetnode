@@ -92,6 +92,13 @@ fn main() {
         std::process::exit(1);
     };
 
+    // 初次获取其他proxy信息
+    info!("proxy_get_online_proxy");
+    if !client.proxy_get_online_proxy(&mut info) {
+        error!("proxy get online proxy failed");
+        std::process::exit(1);
+    };
+
     // 添加多线程 同步操作锁
     // 目前client，仅用于main loop，上传心跳
     let client_arc = Arc::new(Mutex::new(client));

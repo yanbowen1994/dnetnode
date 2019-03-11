@@ -13,6 +13,7 @@ mod geo;
 pub use self::geo::GeoInfo;
 mod proxy;
 pub use self::proxy::ProxyInfo;
+pub use self::proxy::OnlineProxy;
 mod tinc;
 pub use self::tinc::TincInfo;
 

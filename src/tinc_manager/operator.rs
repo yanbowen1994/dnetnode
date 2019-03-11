@@ -1,7 +1,7 @@
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use super::check::check_tinc_status;
-use domain::{Info, TincInfo, ProxyInfo};
+use domain::{Info, TincInfo, ProxyInfo, OnlineProxy};
 
 pub struct Tinc {
     tinc_home: String,
@@ -86,22 +86,58 @@ impl Tinc {
         file.write(pub_key.to_string())
     }
 
-    /// 修改tinc虚拟ip
-    pub fn change_vip(&self, vip: String) -> bool {
+    pub fn get_vip(&self) -> String {
+        let file = File::new(self.tinc_home.clone() + "tinc-up");
+        let res = file.read();
+        let res = res.split("vpngw=").collect();
+        if res.len() > 1 {
+            let res = res[1];
+        }
+        let res = res.split("\n").collect();
+        if res.len() > 1 {
+            let res = res[0];
+        }
+        return res;
+    }
+
+    pub fn set_hosts(&self,
+                     proxy_or_client: &str,
+                     ip: &str,
+                     vip: &str,
+                     pubkey: &str) -> bool {
         {
             let buf = "Address = ".to_string()
-                + &vip
+                + vip
                 + "\nSubnet = "
-                + &vip
-                + "/32\nPrivateKeyFile = "
-                + &self.tinc_home
-                + &self.pub_key_path;
+                + vip
+                + "/32\n"
+                + pubkey;
+            let vip_name_vec: Vec<&str> = vip.split(".").collect();
 
-            let file = File::new(self.tinc_home.clone() + "/hosts/vpnserver");
+            let file_name = proxy_or_client.to_string()
+                + "_" + vip_name_vec[1]
+                + "_" + vip_name_vec[2]
+                + "_" + vip_name_vec[3];
+            let file = File::new(self.tinc_home.clone() + "/hosts/" + &file_name);
             if !file.write(buf.to_string()) {
                 return false;
             }
         }
+        true
+    }
+
+    pub fn clean_host_online_proxy(&self) -> bool {
+        let hosts_dir = self.tinc_home.to_string() + "/hosts";
+        let paths = File::new(hosts_dir.clone());
+        let files = paths.ls();
+        for file in files {
+
+        }
+        true
+    }
+
+    /// 修改tinc虚拟ip
+    pub fn change_vip(&self, vip: String) -> bool {
         {
             let buf = "#! /bin/sh\n
             dev=tun0\n
@@ -118,7 +154,12 @@ impl Tinc {
         true
     }
 
-    pub fn check_info(info: &Info) {
-
+    pub fn check_info(&self, info: &Info) {
+        {
+            let file_vip = self.get_vip();
+            if file_vip != info.tinc_info.vip.to_string() {
+                self.change_vip(info.tinc_info.vip.to_string());
+            }
+        }
     }
 }

@@ -69,6 +69,19 @@ impl File {
         }
         return None;
     }
+
+    pub fn ls(&self) -> Vec<String> {
+        let paths = fs::read_dir("./").unwrap();
+        let mut files: Vec<String> = vec![];
+        for path in paths {
+            if let Ok(path) = path {
+                if let Some(path) = path.path() {
+                    files.push(path.to_string());
+                }
+            }
+        }
+        files
+    }
 }
 
 /// 获取当前运行文件夹

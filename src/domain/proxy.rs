@@ -6,7 +6,7 @@ use net_tool::{get_local_ip};
 pub struct ProxyInfo {
     pub uid: String,
     pub proxy_pub_key: String,
-    pub isregister: bool,
+    pub isRegistered: bool,
     pub cookie: String,
     pub auth_type: String,
     pub os: String,
@@ -19,7 +19,7 @@ impl ProxyInfo {
         ProxyInfo {
             uid: String::new(),
             proxy_pub_key: String::new(),
-            isregister: false,
+            isRegistered: false,
             cookie: String::new(),
             auth_type: String::new(),
             os: String::new(),

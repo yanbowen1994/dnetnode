@@ -8,7 +8,6 @@ name = "ovrouter"
 
 [[bin]]
 name = "setup"
-#path = "./src/bin/setup"
 
 [lib]
 name = "ovrouter"
@@ -16,7 +15,6 @@ name = "ovrouter"
 [workspace]
 members = [
     ".",
-#    "ovrouter-gui",
 ]
 
 [dependencies]

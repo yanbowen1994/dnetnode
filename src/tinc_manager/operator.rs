@@ -60,6 +60,17 @@ impl Tinc {
         filename
     }
 
+    fn get_filename_by_virtual_ip_2_4(&self,virtual_ip:&str) -> String{
+        let splits = virtual_ip.split(".").collect::<Vec<&str>>();
+        let mut filename = String::new();
+        filename.push_str(splits[1]);
+        filename.push_str("_");
+        filename.push_str(splits[2]);
+        filename.push_str("_");
+        filename.push_str(splits[3]);
+        filename
+    }
+
     /// 添加子设备
     pub fn add_hosts(&self, host_name: &str, pub_key: &str) -> bool {
         let file:File = File::new(format!("{}/{}/{}",self.tinc_home.clone() , "hosts",host_name));
@@ -106,7 +117,7 @@ impl Tinc {
     }
 
     pub fn get_local_proxy_name(&self) -> String {
-        "proxy_".to_string() + &self.get_filename_by_virtual_ip(&self.get_vip())
+        "proxy_".to_string() + &self.get_filename_by_virtual_ip_2_4(&self.get_vip())
     }
 
     fn set_tinc_conf_file(&self, name: &str, connect_to: Vec<String>) -> bool {
@@ -162,12 +173,12 @@ impl Tinc {
             }
         }
         {
-            let name = "proxy".to_string()
-                + &self.get_filename_by_virtual_ip(&self.get_vip());
+            let name = "proxy".to_string() + "_"
+                + &self.get_filename_by_virtual_ip_2_4(&self.get_vip());
             let mut connect_to: Vec<String> = vec![];
             for online_proxy in info.proxy_info.online_porxy.clone() {
-                let online_proxy_name = "proxy".to_string()
-                    + &self.get_filename_by_virtual_ip(&online_proxy.vip.to_string());
+                let online_proxy_name = "proxy".to_string() + "_"
+                    + &self.get_filename_by_virtual_ip_2_4(&online_proxy.vip.to_string());
                 connect_to.push(online_proxy_name);
             }
             self.set_tinc_conf_file(&name, connect_to);
@@ -191,6 +202,8 @@ impl Tinc {
             }
             let buf = "Address = ".to_string()
                 + ip
+                + "\n\
+                "
                 + pubkey
                 + "Port = 50069";
             let vip_name_vec: Vec<&str> = vip.split(".").collect();

@@ -1,7 +1,7 @@
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use super::check::check_tinc_status;
-use domain::{Info, TincInfo, ProxyInfo, OnlineProxy};
+use domain::Info;
 
 pub struct Tinc {
     tinc_home: String,
@@ -20,7 +20,7 @@ impl Tinc {
     }
 
     pub fn stop_tinc(&self) {
-        cmd("killall tincd".to_string());
+        cmd("killall tincd &".to_string());
     }
 
     pub fn is_tinc_exist(&self) -> bool {
@@ -102,24 +102,60 @@ impl Tinc {
         return out;
     }
 
-    pub fn set_hosts(&self,
+    /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
+    /// 如果自己的vip修改,重启tinc
+    pub fn check_info(&self, info: &Info) -> bool {
+        self.clean_host_online_proxy();
+        let mut should_restart_tinc = false;
+        {
+            let file_vip = self.get_vip();
+            debug!("tinc operator check_info local {}, remote {}",
+                   file_vip,
+                   info.tinc_info.vip.to_string());
+
+            if file_vip != info.tinc_info.vip.to_string() {
+                self.change_vip(info.tinc_info.vip.to_string());
+                should_restart_tinc = true;
+                if !self.set_hosts(true,
+                                   &info.proxy_info.proxy_ip.to_string(),
+                                   &info.tinc_info.vip.to_string(),
+                                   &info.tinc_info.pub_key
+                ) {
+                    return false;
+                }
+            }
+        }
+        {
+            for online_proxy in info.proxy_info.online_porxy.clone() {
+                if !self.set_hosts(true,
+                                   &online_proxy.ip.to_string(),
+                                   &online_proxy.vip.to_string(),
+                                   &online_proxy.pubkey
+                ) {
+                    return false;
+                }
+            }
+        }
+        if should_restart_tinc {
+            self.restart_tinc()
+        }
+        return true;
+    }
+
+    fn set_hosts(&self,
                      is_proxy: bool,
                      ip: &str,
                      vip: &str,
                      pubkey: &str) -> bool {
         {
-            let mut proxy_or_client = String::new();
-            if is_proxy {
-                proxy_or_client = "PROXY".to_string();
-            }
-            else {
+            let mut proxy_or_client = "PROXY".to_string();
+            if !is_proxy {
                 proxy_or_client = "CLIENT".to_string();
-
             }
             let buf = "Address = ".to_string()
-                + vip
+                + ip
                 + "\nSubnet = "
-                + vip
+                + ip
                 + "/32\n"
                 + pubkey;
             let vip_name_vec: Vec<&str> = vip.split(".").collect();
@@ -142,7 +178,7 @@ impl Tinc {
         let files = paths.ls();
         for file in files {
             if let Some(site) =  file.find("PORXY") {
-                if site >= 0 {
+                if site >= (0 as usize) {
                     let _ = File::new(file).rm();
                 }
             }
@@ -151,7 +187,7 @@ impl Tinc {
     }
 
     /// 修改tinc虚拟ip
-    pub fn change_vip(&self, vip: String) -> bool {
+    fn change_vip(&self, vip: String) -> bool {
         {
             let buf = "#! /bin/sh\n\
             dev=tun0\n\
@@ -167,44 +203,5 @@ impl Tinc {
             }
         }
         true
-    }
-
-    /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
-    /// 如果自己的vip修改,重启tinc
-    pub fn check_info(&self, info: &Info) -> bool {
-        let mut should_restart_tinc = false;
-        {
-            let file_vip = self.get_vip();
-            debug!("tinc operator check_info local {}, remote {}",
-                   file_vip,
-                   info.tinc_info.vip.to_string());
-
-            if file_vip != info.tinc_info.vip.to_string() {
-                self.change_vip(info.tinc_info.vip.to_string());
-                should_restart_tinc = true;
-                if !self.set_hosts(true,
-                               &info.proxy_info.proxy_ip.to_string(),
-                               &info.tinc_info.vip.to_string(),
-                               &info.tinc_info.pub_key
-                ) {
-                    return false;
-                }
-            }
-        }
-        {
-            for online_proxy in info.proxy_info.online_porxy.clone() {
-                if !self.set_hosts(true,
-                               &online_proxy.ip.to_string(),
-                               &online_proxy.vip.to_string(),
-                               &online_proxy.pubkey
-                ) {
-                    return false;
-                }
-            }
-        }
-        if should_restart_tinc {
-            self.restart_tinc()
-        }
-        return true;
     }
 }

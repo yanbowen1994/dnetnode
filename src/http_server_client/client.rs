@@ -131,10 +131,11 @@ impl Client {
             };
             if recv.code == 200 {
                 let proxy_vec: Vec<Proxy> = recv.data;
-                let self_id = &info.proxy_info.uid[..];
+                let local_pub_key = info.proxy_info.proxy_pub_key.clone();
                 let mut other_proxy = vec![];
                 for proxy in proxy_vec {
-                    if proxy.id == &info.proxy_info.uid[..] {
+                    debug!("{}\n{}", local_pub_key, proxy.pubkey);
+                    if proxy.pubkey == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
                             info.tinc_info.vip = vip;
                         }

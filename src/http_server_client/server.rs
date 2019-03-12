@@ -28,6 +28,7 @@ struct AppState {
     tinc: Arc<Mutex<Tinc>>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, RustcDecodable, RustcEncodable)]
+#[allow(non_snake_case)]
 pub struct KeyReport {
     mac:            String,
     vip:            String,

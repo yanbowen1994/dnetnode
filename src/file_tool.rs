@@ -71,16 +71,31 @@ impl File {
     }
 
     pub fn ls(&self) -> Vec<String> {
-        let paths = fs::read_dir("./").unwrap();
+        let paths = fs::read_dir(self.path.clone()).unwrap();
         let mut files: Vec<String> = vec![];
         for path in paths {
             if let Ok(path) = path {
-                if let Some(path) = path.path() {
+                if let Some(path) = path.path().to_str() {
                     files.push(path.to_string());
                 }
             }
         }
         files
+    }
+
+    pub fn rm(&self) -> bool {
+        let path = Path::new(&self.path);
+        if self.dir_exists() {
+            if let Ok(_) = fs::remove_dir_all(self.path.clone()) {
+                return true;
+            }
+        }
+        else if self.file_exists() {
+            if let Ok(_) = fs::remove_file(self.path.clone()) {
+                return true;
+            }
+        }
+        false
     }
 }
 

@@ -99,6 +99,11 @@ fn main() {
         std::process::exit(1);
     };
 
+    if !tinc.check_info(&info) {
+        error!("proxy check online proxy  info failed");
+        std::process::exit(1);
+    }
+
     // 添加多线程 同步操作锁
     // 目前client，仅用于main loop，上传心跳
     let client_arc = Arc::new(Mutex::new(client));

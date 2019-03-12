@@ -16,6 +16,7 @@ use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
 use ovrouter::tinc_manager::install_tinc;
 use ovrouter::http_server_client::web_server;
+use std::error::Error;
 
 
 fn main() {
@@ -64,7 +65,13 @@ fn main() {
 
     // 获取本地 tinc geo 和 ip信息，创建proxy uuid
     info!("Get local info.");
-    let mut info = Info::new_from_local(&settings);
+    let mut info = match Info::new_from_local(&settings) {
+        Ok(x) => x,
+        Err(e) => {
+            error!("{}", e.description());
+            std::process::exit(1);
+        }
+    };
     info.proxy_info.create_uid();
 
     // 初始化上报操作
@@ -171,9 +178,9 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
                         error!("Restart tinc failed");
                     }
                 }
-                    else {
-                        lock_or_pass = false;
-                    }
+                else {
+                    lock_or_pass = false;
+                }
             }
             if lock_or_pass {
                 check_tinc_time = now.clone();

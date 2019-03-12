@@ -1,4 +1,5 @@
 #![allow(unused_variables)]
+#![allow(non_snake_case)]
 #![allow(dead_code)]
 use std::sync::{Arc, Mutex};
 

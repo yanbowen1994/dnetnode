@@ -1,8 +1,8 @@
-
 use std::str::FromStr;
 use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
+use tinc_manager::operator::Tinc;
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {
@@ -22,18 +22,16 @@ impl TincInfo {
     // Load local tinc config file vpnserver for tinc vip and pub_key.
     // Success return true.
     pub fn load_local(&mut self, tinc_home: &str, pub_key_path: &str) -> bool {
-        let mut _file = File::open(tinc_home.to_string() + "/hosts/vpnserver").unwrap();
-        let mut res = String::new();
-        _file.read_to_string(&mut res).unwrap();
-        let tmp: Vec<&str> = res.split("\n").collect();
-        let tmp: Vec<&str> = tmp[0].split(" ").collect();
-        let vip = tmp[2];
-        self.vip = IpAddr::from_str(vip).unwrap();
-
-        let mut res = String::new();
-        let mut _file = File::open(tinc_home.to_string() + pub_key_path).unwrap();
-        _file.read_to_string(&mut res).unwrap();
-        self.pub_key = res.clone().replace("\n", "");
+        {
+            let mut res = String::new();
+            let mut _file = File::open(tinc_home.to_string() + pub_key_path).unwrap();
+            _file.read_to_string(&mut res).unwrap();
+            self.pub_key = res.clone().replace("\n", "");
+        }
+        {
+            let tinc = Tinc::new(tinc_home.to_string(), pub_key_path.to_string());
+            self.vip = IpAddr::from_str(&tinc.get_vip()).unwrap();
+        }
         return true;
     }
 }

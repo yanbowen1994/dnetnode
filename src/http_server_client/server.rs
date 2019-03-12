@@ -1,4 +1,5 @@
 #![allow(unused_variables)]
+#![allow(non_snake_case)]
 #![allow(dead_code)]
 use std::sync::{Arc, Mutex};
 
@@ -28,6 +29,7 @@ struct AppState {
     tinc: Arc<Mutex<Tinc>>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, RustcDecodable, RustcEncodable)]
+#[allow(non_snake_case)]
 pub struct KeyReport {
     mac:            String,
     vip:            String,

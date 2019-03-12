@@ -1,6 +1,8 @@
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
+use net_tool::get_wan_name;
 use super::check::check_tinc_status;
+use domain::Info;
 
 pub struct Tinc {
     tinc_home: String,
@@ -15,11 +17,13 @@ impl Tinc {
     }
 
     pub fn start_tinc(&self) {
-        cmd_err_panic(self.tinc_home.clone() + "/start &");
+        let cmd = self.tinc_home.clone()
+            + "start";
+        cmd_err_panic(cmd);
     }
 
     pub fn stop_tinc(&self) {
-        cmd("killall tincd".to_string());
+        cmd("killall tincd &".to_string());
     }
 
     pub fn is_tinc_exist(&self) -> bool {
@@ -27,13 +31,13 @@ impl Tinc {
     }
 
     pub fn restart_tinc(&self) {
-        for i in 0..3 {
-            if self.is_tinc_exist() {
-                self.stop_tinc();
-            }
+        if self.is_tinc_exist() {
+            self.stop_tinc();
+        }
+        for i in 0..10 {
             self.start_tinc();
             if !self.is_tinc_exist() {
-                if i == 2 {
+                if i == 9 {
                     panic!("Error: Fail to restart tinc.");
                 }
             } else {
@@ -48,6 +52,17 @@ impl Tinc {
         let mut filename = String::new();
         filename.push_str(splits[0]);
         filename.push_str("_");
+        filename.push_str(splits[1]);
+        filename.push_str("_");
+        filename.push_str(splits[2]);
+        filename.push_str("_");
+        filename.push_str(splits[3]);
+        filename
+    }
+
+    fn get_filename_by_virtual_ip_2_4(&self,virtual_ip:&str) -> String{
+        let splits = virtual_ip.split(".").collect::<Vec<&str>>();
+        let mut filename = String::new();
         filename.push_str(splits[1]);
         filename.push_str("_");
         filename.push_str(splits[2]);
@@ -85,30 +100,160 @@ impl Tinc {
         file.write(pub_key.to_string())
     }
 
-    /// 修改tinc虚拟ip
-    pub fn change_vip(&self, vip: String) -> bool {
-        {
-            let buf = "Address = ".to_string()
-                + &vip
-                + "\nSubnet = "
-                + &vip
-                + "/32\nPrivateKeyFile = "
-                + &self.tinc_home
-                + &self.pub_key_path;
+    pub fn get_vip(&self) -> String {
+        let mut out = String::new();
 
-            let file = File::new(self.tinc_home.clone() + "/hosts/vpnserver");
-            if !file.write(buf.to_string()) {
+        let file = File::new(self.tinc_home.clone() + "tinc-up");
+        let res = file.read();
+        let res: Vec<&str> = res.split("vpngw=").collect();
+        if res.len() > 1 {
+            let res = res[1].to_string();
+            let res: Vec<&str> = res.split("\n").collect();
+            if res.len() > 1 {
+                out = res[0].to_string();
+            }
+        }
+        return out;
+    }
+
+    pub fn get_local_proxy_name(&self) -> String {
+        "proxy_".to_string() + &self.get_filename_by_virtual_ip_2_4(&self.get_vip())
+    }
+
+    fn set_tinc_conf_file(&self, name: &str, connect_to: Vec<String>) -> bool {
+        let mut buf_connect_to = String::new();
+        for other in connect_to {
+            let buf = "ConnectTo = ".to_string() + &other + "\n\
+            ";
+            buf_connect_to += &buf;
+        }
+        let buf = "Name = ".to_string() + name + "\n\
+        " + &buf_connect_to
+        + "DeviceType=tap\n\
+        Mode=switch\n\
+        Interface=tun0\n\
+        Device = /dev/net/tun\n\
+        BindToAddress = * 50069\n\
+        ProcessPriority = high\n\
+        PingTimeout=10";
+        let file = File::new(self.tinc_home.clone() + "/tinc.conf");
+        file.write(buf.to_string())
+    }
+
+    /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
+    /// 如果自己的vip修改,重启tinc
+    pub fn check_info(&self, info: &Info) -> bool {
+        self.clean_host_online_proxy();
+
+        {
+            let file_vip = self.get_vip();
+            debug!("tinc operator check_info local {}, remote {}",
+                   file_vip,
+                   info.tinc_info.vip.to_string());
+
+            self.change_vip(info.tinc_info.vip.to_string());
+
+            if !self.set_hosts(true,
+                               &info.proxy_info.proxy_ip.to_string(),
+                               &info.tinc_info.vip.to_string(),
+                               &info.tinc_info.pub_key
+            ) {
                 return false;
             }
         }
         {
-            let buf = "#! /bin/sh\n
-            dev=tun0\n
-            vpngw=".to_string() + &vip + "\n
-            echo 1 > /proc/sys/net/ipv4/ip_forward\n
-            ifconfig ${dev} ${vpngw} netmask 255.0.0.0\n
-            iptables -t nat -F\n
-            iptables -t nat -A POSTROUTING -s ${vpngw}/8 -o enp0s3 -j MASQUERADE\nexit 0";
+            for online_proxy in info.proxy_info.online_porxy.clone() {
+                if !self.set_hosts(true,
+                                   &online_proxy.ip.to_string(),
+                                   &online_proxy.vip.to_string(),
+                                   &online_proxy.pubkey
+                ) {
+                    return false;
+                }
+            }
+        }
+        {
+            let name = "proxy".to_string() + "_"
+                + &self.get_filename_by_virtual_ip_2_4(&self.get_vip());
+            let mut connect_to: Vec<String> = vec![];
+            for online_proxy in info.proxy_info.online_porxy.clone() {
+                let online_proxy_name = "proxy".to_string() + "_"
+                    + &self.get_filename_by_virtual_ip_2_4(&online_proxy.vip.to_string());
+                connect_to.push(online_proxy_name);
+            }
+            self.set_tinc_conf_file(&name, connect_to);
+        }
+
+
+        self.restart_tinc();
+
+        return true;
+    }
+
+    fn set_hosts(&self,
+                     is_proxy: bool,
+                     ip: &str,
+                     vip: &str,
+                     pubkey: &str) -> bool {
+        {
+            let mut proxy_or_client = "proxy".to_string();
+            if !is_proxy {
+                proxy_or_client = "CLIENT".to_string();
+            }
+            let buf = "Address = ".to_string()
+                + ip
+                + "\n\
+                "
+                + pubkey
+                + "Port = 50069";
+            let vip_name_vec: Vec<&str> = vip.split(".").collect();
+
+            let file_name = proxy_or_client.to_string()
+                + "_" + vip_name_vec[1]
+                + "_" + vip_name_vec[2]
+                + "_" + vip_name_vec[3];
+            let file = File::new(self.tinc_home.clone() + "/hosts/" + &file_name);
+            if !file.write(buf.to_string()) {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn clean_host_online_proxy(&self) -> bool {
+        let hosts_dir = self.tinc_home.to_string() + "/hosts";
+        let paths = File::new(hosts_dir.clone());
+        let files = paths.ls();
+        for file in files {
+            if let Some(site) =  file.find("proxy") {
+                if site >= (0 as usize) {
+                    let _ = File::new(file).rm();
+                }
+            }
+        }
+        true
+    }
+
+    /// 修改tinc虚拟ip
+    fn change_vip(&self, vip: String) -> bool {
+        let wan_name = match get_wan_name() {
+            Some(x) => x,
+            None => {
+                warn!("change_vip get dev wan failed, use defualt.");
+                "eth0".to_string()
+            }
+        };
+        {
+            let buf = "#! /bin/sh\n\
+            dev=tun0\n\
+            vpngw=".to_string() + &vip + "\n\
+            echo 1 > /proc/sys/net/ipv4/ip_forward\n\
+            ifconfig ${dev} ${vpngw} netmask 255.0.0.0\n\
+            iptables -t nat -F\n\
+            iptables -t nat -A POSTROUTING -s ${vpngw}/8 -o "
+            + &wan_name
+            + " -j MASQUERADE\n\
+            exit 0";
             let file = File::new(self.tinc_home.clone() + "/tinc-up");
             if !file.write(buf.to_string()) {
                 return false;

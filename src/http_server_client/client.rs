@@ -94,7 +94,7 @@ impl Client {
                 }
             };
             if recv.code == 200 {
-                info.proxy_info.isRegistered = true;
+                info.proxy_info.isregister = true;
                 return true;
             }
         }

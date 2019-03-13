@@ -121,14 +121,25 @@ impl Tinc {
         return out;
     }
 
-    fn set_tinc_conf_file(&self, name: &str, connect_to: Vec<String>) -> bool {
+    fn set_tinc_conf_file(&self, info: &Info) -> bool {
+        let name = "proxy".to_string() + "_"
+            + &self.get_filename_by_ip(&info.proxy_info.proxy_ip);
+
+        let mut connect_to: Vec<String> = vec![];
+        for online_proxy in info.proxy_info.online_porxy.clone() {
+            let online_proxy_name = "proxy".to_string() + "_"
+                + &self.get_filename_by_ip(&online_proxy.ip.to_string());
+            connect_to.push(online_proxy_name);
+        }
+
+
         let mut buf_connect_to = String::new();
         for other in connect_to {
             let buf = "ConnectTo = ".to_string() + &other + "\n\
             ";
             buf_connect_to += &buf;
         }
-        let buf = "Name = ".to_string() + name + "\n\
+        let buf = "Name = ".to_string() + &name + "\n\
         " + &buf_connect_to
         + "DeviceType=tap\n\
         Mode=switch\n\
@@ -144,21 +155,26 @@ impl Tinc {
     /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
     /// 如果自己的vip修改,重启tinc
     pub fn check_info(&self, info: &Info) -> bool {
-        self.clean_host_online_proxy();
-
+        let mut need_restart = false;
         {
             let file_vip = self.get_vip();
-            debug!("tinc operator check_info local {}, remote {}",
-                   file_vip,
-                   info.tinc_info.vip.to_string());
+            if file_vip != info.tinc_info.vip.to_string() {
+                debug!("tinc operator check_info local {}, remote {}",
+                       file_vip,
+                       info.tinc_info.vip.to_string());
 
-            self.change_vip(info.tinc_info.vip.to_string());
+                if !self.change_vip(info.tinc_info.vip.to_string()) {
+                    return false;
+                }
 
-            if !self.set_hosts(true,
-                               &info.proxy_info.proxy_ip.to_string(),
-                               &info.tinc_info.pub_key,
-            ) {
-                return false;
+                if !self.set_hosts(true,
+                                   &info.proxy_info.proxy_ip.to_string(),
+                                   &info.tinc_info.pub_key,
+                ) {
+                    return false;
+                }
+
+                need_restart = true;
             }
         }
         {
@@ -171,21 +187,11 @@ impl Tinc {
                 }
             }
         }
-        {
-            let name = "proxy".to_string() + "_"
-                + &self.get_filename_by_ip(&info.proxy_info.proxy_ip);
-            let mut connect_to: Vec<String> = vec![];
-            for online_proxy in info.proxy_info.online_porxy.clone() {
-                let online_proxy_name = "proxy".to_string() + "_"
-                    + &self.get_filename_by_ip(&online_proxy.ip.to_string());
-                connect_to.push(online_proxy_name);
-            }
-            self.set_tinc_conf_file(&name, connect_to);
+
+        if need_restart {
+            self.set_tinc_conf_file(&info);
+            self.restart_tinc();
         }
-
-
-        self.restart_tinc();
-
         return true;
     }
 
@@ -210,20 +216,6 @@ impl Tinc {
             let file = File::new(self.tinc_home.clone() + "/hosts/" + &file_name);
             if !file.write(buf.to_string()) {
                 return false;
-            }
-        }
-        true
-    }
-
-    fn clean_host_online_proxy(&self) -> bool {
-        let hosts_dir = self.tinc_home.to_string() + "/hosts";
-        let paths = File::new(hosts_dir.clone());
-        let files = paths.ls();
-        for file in files {
-            if let Some(site) =  file.find("proxy") {
-                if site >= (0 as usize) {
-                    let _ = File::new(file).rm();
-                }
             }
         }
         true

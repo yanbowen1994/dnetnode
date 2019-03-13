@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 use std::thread::{sleep, spawn};
+use std::error::Error;
 
 #[macro_use]
 extern crate log;
@@ -16,7 +17,6 @@ use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
 use ovrouter::tinc_manager::install_tinc;
 use ovrouter::http_server_client::web_server;
-use std::error::Error;
 
 
 fn main() {
@@ -143,6 +143,7 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
     // 设置心跳和监测tinc状态的频率，单位：秒
     let heartbeat_frequency = Duration::from_secs(20);
     let check_tinc_frequency = Duration::from_secs(3);
+    let get_online_proxy_frequency = Duration::from_secs(3);
 
     // now: 当前时间
     // heartbeat_time：前次心跳发送时间
@@ -150,6 +151,7 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
     let mut now = Instant::now();
     let mut heartbeat_time = now.clone();
     let mut check_tinc_time = now.clone();
+    let mut get_online_proxy_time = now.clone();
 
     loop {
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
@@ -184,6 +186,23 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
             }
             if lock_or_pass {
                 check_tinc_time = now.clone();
+            }
+        }
+
+        if now.duration_since(get_online_proxy_time) > get_online_proxy_frequency {
+            if let Ok(client) = client_arc.try_lock() {
+                if let Ok(mut info) = info_arc.try_lock() {
+                    if let Ok(tinc) = tinc_arc.try_lock() {
+                        info!("proxy_get_online_proxy");
+                        if !client.proxy_get_online_proxy(&mut info) {
+                            error!("proxy_get_online_proxy failed.")
+                        }
+                        if !tinc.check_info(&mut info) {
+                            error!("Tinc check_info failed.")
+                        }
+                        get_online_proxy_time = now.clone();
+                    }
+                }
             }
         }
 

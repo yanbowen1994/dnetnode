@@ -140,18 +140,29 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
             let response:Response  = match req.headers().get("apikey"){
                 Some(apikey) => {
 
-                    debug!("http_report_key - response apikey: {:?}",apikey);
+                    debug!("http_report_key - response apikey: {:?}", apikey);
 
-                    let response;
-                    if apikey.to_str().unwrap() == info.proxy_info.uid {
-                        let key_report:KeyReport = decode(req_str.as_str()).unwrap();
-                        debug!("http_report_key - key_report: {:?}",key_report);
-                        let operator = Tinc::new("/root/tinc".to_string(),"hosts".to_string());
-                        let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
-                        operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
-                        response = Response::succeed(key_report.to_json())
-                    } else {
-                        response = Response::uid_failed()
+                    let mut response = Response::uid_failed();
+                    if let Ok(apikey) = apikey.to_str() {
+                        if apikey == info.proxy_info.uid {
+                            match decode(req_str.as_str()) {
+                                Ok(key_report) => {
+                                    let key_report: KeyReport = key_report;
+                                    debug!("http_report_key - key_report: {:?}",key_report);
+                                    let operator = Tinc::new("/root/tinc".to_string(),"hosts".to_string());
+                                    let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
+                                    operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
+                                    response = Response::succeed(key_report.to_json())
+                                },
+                                Err(_) => error!("http_report_key - response KeyReport {}", req_str.as_str()),
+                            }
+                        }
+                        else {
+                            error!("http_report_key - response api key authentication failure")
+                        }
+                    }
+                    else {
+                        error!("http_report_key - response apikey.to_str() failed")
                     }
                     response
                 }
@@ -188,7 +199,6 @@ fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Erro
         .and_then(|body| {
             let by = &body.to_vec()[..];
             let req_str = String::from_utf8_lossy(by);
-
 
             debug!("check_key - response data : {:?}",req_str);
 
@@ -294,7 +304,7 @@ pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<Tinc>>) {
             .resource("/vppn/tinc/api/v2/proxy/getpublickey", |r| {
                 r.method(http::Method::GET).with(get_key)
             })
-    }).bind_ssl(get_local_ip().unwrap().to_string() + ":8443", builder)
+    }).bind_ssl(get_local_ip().unwrap().to_string() + ":10087", builder)
         .unwrap()
         .start();
 //    let _ = sys.run();

@@ -47,8 +47,8 @@ impl Tinc {
     }
 
     /// 根据IP地址获取文件名
-    pub fn get_filename_by_virtual_ip(&self,virtual_ip:&str) -> String{
-        let splits = virtual_ip.split(".").collect::<Vec<&str>>();
+    pub fn get_filename_by_ip(&self, ip: &str) -> String{
+        let splits = ip.split(".").collect::<Vec<&str>>();
         let mut filename = String::new();
         filename.push_str(splits[0]);
         filename.push_str("_");
@@ -60,7 +60,8 @@ impl Tinc {
         filename
     }
 
-    fn get_filename_by_virtual_ip_2_4(&self,virtual_ip:&str) -> String{
+    /// 根据IP地址获取文件名
+    pub fn get_client_filename_by_virtual_ip(&self, virtual_ip: &str) -> String{
         let splits = virtual_ip.split(".").collect::<Vec<&str>>();
         let mut filename = String::new();
         filename.push_str(splits[1]);
@@ -86,7 +87,11 @@ impl Tinc {
 
     pub fn create_pub_key(&self) {
         cmd_err_panic("chmod 755 ".to_string() + &self.tinc_home + "key/build-key-tinc.exp");
-        cmd_err_panic(self.tinc_home.clone() + "key/build-key-tinc.exp " + &self.tinc_home + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
+        cmd_err_panic(self.tinc_home.clone() + "key/build-key-tinc.exp gen-ed25519-keys " + &self.tinc_home + "key/rsa_key.priv " + &self.tinc_home + &self.pub_key_path);
+        cmd_err_panic("cp -f ".to_string()
+                          + &self.tinc_home.clone()
+                          + "key/rsa_key.p* "
+                          + &self.tinc_home.clone());
     }
 
     /// 从pub_key文件读取pub_key
@@ -114,10 +119,6 @@ impl Tinc {
             }
         }
         return out;
-    }
-
-    pub fn get_local_proxy_name(&self) -> String {
-        "proxy_".to_string() + &self.get_filename_by_virtual_ip_2_4(&self.get_vip())
     }
 
     fn set_tinc_conf_file(&self, name: &str, connect_to: Vec<String>) -> bool {
@@ -155,8 +156,7 @@ impl Tinc {
 
             if !self.set_hosts(true,
                                &info.proxy_info.proxy_ip.to_string(),
-                               &info.tinc_info.vip.to_string(),
-                               &info.tinc_info.pub_key
+                               &info.tinc_info.pub_key,
             ) {
                 return false;
             }
@@ -165,8 +165,7 @@ impl Tinc {
             for online_proxy in info.proxy_info.online_porxy.clone() {
                 if !self.set_hosts(true,
                                    &online_proxy.ip.to_string(),
-                                   &online_proxy.vip.to_string(),
-                                   &online_proxy.pubkey
+                                   &online_proxy.pubkey,
                 ) {
                     return false;
                 }
@@ -174,11 +173,11 @@ impl Tinc {
         }
         {
             let name = "proxy".to_string() + "_"
-                + &self.get_filename_by_virtual_ip_2_4(&self.get_vip());
+                + &self.get_filename_by_ip(&info.proxy_info.proxy_ip);
             let mut connect_to: Vec<String> = vec![];
             for online_proxy in info.proxy_info.online_porxy.clone() {
                 let online_proxy_name = "proxy".to_string() + "_"
-                    + &self.get_filename_by_virtual_ip_2_4(&online_proxy.vip.to_string());
+                    + &self.get_filename_by_ip(&online_proxy.ip.to_string());
                 connect_to.push(online_proxy_name);
             }
             self.set_tinc_conf_file(&name, connect_to);
@@ -193,25 +192,21 @@ impl Tinc {
     fn set_hosts(&self,
                      is_proxy: bool,
                      ip: &str,
-                     vip: &str,
                      pubkey: &str) -> bool {
         {
             let mut proxy_or_client = "proxy".to_string();
             if !is_proxy {
                 proxy_or_client = "CLIENT".to_string();
             }
-            let buf = "Address = ".to_string()
+            let buf = "Address=".to_string()
                 + ip
                 + "\n\
                 "
                 + pubkey
-                + "Port = 50069";
-            let vip_name_vec: Vec<&str> = vip.split(".").collect();
-
+                + "Port=50069\n\
+                ";
             let file_name = proxy_or_client.to_string()
-                + "_" + vip_name_vec[1]
-                + "_" + vip_name_vec[2]
-                + "_" + vip_name_vec[3];
+                + "_" + &self.get_filename_by_ip(ip);
             let file = File::new(self.tinc_home.clone() + "/hosts/" + &file_name);
             if !file.write(buf.to_string()) {
                 return false;

@@ -147,7 +147,7 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
                         let key_report:KeyReport = decode(req_str.as_str()).unwrap();
                         debug!("http_report_key - key_report: {:?}",key_report);
                         let operator = Tinc::new("/root/tinc".to_string(),"hosts".to_string());
-                        let filename = operator.get_filename_by_virtual_ip(key_report.vip.as_str());
+                        let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
                         operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
                         response = Response::succeed(key_report.to_json())
                     } else {
@@ -242,7 +242,7 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
                 Some(virtualip) =>{
                     debug!("get_key - response vip : {}",virtualip.vip);
                     let operator = Tinc::new("/root/tinc".to_string(),"".to_string());
-                    let filename = operator.get_filename_by_virtual_ip(virtualip.vip.as_str());
+                    let filename = operator.get_client_filename_by_virtual_ip(virtualip.vip.as_str());
                     let pubkey = operator.get_host_pub_key(filename.as_str());
                     debug!("get_key - response msg : {}",pubkey);
                     let response = Response {

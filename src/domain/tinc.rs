@@ -26,7 +26,7 @@ impl TincInfo {
             let mut res = String::new();
             let mut _file = File::open(tinc_home.to_string() + pub_key_path).unwrap();
             _file.read_to_string(&mut res).unwrap();
-            self.pub_key = res.clone().replace("\n", "");
+            self.pub_key = res.clone();
         }
         {
             let tinc = Tinc::new(tinc_home.to_string(), pub_key_path.to_string());

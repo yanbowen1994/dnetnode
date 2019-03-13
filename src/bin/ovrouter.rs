@@ -143,7 +143,7 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
     // 设置心跳和监测tinc状态的频率，单位：秒
     let heartbeat_frequency = Duration::from_secs(20);
     let check_tinc_frequency = Duration::from_secs(3);
-    let get_online_proxy_frequency = Duration::from_secs(3);
+    let get_online_proxy_frequency = Duration::from_secs(10);
 
     // now: 当前时间
     // heartbeat_time：前次心跳发送时间

@@ -106,9 +106,9 @@ impl Client {
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
 
-        debug!("proxy_get_online_proxy - request info: {:?}",info);
+        trace!("proxy_get_online_proxy - request info: {:?}",info);
         debug!("proxy_get_online_proxy - request url: {}",url);
-        debug!("proxy_get_online_proxy - request data: {}",data);
+        trace!("proxy_get_online_proxy - request data: {}",data);
 
         let res = match url_post(&url, data, &info.proxy_info.cookie) {
             Ok(res) => res,
@@ -119,7 +119,6 @@ impl Client {
         };
 
         debug!("proxy_get_online_proxy - response code: {}",res.code);
-        debug!("proxy_get_online_proxy - response data: {:#?}",res.data);
 
         if res.code == 200 {
             let recv: GetOnlinePorxyRecv = match json::decode(&res.data) {

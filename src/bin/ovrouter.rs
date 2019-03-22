@@ -1,7 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Instant, Duration};
 use std::thread::{sleep, spawn};
 use std::error::Error;
+use std::sync::mpsc;
 
 #[macro_use]
 extern crate log;
@@ -10,6 +11,8 @@ extern crate clap;
 use clap::{App, Arg};
 
 extern crate ovrouter;
+extern crate core;
+
 use ovrouter::settings::Settings;
 use ovrouter::tinc_manager::check::*;
 use ovrouter::tinc_manager::Tinc;
@@ -17,6 +20,7 @@ use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
 use ovrouter::tinc_manager::install_tinc;
 use ovrouter::http_server_client::web_server;
+use core::borrow::Borrow;
 
 
 fn main() {
@@ -135,7 +139,7 @@ fn main() {
     handle_main_loop.join().unwrap();
 }
 
-fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
+fn main_loop(tinc_arc:          Arc<Mutex<Tinc>>,
              client_arc:       Arc<Mutex<Client>>,
              info_arc:         Arc<Mutex<Info>>,
              settings:         &Settings,
@@ -153,18 +157,34 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
     let mut check_tinc_time = now.clone();
     let mut get_online_proxy_time = now.clone();
 
+    let (heartbeat_tx, heartbeat_rx) = mpsc::channel();
+
     loop {
+        let mut heartbeat_is_sending = false;
+        if let Ok(heartbeat_ok) = heartbeat_rx.try_recv() {
+            if heartbeat_ok {
+                heartbeat_time = now.clone();
+            }
+            heartbeat_is_sending = false;
+        }
+
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
-            if let Ok(client) = client_arc.try_lock() {
-                if let Ok(info) = info_arc.try_lock() {
-                    info!("proxy_heart_beat");
-                    if !client.proxy_heart_beat(&info){
-                        error!("Heart beat send failed.")
-                    };
-                    heartbeat_time = now.clone();
-                }
+            if !heartbeat_is_sending {
+                info!("proxy_heart_beat");
+                let client_arc_clone = client_arc.clone();
+                let info_arc_clone = info_arc.clone();
+                let heartbeat_tx_clone = heartbeat_tx.clone();
+                heartbeat_is_sending = true;
+                spawn(move ||
+                    {
+                        loop_proxy_heart_beat(client_arc_clone,
+                                              info_arc_clone,
+                                              heartbeat_tx_clone);
+                    }
+                );
             }
         }
+
 
         // 如果监测tinc运行 失败
         //     尝试获取tinc操作
@@ -200,6 +220,7 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
                         if !tinc.check_info(&mut info) {
                             error!("Tinc check_info failed.")
                         }
+
                         get_online_proxy_time = now.clone();
                     }
                 }
@@ -210,4 +231,22 @@ fn main_loop(tinc_arc:    Arc<Mutex<Tinc>>,
         now = Instant::now();
 
     }
+}
+
+fn loop_proxy_heart_beat (
+    client_arc:                 Arc<Mutex<Client>>,
+    info_arc:                   Arc<Mutex<Info>>,
+    heartbeat_tx:             mpsc::Sender<bool>,
+) {
+    if let Ok(client) = client_arc.try_lock() {
+        if let Ok(info) = info_arc.try_lock() {
+            if !client.proxy_heart_beat(&info) {
+                error!("Heart beat send failed.")
+            }
+            else {
+                let _ = heartbeat_tx.send(true);
+            }
+        }
+    }
+    heartbeat_tx.send(false);
 }

@@ -29,10 +29,31 @@ impl Client {
         debug!("proxy_login - request url: {} ",url);
         debug!("proxy_login - request data:{}",data);
 
-        let res = match url_post(&url, data, "") {
-            Ok(res) => res,
-            Err(e) => {
-                error!("proxy_login - response: {:?}", e);
+        let post = ||
+            {
+                loop {
+                    let _res = match url_post(&url, data.clone(), "") {
+                        Ok(x) => {
+                            Some(x)
+                        },
+                        Err(e) => {
+                            error!("proxy_login - response {}", e);
+                            None
+                        }
+                    };
+                    if let Some(x) = _res {
+                        return Some(x);
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                None
+            };
+        let res = match post() {
+            Some(x) => x,
+            None => {
+                error!("proxy_register - response");
                 return false;
             }
         };
@@ -69,15 +90,35 @@ impl Client {
         let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
-
+        let cookie = info.proxy_info.cookie.clone();
         debug!("proxy_register - request info: {:?}",info);
         debug!("proxy_register - request url: {}",url);
         debug!("proxy_register - request data: {}",data);
-
-        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-            Ok(res) => res,
-            Err(e) => {
-                error!("proxy_register - response: {:?}", e);
+        let post = ||
+            {
+                loop {
+                    let _res = match url_post(&url, data.clone(), &cookie) {
+                        Ok(x) => {
+                            Some(x)
+                        },
+                        Err(e) => {
+                            error!("proxy_register - response {}", e);
+                            None
+                        }
+                    };
+                    if let Some(x) = _res {
+                        return Some(x);
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                None
+            };
+        let res = match post() {
+            Some(x) => x,
+            None => {
+                error!("proxy_register - response");
                 return false;
             }
         };
@@ -86,7 +127,7 @@ impl Client {
         debug!("proxy_register - response data: {:?}",res.data);
 
         if res.code == 200 {
-            let recv: Recv = match json::decode(&res.data) {
+            let recv: RegisterRecv = match json::decode(&res.data) {
                 Ok(x) => x,
                 Err(e) => {
                     error!("proxy_register - resolve json: {:?}", e);
@@ -105,15 +146,36 @@ impl Client {
         let post = "/vppn/api/v2/proxy/getonlineproxy";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
-
+        let cookie = info.proxy_info.cookie.clone();
         trace!("proxy_get_online_proxy - request info: {:?}",info);
         debug!("proxy_get_online_proxy - request url: {}",url);
         trace!("proxy_get_online_proxy - request data: {}",data);
 
-        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-            Ok(res) => res,
-            Err(e) => {
-                error!("proxy_get_online_proxy - response: {:?}", e);
+        let post = ||
+            {
+                loop {
+                    let _res = match url_post(&url, data.clone(), &cookie) {
+                        Ok(x) => {
+                            Some(x)
+                        },
+                        Err(e) => {
+                            error!("proxy_get_online_proxy - response {}", e);
+                            None
+                        }
+                    };
+                    if let Some(x) = _res {
+                        return Some(x);
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                None
+            };
+        let res = match post() {
+            Some(x) => x,
+            None => {
+                error!("proxy_register - response");
                 return false;
             }
         };
@@ -164,14 +226,36 @@ impl Client {
         let post = "/vppn/api/v2/proxy/hearBeat";
         let url = self.url.to_string() + post;
         let data = Heartbeat::new_from_info(info).to_json();
+        let cookie = info.proxy_info.cookie.clone();
 
         debug!("proxy_heart_beat - request url: {}",url);
         debug!("proxy_heart_beat - request data: {}",data);
 
-        let res = match url_post(&url, data, &info.proxy_info.cookie) {
-            Ok(res) => res,
-            Err(e) => {
-                error!("proxy_heart_beat - response: {:?}", e);
+        let post = ||
+            {
+                loop {
+                    let _res = match url_post(&url, data.clone(), &cookie) {
+                        Ok(x) => {
+                            Some(x)
+                        },
+                        Err(e) => {
+                            error!("proxy_heart_beat - response {}", e);
+                            None
+                        }
+                    };
+                    if let Some(x) = _res {
+                        return Some(x);
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                None
+            };
+        let res = match post() {
+            Some(x) => x,
+            None => {
+                error!("proxy_register - response");
                 return false;
             }
         };
@@ -205,6 +289,22 @@ fn header_cookie(header: Vec<String>) -> String {
         }
     }
     headers_str
+}
+
+#[allow(non_snake_case)]
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct JavaRegister {
+    authId: String,
+    authType: String,
+    area: String,
+    countryCode: String,
+    proxyIp: String,
+    pubKey: String,
+    os: String,
+    serverType: String,
+    sshPort: String,
+    latitude: String,
+    longitude: String,
 }
 
 #[allow(non_snake_case)]
@@ -337,6 +437,13 @@ struct Recv {
     code:        i32,
     msg:         Option<String>,
     data:        Option<String>,
+}
+
+#[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
+struct RegisterRecv {
+    code:        i32,
+    msg:         Option<String>,
+    data:        Option<JavaRegister>,
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]

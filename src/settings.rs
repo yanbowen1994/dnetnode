@@ -42,5 +42,5 @@ impl Settings {
 
 #[test]
 fn test_setting() {
-    let a = Settings::load_config().expect("Error: Can not parse settings.");
+    let _a = Settings::load_config().expect("Error: Can not parse settings.");
 }

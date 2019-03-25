@@ -1,8 +1,10 @@
+use std::thread::spawn;
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use net_tool::get_wan_name;
 use super::check::check_tinc_status;
 use domain::Info;
+use core::borrow::Borrow;
 
 pub struct Tinc {
     tinc_home: String,
@@ -19,7 +21,7 @@ impl Tinc {
     pub fn start_tinc(&self) {
         let cmd = self.tinc_home.clone()
             + "start";
-        cmd_err_panic(cmd);
+        spawn(move ||cmd_err_panic(cmd));
     }
 
     pub fn stop_tinc(&self) {
@@ -188,6 +190,13 @@ impl Tinc {
             }
         }
 
+        if self.check_self_hosts_file(self.tinc_home.borrow(), &info) {
+            self.set_hosts(
+                true,
+                &info.proxy_info.proxy_ip,
+                &info.tinc_info.pub_key);
+        }
+
         if need_restart {
             self.set_tinc_conf_file(&info);
             self.restart_tinc();
@@ -247,5 +256,17 @@ impl Tinc {
             }
         }
         true
+    }
+
+    pub fn check_self_hosts_file(&self, tinc_home: &str, info: &Info) -> bool {
+        let ip = info.proxy_info.proxy_ip.clone();
+        let filename = self.get_filename_by_ip(&ip);
+        let file = File::new(
+            tinc_home.to_string()
+                + "/hosts/"
+                + "proxy_"
+                + &filename
+        );
+        file.file_exists()
     }
 }

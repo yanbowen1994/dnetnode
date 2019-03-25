@@ -48,7 +48,6 @@ impl Client {
                         continue;
                     }
                 }
-                None
             };
         let res = match post() {
             Some(x) => x,
@@ -113,7 +112,6 @@ impl Client {
                         continue;
                     }
                 }
-                None
             };
         let res = match post() {
             Some(x) => x,
@@ -170,7 +168,6 @@ impl Client {
                         continue;
                     }
                 }
-                None
             };
         let res = match post() {
             Some(x) => x,
@@ -250,7 +247,6 @@ impl Client {
                         continue;
                     }
                 }
-                None
             };
         let res = match post() {
             Some(x) => x,
@@ -294,17 +290,17 @@ fn header_cookie(header: Vec<String>) -> String {
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
 struct JavaRegister {
-    authId: String,
-    authType: String,
-    area: String,
-    countryCode: String,
-    proxyIp: String,
-    pubKey: String,
-    os: String,
-    serverType: String,
-    sshPort: String,
-    latitude: String,
-    longitude: String,
+    authId:                 Option<String>,
+    authType:               Option<String>,
+    area:                   Option<String>,
+    countryCode:            Option<String>,
+    proxyIp:                Option<String>,
+    pubKey:                 Option<String>,
+    os:                     Option<String>,
+    serverType:             Option<String>,
+    sshPort:                Option<String>,
+    latitude:               Option<String>,
+    longitude:              Option<String>,
 }
 
 #[allow(non_snake_case)]

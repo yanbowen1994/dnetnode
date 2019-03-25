@@ -43,18 +43,18 @@ impl GeoInfo {
     pub fn load_local(&mut self, settings: &Settings) -> bool {
         let geo_url = &settings.server.geo_url;
         if let Some(json) = get_geo_json(geo_url) {
-            self.country_code = json["country_code"].to_string();
-            self.country_code3 = json["country_code3"].to_string();
-            self.country_name = json["country_name"].to_string();
-            self.city = json["city"].to_string();
-            self.region_code = json["region_code"].to_string();
-            self.region_name = json["region_name"].to_string();
-            self.postal_code = json["postal_code"].to_string();
-            self.latitude = json["latitude"].to_string();
-            self.longitude = json["longitude"].to_string();
-            self.ipaddr = json["ipaddr"].to_string();
-            self.dma_code = json["dma_code"].to_string();
-            self.area_code = json["area_code"].to_string();
+            self.country_code = json["country_code"].to_string().replace("\"", "");
+            self.country_code3 = json["country_code3"].to_string().replace("\"", "");
+            self.country_name = json["country_name"].to_string().replace("\"", "");
+            self.city = json["city"].to_string().replace("\"", "");
+            self.region_code = json["region_code"].to_string().replace("\"", "");
+            self.region_name = json["region_name"].to_string().replace("\"", "");
+            self.postal_code = json["postal_code"].to_string().replace("\"", "");
+            self.latitude = json["latitude"].to_string().replace("\"", "");
+            self.longitude = json["longitude"].to_string().replace("\"", "");
+            self.ipaddr = json["ipaddr"].to_string().replace("\"", "");
+            self.dma_code = json["dma_code"].to_string().replace("\"", "");
+            self.area_code = json["area_code"].to_string().replace("\"", "");
             return true;
         }
         else {

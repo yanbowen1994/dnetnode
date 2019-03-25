@@ -6,15 +6,13 @@ authors = ["yanbowen <bowen.yan@gitblit.com>"]
 [[bin]]
 name = "ovrouter"
 
-[[bin]]
-name = "setup"
-
 [lib]
 name = "ovrouter"
 
 [workspace]
 members = [
     ".",
+    "setup",
 ]
 
 [dependencies]

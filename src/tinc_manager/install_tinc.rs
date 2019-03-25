@@ -67,10 +67,6 @@ fn config_on_linux(tinc_home: &str) {
         config = dev.unwrap();
     };
 
-    cmd_err_panic(
-        "sudo sed -i 's/\"wan_interface\":\".*\"/\"wan_interface\":\"".to_string() +
-        &config.clone() + "\"/g\' " + tinc_home + "/register_config_json");
-
     cmd_err_panic("sudo sed -i 's/eth0/".to_string() + &config + "/g' " + tinc_home + "/tinc-up");
 
     cmd_err_panic("sudo sed -i 's/10.255.255.254/11.255.255.254/g' ".to_string() + tinc_home + "/tinc-up");

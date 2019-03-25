@@ -48,6 +48,8 @@ impl Info {
             return Err(io::Error::new(io::ErrorKind::InvalidData,
                                       "Load local proxy info error"));
         }
+        // 使用geo ip 作为proxy ip, 而非使用本机路由default出口ip.
+        proxy_info.proxy_ip = geo_info.ipaddr.clone();
         let mut tinc_info = TincInfo::new();
         if !tinc_info.load_local(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
             return Err(io::Error::new(io::ErrorKind::InvalidData,

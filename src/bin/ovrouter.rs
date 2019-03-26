@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
-use std::thread::{sleep, spawn};
+use std::thread;
 use std::error::Error;
 use std::sync::mpsc;
 
@@ -18,9 +18,9 @@ use ovrouter::tinc_manager::check::*;
 use ovrouter::tinc_manager::Tinc;
 use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
-use ovrouter::tinc_manager::install_tinc;
 use ovrouter::http_server_client::web_server;
 use core::borrow::Borrow;
+use std::thread::sleep_ms;
 
 
 fn main() {
@@ -54,12 +54,12 @@ fn main() {
     // 初始化tinc操作
     let tinc = Tinc::new(settings.tinc.home_path.clone(), settings.tinc.pub_key_path.clone());
 
-    // 监测tinc文件完整性，失败将安装tinc
-    info!("check_tinc_complete");
-    if !check_tinc_complete(&settings.tinc.home_path) {
-        info!("install_tinc");
-        install_tinc(&settings, &tinc);
-    }
+//    // 监测tinc文件完整性，失败将安装tinc
+//    info!("check_tinc_complete");
+//    if !check_tinc_complete(&settings.tinc.home_path) {
+//        info!("install_tinc");
+//        install_tinc(&settings, &tinc);
+//    }
 
     // 监测tinc pub key 不存在或生成时间超过一个月，将生成tinc pub key
     info!("check_pub_key");
@@ -133,18 +133,167 @@ fn main() {
     let tinc_arc_clone = tinc_arc.clone();
 
     // 启动web_server,线程
-    let handle_web_server = spawn(move ||web_server(info_arc_clone, tinc_arc_clone));
-    let handle_main_loop = spawn(move ||main_loop(tinc_arc, client_arc, info_arc, &settings));
-    handle_web_server.join().unwrap();
-    handle_main_loop.join().unwrap();
+    thread::spawn(move ||web_server(info_arc_clone, tinc_arc_clone));
+
+    let mut daemon = Daemon::new(tinc_arc, client_arc, info_arc, settings);
+    daemon.run();
+
 }
 
-fn main_loop(tinc_arc:          Arc<Mutex<Tinc>>,
-             client_arc:       Arc<Mutex<Client>>,
-             info_arc:         Arc<Mutex<Info>>,
-             settings:         &Settings,
+#[derive(Clone, Debug)]
+enum DaemonEvent {
+    Schedule(ScheduleType),
+    Heartbeat(Status),
+    TincCheck(Status),
+    OnlineProxy(Status),
+}
+
+#[derive(Clone, Debug)]
+enum ScheduleType {
+    Heartbeat,
+    TincCheck,
+    OnlineProxy,
+}
+
+struct DaemonStatus {
+    heartbeat_status:   Status,
+    tinccheck_status:   Status,
+    onlineproxy_status: Status,
+}
+impl DaemonStatus {
+    fn new() -> Self {
+        DaemonStatus {
+            heartbeat_status:   Status::Finish,
+            tinccheck_status:   Status::Finish,
+            onlineproxy_status: Status::Finish,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Status {
+    Execute,
+    Finish,
+    Error,
+}
+
+struct Daemon {
+    tinc_arc:               Arc<Mutex<Tinc>>,
+    client_arc:             Arc<Mutex<Client>>,
+    info_arc:               Arc<Mutex<Info>>,
+    settings:               Settings,
+    daemon_event_tx:        mpsc::Sender<DaemonEvent>,
+    daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
+    daemon_status:          DaemonStatus,
+}
+
+impl Daemon {
+    fn new(
+        tinc_arc: Arc<Mutex<Tinc>>,
+        client_arc: Arc<Mutex<Client>>,
+        info_arc: Arc<Mutex<Info>>,
+        settings: Settings,
+    ) -> Self {
+        let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
+        let daemon_status = DaemonStatus::new();
+        Daemon {
+            tinc_arc,
+            client_arc,
+            info_arc,
+            settings,
+            daemon_event_tx,
+            daemon_event_rx,
+            daemon_status,
+        }
+    }
+
+    fn run(&mut self) {
+        let daemon_event_tx_clone = self.daemon_event_tx.clone();
+        thread::spawn(move || schedule(daemon_event_tx_clone));
+        while let Ok(event) = self.daemon_event_rx.recv() {
+            self.handle_event(event);
+        }
+    }
+
+    fn handle_event(&mut self, event: DaemonEvent) {
+        match event {
+            DaemonEvent::Schedule(schedule) => self.exec_schedule(schedule),
+            DaemonEvent::Heartbeat(status) => {
+                if status == Status::Error {
+                    self.exec_schedule(ScheduleType::Heartbeat);
+                }
+                else {
+                    self.daemon_status.heartbeat_status = status;
+                }
+            },
+            DaemonEvent::TincCheck(status) => {
+                if status == Status::Error {
+                    self.exec_schedule(ScheduleType::TincCheck);
+                }
+                else {
+                    self.daemon_status.tinccheck_status = status;
+                }
+            },
+            DaemonEvent::OnlineProxy(status) => {
+                if status == Status::Error {
+                    self.exec_schedule(ScheduleType::OnlineProxy);
+                }
+                else {
+                    self.daemon_status.onlineproxy_status = status;
+                }
+            },
+        };
+    }
+
+    fn exec_schedule(&mut self, schedule: ScheduleType) {
+        let daemon_event_tx = self.daemon_event_tx.clone();
+        match schedule {
+            ScheduleType::Heartbeat => {
+                let client_arc_clone = self.client_arc.clone();
+                let info_arc_clone = self.info_arc.clone();
+                if self.daemon_status.heartbeat_status == Status::Finish {
+                    self.daemon_status.heartbeat_status = Status::Execute;
+                    thread::spawn(move || exec_heartbeat(
+                        client_arc_clone,
+                        info_arc_clone,
+                        daemon_event_tx,
+                    ));
+                }
+            }
+            ScheduleType::TincCheck => {
+                let tinc_arc_clone = self.tinc_arc.clone();
+                let tinc_home = self.settings.tinc.home_path.clone();
+                if self.daemon_status.tinccheck_status != Status::Execute {
+                    self.daemon_status.tinccheck_status = Status::Execute;
+                    thread::spawn(move || exec_tinc_check(
+                        tinc_arc_clone,
+                        daemon_event_tx,
+                        tinc_home,
+                    ));
+                }
+            }
+            ScheduleType::OnlineProxy => {
+                let client_arc_clone = self.client_arc.clone();
+                let tinc_arc_clone = self.tinc_arc.clone();
+                let info_arc_clone = self.info_arc.clone();
+                if self.daemon_status.onlineproxy_status == Status::Finish {
+                    self.daemon_status.onlineproxy_status = Status::Execute;
+                    thread::spawn(move || exec_online_proxy(
+                        client_arc_clone,
+                        info_arc_clone,
+                        tinc_arc_clone,
+                        daemon_event_tx,
+                    ));
+                }
+            }
+        }
+    }
+}
+
+fn schedule(
+    daemon_event_tx: mpsc::Sender<DaemonEvent>
 ) {
-    // 设置心跳和监测tinc状态的频率，单位：秒
+    let daemon_event_tx = daemon_event_tx;
     let heartbeat_frequency = Duration::from_secs(20);
     let check_tinc_frequency = Duration::from_secs(3);
     let get_online_proxy_frequency = Duration::from_secs(10);
@@ -156,97 +305,93 @@ fn main_loop(tinc_arc:          Arc<Mutex<Tinc>>,
     let mut heartbeat_time = now.clone();
     let mut check_tinc_time = now.clone();
     let mut get_online_proxy_time = now.clone();
-
-    let (heartbeat_tx, heartbeat_rx) = mpsc::channel();
-
     loop {
-        let mut heartbeat_is_sending = false;
-        if let Ok(heartbeat_ok) = heartbeat_rx.try_recv() {
-            if heartbeat_ok {
-                heartbeat_time = now.clone();
-            }
-            heartbeat_is_sending = false;
-        }
-
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
-            if !heartbeat_is_sending {
-                info!("proxy_heart_beat");
-                let client_arc_clone = client_arc.clone();
-                let info_arc_clone = info_arc.clone();
-                let heartbeat_tx_clone = heartbeat_tx.clone();
-                heartbeat_is_sending = true;
-                spawn(move ||
-                    {
-                        loop_proxy_heart_beat(client_arc_clone,
-                                              info_arc_clone,
-                                              heartbeat_tx_clone);
-                    }
-                );
-            }
+            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::Heartbeat));
+            heartbeat_time = now.clone();
         }
-
-
-        // 如果监测tinc运行 失败
-        //     尝试获取tinc操作
-        //         锁获取成功 重启tinc, 重启失败报错 不退出程序
-        //         锁获取失败 不更新tinc监测时间等待 1秒后重试
         if now.duration_since(check_tinc_time) > check_tinc_frequency {
-            let mut lock_or_pass = true;
-            info!("check_tinc_status");
-            if !check_tinc_status(&settings.tinc.home_path) {
-                if let Ok(tinc) = tinc_arc.try_lock() {
-                    tinc.restart_tinc();
-                    if !check_tinc_status(&settings.tinc.home_path) {
-                        error!("Restart tinc failed");
-                    }
-                }
-                else {
-                    lock_or_pass = false;
-                }
-            }
-            if lock_or_pass {
-                check_tinc_time = now.clone();
-            }
+            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::TincCheck));
+            check_tinc_time = now.clone();
         }
-
         if now.duration_since(get_online_proxy_time) > get_online_proxy_frequency {
-            if let Ok(client) = client_arc.try_lock() {
-                if let Ok(mut info) = info_arc.try_lock() {
-                    if let Ok(tinc) = tinc_arc.try_lock() {
-                        info!("proxy_get_online_proxy");
-                        if !client.proxy_get_online_proxy(&mut info) {
-                            error!("proxy_get_online_proxy failed.")
-                        }
-                        if !tinc.check_info(&mut info) {
-                            error!("Tinc check_info failed.")
-                        }
-
-                        get_online_proxy_time = now.clone();
-                    }
-                }
-            }
+            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::OnlineProxy));
+            get_online_proxy_time = now.clone();
         }
-
-        sleep(Duration::new(1, 0));
+        thread::sleep_ms(500);
         now = Instant::now();
-
     }
 }
 
-fn loop_proxy_heart_beat (
+fn exec_heartbeat(
     client_arc:                 Arc<Mutex<Client>>,
     info_arc:                   Arc<Mutex<Info>>,
-    heartbeat_tx:             mpsc::Sender<bool>,
+    daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 ) {
+    info!("proxy_heart_beat");
     if let Ok(client) = client_arc.try_lock() {
         if let Ok(info) = info_arc.try_lock() {
             if !client.proxy_heart_beat(&info) {
                 error!("Heart beat send failed.")
-            }
-            else {
-                let _ = heartbeat_tx.send(true);
+            } else {
+                daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Finish));
+                return;
             }
         }
     }
-    heartbeat_tx.send(false);
+    sleep_ms(500);
+    daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Error));
+}
+
+fn exec_tinc_check(
+    tinc_arc:                   Arc<Mutex<Tinc>>,
+    daemon_event_tx:            mpsc::Sender<DaemonEvent>,
+    tinc_home:                  String,
+) {
+    info!("check_tinc_status");
+    if check_tinc_status(&tinc_home) {
+        daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
+        return;
+    } else {
+        if let Ok(tinc) = tinc_arc.try_lock() {
+            tinc.restart_tinc();
+            if check_tinc_status(&tinc_home) {
+                daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
+                return;
+            } else {
+                error!("Restart tinc failed");
+            }
+        }
+    }
+    sleep_ms(500);
+    daemon_event_tx.send(DaemonEvent::TincCheck(Status::Error));
+}
+
+fn exec_online_proxy(
+    client_arc:                 Arc<Mutex<Client>>,
+    info_arc:                   Arc<Mutex<Info>>,
+    tinc_arc:                   Arc<Mutex<Tinc>>,
+    daemon_event_tx:        mpsc::Sender<DaemonEvent>,
+) {
+    info!("exec_online_proxy");
+    if let Ok(client) = client_arc.try_lock() {
+        if let Ok(mut info) = info_arc.try_lock() {
+            if let Ok(tinc) = tinc_arc.try_lock() {
+                info!("exec_online_proxy begin");
+                if client.proxy_get_online_proxy(&mut info) {
+                    if tinc.check_info(&mut info) {
+                        daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Finish));
+                        info!("exec_online_proxy finish");
+                        return;
+                    } else {
+                        error!("Tinc check_info failed.");
+                    }
+                } else {
+                    error!("proxy_get_online_proxy failed.");
+                }
+            }
+        }
+    }
+    sleep_ms(500);
+    daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Error));
 }

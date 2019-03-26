@@ -135,33 +135,33 @@ fn stop_tinc() {
 fn link_ssl(tinc_home: &str) {
     if !File::new("/usr/lib/libssl.so.1.1".to_string()).file_exists() {
         if File::new("/usr/local/lib/libssl.so.1.1".to_string()).file_exists() {
-            cmd_err_panic("sudo ln -s "
+            cmd_err_panic("sudo ln -s ".to_string()
                 + "/usr/local/lib/libssl.so.1.1 "
                 + "/usr/lib"
-            )
+            );
         }
         else {
-            cmd_err_panic("sudo ln -s "
+            cmd_err_panic("sudo ln -s ".to_string()
                 + tinc_home
                 + "/libssl.so.1.1 "
                 + "/usr/lib"
-            )
+            );
         }
     }
 
     if !File::new("/usr/lib/libcrypto.so.1.1".to_string()).file_exists() {
         if File::new("/usr/local/lib/libcrypto.so.1.1".to_string()).file_exists() {
-            cmd_err_panic("sudo ln -s "
+            cmd_err_panic("sudo ln -s ".to_string()
                 + "/usr/local/lib/libcrypto.so.1.1 "
                 + "/usr/lib"
-            )
+            );
         }
         else {
-            cmd_err_panic("sudo ln -s "
+            cmd_err_panic("sudo ln -s ".to_string()
                 + tinc_home
                 + "/libcrypto.so.1.1 "
                 + "/usr/lib"
-            )
+            );
         }
     }
 }

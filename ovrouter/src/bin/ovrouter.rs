@@ -3,15 +3,16 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::error::Error;
 use std::sync::mpsc;
+use std::thread::sleep_ms;
+use std::path::PathBuf;
+//use core::borrow::Borrow;
 
 #[macro_use]
 extern crate log;
-extern crate simple_logger;
 extern crate clap;
 use clap::{App, Arg};
 
 extern crate ovrouter;
-extern crate core;
 
 use ovrouter::settings::Settings;
 use ovrouter::tinc_manager::check::*;
@@ -19,13 +20,15 @@ use ovrouter::tinc_manager::Tinc;
 use ovrouter::domain::Info;
 use ovrouter::http_server_client::Client;
 use ovrouter::http_server_client::web_server;
-use core::borrow::Borrow;
-use std::thread::sleep_ms;
+use ovrouter::logging::init_logger;
+
+const LOG_FILENAME: &str = "ovrouter.log";
+const DEFAULT_LOG_DIR: &str = "/var/log/ovr/";
 
 
 fn main() {
     // 命令行提示
-    let matches =  App::new("ovrouter")
+    let matches =  App::new("ovrouter 0.1")
         .arg(Arg::with_name("debug")
             .short("d")
             .long("debug")
@@ -33,15 +36,15 @@ fn main() {
             .takes_value(true))
         .get_matches();
 
-    // 设置debug等级
+    let mut arg_log_level = log::LevelFilter::Off;
     match matches.value_of("debug") {
         Some(log_level) => {
             match log_level {
-                _ if log_level == "0" => simple_logger::init_with_level(log::Level::Error).unwrap(),
-                _ if log_level == "1" => simple_logger::init_with_level(log::Level::Warn).unwrap(),
-                _ if log_level == "2" => simple_logger::init_with_level(log::Level::Info).unwrap(),
-                _ if log_level == "3" => simple_logger::init_with_level(log::Level::Debug).unwrap(),
-                _ if log_level == "4" => simple_logger::init_with_level(log::Level::Trace).unwrap(),
+                _ if log_level == "0" => arg_log_level = log::LevelFilter::Error,
+                _ if log_level == "1" => arg_log_level = log::LevelFilter::Warn,
+                _ if log_level == "2" => arg_log_level = log::LevelFilter::Info,
+                _ if log_level == "3" => arg_log_level = log::LevelFilter::Debug,
+                _ if log_level == "4" => arg_log_level = log::LevelFilter::Trace,
                 _  => (),
             }
         }
@@ -50,16 +53,56 @@ fn main() {
 
     // 解析settings.toml文件
     let settings:Settings = Settings::load_config().expect("Error: can not parse settings.toml");
+    let setting_log_level = settings.client.log_level.clone();
+
+    let mut setting_log_level = log::LevelFilter::Off;
+    match matches.value_of("debug") {
+        Some(log_level) => {
+            match log_level {
+                _ if log_level == "Error" => setting_log_level = log::LevelFilter::Error,
+                _ if log_level == "Warn" => setting_log_level = log::LevelFilter::Warn,
+                _ if log_level == "Info" => setting_log_level = log::LevelFilter::Info,
+                _ if log_level == "Debug" => setting_log_level = log::LevelFilter::Debug,
+                _ if log_level == "Trace" => setting_log_level = log::LevelFilter::Trace,
+                _  => (),
+            }
+        }
+        None => ()
+    }
+
+    let mut log_level = log::LevelFilter::Off;
+    if arg_log_level != log_level {
+        log_level = arg_log_level;
+    }
+    else if arg_log_level != log_level {
+        log_level = arg_log_level;
+    }
+
+    let mut log_dir: PathBuf = match settings.client.log_dir.clone() {
+        Some(dir) => PathBuf::from(dir),
+        None => PathBuf::from(DEFAULT_LOG_DIR),
+    };
+
+    if !std::path::Path::new(&log_dir).is_dir() {
+        std::fs::create_dir_all(&log_dir);
+    }
+
+    let log_file = log_dir.join(LOG_FILENAME);
+
+    if let Err(e) = init_logger(
+        log_level,
+        Some(&log_file),
+        true,
+    ) {
+        println!("Error: Can't start logger.\n{:?}", e);
+        std::process::exit(1);
+    }
 
     // 初始化tinc操作
-    let tinc = Tinc::new(settings.tinc.home_path.clone(), settings.tinc.pub_key_path.clone());
-
-//    // 监测tinc文件完整性，失败将安装tinc
-//    info!("check_tinc_complete");
-//    if !check_tinc_complete(&settings.tinc.home_path) {
-//        info!("install_tinc");
-//        install_tinc(&settings, &tinc);
-//    }
+    let mut tinc = Tinc::new(
+        settings.tinc.home_path.clone(),
+        settings.tinc.pub_key_path.clone()
+    );
 
     // 监测tinc pub key 不存在或生成时间超过一个月，将生成tinc pub key
     info!("check_pub_key");
@@ -219,27 +262,21 @@ impl Daemon {
         match event {
             DaemonEvent::Schedule(schedule) => self.exec_schedule(schedule),
             DaemonEvent::Heartbeat(status) => {
+                self.daemon_status.heartbeat_status = status.clone();
                 if status == Status::Error {
                     self.exec_schedule(ScheduleType::Heartbeat);
                 }
-                else {
-                    self.daemon_status.heartbeat_status = status;
-                }
             },
             DaemonEvent::TincCheck(status) => {
+                self.daemon_status.tinccheck_status = status.clone();
                 if status == Status::Error {
                     self.exec_schedule(ScheduleType::TincCheck);
                 }
-                else {
-                    self.daemon_status.tinccheck_status = status;
-                }
             },
             DaemonEvent::OnlineProxy(status) => {
+                self.daemon_status.onlineproxy_status = status.clone();
                 if status == Status::Error {
                     self.exec_schedule(ScheduleType::OnlineProxy);
-                }
-                else {
-                    self.daemon_status.onlineproxy_status = status;
                 }
             },
         };
@@ -251,7 +288,7 @@ impl Daemon {
             ScheduleType::Heartbeat => {
                 let client_arc_clone = self.client_arc.clone();
                 let info_arc_clone = self.info_arc.clone();
-                if self.daemon_status.heartbeat_status == Status::Finish {
+                if self.daemon_status.heartbeat_status != Status::Execute {
                     self.daemon_status.heartbeat_status = Status::Execute;
                     thread::spawn(move || exec_heartbeat(
                         client_arc_clone,
@@ -276,7 +313,7 @@ impl Daemon {
                 let client_arc_clone = self.client_arc.clone();
                 let tinc_arc_clone = self.tinc_arc.clone();
                 let info_arc_clone = self.info_arc.clone();
-                if self.daemon_status.onlineproxy_status == Status::Finish {
+                if self.daemon_status.onlineproxy_status != Status::Execute {
                     self.daemon_status.onlineproxy_status = Status::Execute;
                     thread::spawn(move || exec_online_proxy(
                         client_arc_clone,
@@ -353,7 +390,7 @@ fn exec_tinc_check(
         daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
         return;
     } else {
-        if let Ok(tinc) = tinc_arc.try_lock() {
+        if let Ok(mut tinc) = tinc_arc.try_lock() {
             tinc.restart_tinc();
             if check_tinc_status(&tinc_home) {
                 daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
@@ -376,12 +413,10 @@ fn exec_online_proxy(
     info!("exec_online_proxy");
     if let Ok(client) = client_arc.try_lock() {
         if let Ok(mut info) = info_arc.try_lock() {
-            if let Ok(tinc) = tinc_arc.try_lock() {
-                info!("exec_online_proxy begin");
+            if let Ok(mut tinc) = tinc_arc.try_lock() {
                 if client.proxy_get_online_proxy(&mut info) {
                     if tinc.check_info(&mut info) {
                         daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Finish));
-                        info!("exec_online_proxy finish");
                         return;
                     } else {
                         error!("Tinc check_info failed.");

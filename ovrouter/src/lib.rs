@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
-extern crate simple_logger;
+extern crate fern;
+extern crate chrono;
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
@@ -11,6 +12,7 @@ extern crate core;
 pub mod file_tool;
 pub mod net_tool;
 pub mod sys_tool;
+pub mod logging;
 pub mod domain;
 pub mod tinc_manager;
 pub mod settings;

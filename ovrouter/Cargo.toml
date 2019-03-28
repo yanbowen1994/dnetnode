@@ -1,0 +1,37 @@
+[package]
+name = "ovrouter"
+version = "0.1.0"
+authors = ["yanbowen <bowen.yan@gitblit.com>"]
+
+[[bin]]
+name = "ovrouter"
+
+[lib]
+name = "ovrouter"
+
+[dependencies]
+log = "0.4.5"
+fern = { version = "0.5", features = ["colored"] }
+
+clap = "2.32.0"
+config = "~0.9.1"
+
+duct = "0.12"
+
+bytes = "0.4"
+
+actix = "0.7"
+actix-web = { version = "0.7", features=["ssl"] }
+
+chrono = "0.4.6"
+os_type = "2.2.0"
+regex = "1.1.0"
+curl = "0.4.19"
+serde = "1.0.82"
+serde_json = "1.0.33"
+serde_derive = "1.0.85"
+futures = "0.1.25"
+
+uuid = "0.7.1"
+rustc-serialize = "0.3.24"
+openssl = "0.10.16"

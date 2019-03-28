@@ -1,8 +1,6 @@
 extern crate config;
 use self::config::{ConfigError, Config, File};
 
-use serde::Deserialize;
-
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tinc {
     pub home_path: String,
@@ -17,6 +15,8 @@ pub struct Server {
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct Client {
+    pub log_level: Option<String>,
+    pub log_dir: Option<String>,
     pub username: String,
     pub password: String,
     pub server_port: String,

@@ -1,4 +1,5 @@
 use std::thread::spawn;
+use std::ffi::{OsStr, OsString};
 use sys_tool::{cmd_err_panic, cmd};
 use file_tool::File;
 use net_tool::get_wan_name;
@@ -7,32 +8,44 @@ use domain::Info;
 use core::borrow::Borrow;
 
 pub struct Tinc {
-    tinc_home: String,
-    pub_key_path:  String,
+    tinc_home:          String,
+    pub_key_path:       String,
+    tinc_handle:         Option<duct::Handle>,
 }
 impl Tinc {
     pub fn new(tinc_home: String, pub_key_path: String) -> Self {
         Tinc {
             tinc_home,
             pub_key_path,
+            tinc_handle: None,
         }
     }
 
-    pub fn start_tinc(&self) {
-        let cmd = self.tinc_home.clone()
-            + "start";
-        spawn(move ||cmd_err_panic(cmd));
+    pub fn start_tinc(&mut self) -> bool {
+        let tinc_handle: duct::Expression = duct::cmd(
+            OsString::from(self.tinc_home.to_string() + "/tincd"),
+            vec![OsString::from("".to_string())]).unchecked();
+        if let Ok(child) = tinc_handle.start() {
+            self.tinc_handle = Some(child);
+            return true;
+        }
+        return false;
     }
 
-    pub fn stop_tinc(&self) {
-        cmd("killall tincd &".to_string());
+    pub fn stop_tinc(&self) -> bool {
+        if let Some(child) = &self.tinc_handle {
+            if let Ok(_) = child.kill() {
+                return true;
+            }
+        }
+        return false;
     }
 
     pub fn is_tinc_exist(&self) -> bool {
         check_tinc_status(&self.tinc_home)
     }
 
-    pub fn restart_tinc(&self) {
+    pub fn restart_tinc(&mut self) {
         if self.is_tinc_exist() {
             self.stop_tinc();
         }
@@ -156,7 +169,7 @@ impl Tinc {
 
     /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
     /// 如果自己的vip修改,重启tinc
-    pub fn check_info(&self, info: &Info) -> bool {
+    pub fn check_info(&mut self, info: &Info) -> bool {
         let mut need_restart = false;
         {
             let file_vip = self.get_vip();

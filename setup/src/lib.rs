@@ -21,13 +21,13 @@ pub fn install_tinc(settings: &Settings) {
 fn install_on_linux(settings: &Settings) -> i32 {
     let tinc_home  = &settings.tinc.home_path[..];
     let pubkey_path = &settings.tinc.pub_key_path[..];
-    link_ssl(tinc_home);
     cp_tinc_to_local(tinc_home);
     add_dependent("liblzo2-2");
     add_dependent("libcurl4-openssl-dev");
     add_permission_dir(tinc_home);
     config_on_linux(tinc_home);
     create_pub_key(tinc_home, pubkey_path);
+    link_ssl(tinc_home);
     if is_tinc_exist(tinc_home) {
         start_tinc(tinc_home);
         if is_tinc_exist(tinc_home) {

@@ -15,6 +15,8 @@ pub struct Server {
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct Client {
+    pub log_level: Option<String>,
+    pub log_dir: Option<String>,
     pub username: String,
     pub password: String,
     pub server_port: String,

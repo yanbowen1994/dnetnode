@@ -23,6 +23,7 @@ use ovrouter::http_server_client::web_server;
 use ovrouter::logging::init_logger;
 
 const LOG_FILENAME: &str = "ovrouter.log";
+#[cfg(unix)]
 const DEFAULT_LOG_DIR: &str = "/var/log/ovr/";
 
 
@@ -84,7 +85,7 @@ fn main() {
     };
 
     if !std::path::Path::new(&_log_dir).is_dir() {
-        std::fs::create_dir_all(&_log_dir);
+        let _ = std::fs::create_dir_all(&_log_dir);
     }
 
     let log_file = _log_dir.join(LOG_FILENAME);
@@ -187,7 +188,7 @@ fn main() {
     // 启动web_server,线程
     thread::spawn(move ||web_server(info_arc_clone, tinc_arc_clone));
 
-    let mut daemon = Daemon::new(tinc_arc, client_arc, info_arc, settings);
+    let mut daemon = Daemon::new(tinc_arc, client_arc, info_arc);
     daemon.run();
 
 }
@@ -233,7 +234,6 @@ struct Daemon {
     tinc_arc:               Arc<Mutex<Tinc>>,
     client_arc:             Arc<Mutex<Client>>,
     info_arc:               Arc<Mutex<Info>>,
-    settings:               Settings,
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     daemon_status:          DaemonStatus,
@@ -244,7 +244,6 @@ impl Daemon {
         tinc_arc: Arc<Mutex<Tinc>>,
         client_arc: Arc<Mutex<Client>>,
         info_arc: Arc<Mutex<Info>>,
-        settings: Settings,
     ) -> Self {
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
         let daemon_status = DaemonStatus::new();
@@ -252,7 +251,6 @@ impl Daemon {
             tinc_arc,
             client_arc,
             info_arc,
-            settings,
             daemon_event_tx,
             daemon_event_rx,
             daemon_status,
@@ -308,13 +306,11 @@ impl Daemon {
             }
             ScheduleType::TincCheck => {
                 let tinc_arc_clone = self.tinc_arc.clone();
-                let tinc_home = self.settings.tinc.home_path.clone();
                 if self.daemon_status.tinccheck_status != Status::Execute {
                     self.daemon_status.tinccheck_status = Status::Execute;
                     thread::spawn(move || exec_tinc_check(
                         tinc_arc_clone,
                         daemon_event_tx,
-                        tinc_home,
                     ));
                 }
             }
@@ -392,16 +388,16 @@ fn exec_heartbeat(
 fn exec_tinc_check(
     tinc_arc:                   Arc<Mutex<Tinc>>,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
-    tinc_home:                  String,
 ) {
     info!("check_tinc_status");
-    if check_tinc_status(&tinc_home) {
-        let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
-        return;
-    } else {
-        if let Ok(mut tinc) = tinc_arc.try_lock() {
+    if let Ok(mut tinc) = tinc_arc.try_lock() {
+        if tinc.check_tinc_status() {
+            let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
+            return;
+        }
+        else {
             tinc.restart_tinc();
-            if check_tinc_status(&tinc_home) {
+            if tinc.check_tinc_status() {
                 let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
                 return;
             } else {
@@ -422,17 +418,17 @@ fn exec_online_proxy(
     info!("exec_online_proxy");
     if let Ok(client) = client_arc.try_lock() {
         if let Ok(mut info) = info_arc.try_lock() {
-            if let Ok(mut tinc) = tinc_arc.try_lock() {
-                if client.proxy_get_online_proxy(&mut info) {
+            if client.proxy_get_online_proxy(&mut info) {
+                if let Ok(mut tinc) = tinc_arc.try_lock() {
                     if tinc.check_info(&mut info) {
                         let _ = daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Finish));
                         return;
                     } else {
                         error!("Tinc check_info failed.");
                     }
-                } else {
-                    error!("proxy_get_online_proxy failed.");
                 }
+            } else {
+                error!("proxy_get_online_proxy failed.");
             }
         }
     }

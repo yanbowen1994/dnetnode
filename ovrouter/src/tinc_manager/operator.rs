@@ -7,7 +7,6 @@ use std::os::unix::fs::PermissionsExt;
 use sys_tool::{cmd_err_panic};
 use file_tool::File;
 use net_tool::get_wan_name;
-use super::check::check_tinc_status;
 use domain::Info;
 use core::borrow::Borrow;
 use domain::AuthInfo;
@@ -30,11 +29,17 @@ impl Tinc {
     }
 
     pub fn start_tinc(&mut self) -> bool {
-        let argument: Vec<&str> = vec![];
+        let conf_tinc_home = "--config=".to_string() + &self.tinc_home;
+        let conf_pidfile = "--pidfile=".to_string() + &self.tinc_home + "/tinc.pid";
+        let argument: Vec<&str> = vec![
+            &conf_tinc_home,
+            &conf_pidfile,
+            "--no-detach",
+        ];
         let tinc_handle: duct::Expression = duct::cmd(
             OsString::from(self.tinc_home.to_string() + "/tincd"),
             argument).unchecked();
-        if let Ok(child) = tinc_handle.start() {
+        if let Ok(child) = tinc_handle.stderr_null().stdout_null().start() {
             self.tinc_handle = Some(child);
             return true;
         }
@@ -51,17 +56,28 @@ impl Tinc {
         return true;
     }
 
-    pub fn is_tinc_exist(&self) -> bool {
-        check_tinc_status(&self.tinc_home)
+    pub fn check_tinc_status(&mut self) -> bool {
+        if let Some(child) = &self.tinc_handle {
+            if let Ok(x) = child.try_wait() {
+                if let Some(out) = x {
+                    error!("tinc status {:?}", out);
+                    return false;
+                }
+            }
+        }
+        else {
+            return false;
+        }
+        return true;
     }
 
     pub fn restart_tinc(&mut self) {
-        if self.is_tinc_exist() {
+        if self.check_tinc_status() {
             self.stop_tinc();
         }
         for i in 0..10 {
             self.start_tinc();
-            if !self.is_tinc_exist() {
+            if !self.check_tinc_status() {
                 if i == 9 {
                     panic!("Error: Fail to restart tinc.");
                 }

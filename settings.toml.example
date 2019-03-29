@@ -3,7 +3,7 @@ home_path = "/root/tinc/"
 pub_key_path = "key/rsa_key.pub"
 
 [server]
-url = "https://10.0.0.5:8443"
+url = "https://conductor.dnetlab.com"
 geo_url = "http://52.25.79.82:10000/geoip_json.php"
 
 [client]

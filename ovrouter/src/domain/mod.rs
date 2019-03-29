@@ -16,6 +16,8 @@ pub use self::proxy::ProxyInfo;
 pub use self::proxy::OnlineProxy;
 mod tinc;
 pub use self::tinc::TincInfo;
+mod auth;
+pub use self::auth::AuthInfo;
 
 use std::io;
 

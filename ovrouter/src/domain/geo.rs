@@ -1,3 +1,6 @@
+use std::thread::sleep;
+use std::time::Duration;
+
 use super::serde_json::Value;
 use net_tool::url_get;
 use settings::Settings;
@@ -65,15 +68,13 @@ impl GeoInfo {
 }
 
 fn get_geo_json(geo_url: &str) -> Option<Value> {
-    let res = match url_get(geo_url) {
-        Ok(res) => res,
-        Err(_) => return None,
-    };
-    if res.code == 200 {
-        let json: Value = serde_json::from_str(&res.data).unwrap();
-        return Some(json);
-    }
-    else {
-        return None
+    loop {
+        if let Ok(res) = url_get(geo_url) {
+            if res.code == 200 {
+                let json: Value = serde_json::from_str(&res.data).unwrap();
+                return Some(json);
+            }
+        };
+        sleep(Duration::new(1, 0));
     }
 }

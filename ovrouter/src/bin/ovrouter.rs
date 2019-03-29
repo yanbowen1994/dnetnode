@@ -3,7 +3,7 @@ use std::time::{Instant, Duration};
 use std::thread;
 use std::error::Error;
 use std::sync::mpsc;
-use std::thread::sleep_ms;
+use std::thread::sleep;
 use std::path::PathBuf;
 //use core::borrow::Borrow;
 
@@ -53,10 +53,10 @@ fn main() {
 
     // 解析settings.toml文件
     let settings:Settings = Settings::load_config().expect("Error: can not parse settings.toml");
-    let setting_log_level = settings.client.log_level.clone();
+    let log_level = settings.client.log_level.clone();
 
     let mut setting_log_level = log::LevelFilter::Off;
-    match matches.value_of("debug") {
+    match log_level {
         Some(log_level) => {
             match log_level {
                 _ if log_level == "Error" => setting_log_level = log::LevelFilter::Error,
@@ -75,19 +75,19 @@ fn main() {
         log_level = arg_log_level;
     }
     else if arg_log_level != log_level {
-        log_level = arg_log_level;
+        log_level = setting_log_level;
     }
 
-    let mut log_dir: PathBuf = match settings.client.log_dir.clone() {
+    let mut _log_dir: PathBuf = match settings.client.log_dir.clone() {
         Some(dir) => PathBuf::from(dir),
         None => PathBuf::from(DEFAULT_LOG_DIR),
     };
 
-    if !std::path::Path::new(&log_dir).is_dir() {
-        std::fs::create_dir_all(&log_dir);
+    if !std::path::Path::new(&_log_dir).is_dir() {
+        std::fs::create_dir_all(&_log_dir);
     }
 
-    let log_file = log_dir.join(LOG_FILENAME);
+    let log_file = _log_dir.join(LOG_FILENAME);
 
     if let Err(e) = init_logger(
         log_level,
@@ -126,7 +126,16 @@ fn main() {
     debug!("{:?}",client);
     // Client Login
     {
-        if !client.proxy_login(&settings, &mut info) {
+        if client.proxy_login(&settings, &mut info) {
+            if !tinc.write_auth_file(
+                &settings.server.url,
+                &info,
+            ) {
+                error!("Write auth file failed");
+                std::process::exit(1);
+            }
+        }
+        else {
             error!("Proxy login failed");
             std::process::exit(1);
         };
@@ -344,18 +353,18 @@ fn schedule(
     let mut get_online_proxy_time = now.clone();
     loop {
         if now.duration_since(heartbeat_time) > heartbeat_frequency {
-            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::Heartbeat));
+            let _ = daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::Heartbeat));
             heartbeat_time = now.clone();
         }
         if now.duration_since(check_tinc_time) > check_tinc_frequency {
-            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::TincCheck));
+            let _ = daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::TincCheck));
             check_tinc_time = now.clone();
         }
         if now.duration_since(get_online_proxy_time) > get_online_proxy_frequency {
-            daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::OnlineProxy));
+            let _ = daemon_event_tx.send(DaemonEvent::Schedule(ScheduleType::OnlineProxy));
             get_online_proxy_time = now.clone();
         }
-        thread::sleep_ms(500);
+        sleep(Duration::from_millis(500));
         now = Instant::now();
     }
 }
@@ -371,13 +380,13 @@ fn exec_heartbeat(
             if !client.proxy_heart_beat(&info) {
                 error!("Heart beat send failed.")
             } else {
-                daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Finish));
+                let _ = daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Finish));
                 return;
             }
         }
     }
-    sleep_ms(500);
-    daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Error));
+    sleep(Duration::from_millis(500));
+    let _ = daemon_event_tx.send(DaemonEvent::Heartbeat(Status::Error));
 }
 
 fn exec_tinc_check(
@@ -387,21 +396,21 @@ fn exec_tinc_check(
 ) {
     info!("check_tinc_status");
     if check_tinc_status(&tinc_home) {
-        daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
+        let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
         return;
     } else {
         if let Ok(mut tinc) = tinc_arc.try_lock() {
             tinc.restart_tinc();
             if check_tinc_status(&tinc_home) {
-                daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
+                let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Finish));
                 return;
             } else {
                 error!("Restart tinc failed");
             }
         }
     }
-    sleep_ms(500);
-    daemon_event_tx.send(DaemonEvent::TincCheck(Status::Error));
+    sleep(Duration::from_millis(500));
+    let _ = daemon_event_tx.send(DaemonEvent::TincCheck(Status::Error));
 }
 
 fn exec_online_proxy(
@@ -416,7 +425,7 @@ fn exec_online_proxy(
             if let Ok(mut tinc) = tinc_arc.try_lock() {
                 if client.proxy_get_online_proxy(&mut info) {
                     if tinc.check_info(&mut info) {
-                        daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Finish));
+                        let _ = daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Finish));
                         return;
                     } else {
                         error!("Tinc check_info failed.");
@@ -427,6 +436,6 @@ fn exec_online_proxy(
             }
         }
     }
-    sleep_ms(500);
-    daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Error));
+    sleep(Duration::from_millis(500));
+    let _ = daemon_event_tx.send(DaemonEvent::OnlineProxy(Status::Error));
 }

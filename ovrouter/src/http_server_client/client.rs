@@ -21,7 +21,10 @@ impl Client {
         }
     }
 
-    pub fn proxy_login(&self, settings: &Settings, info: &mut Info) -> bool {
+    pub fn proxy_login(&self,
+                       settings:    &Settings,
+                       info:        &mut Info,
+    ) -> bool {
         let post = "/login";
         let url = self.url.to_string() + post;
         let data = http_json(User::new_from_settings(settings).to_json());
@@ -407,19 +410,19 @@ struct Login {
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
-struct LoginUser {
-    userid:                         String,
-    username:                       String,
-    useremail:                      String,
-    photo:                          Option<String>,
-    devices:                        Option<Vec<Device>>,
-    enable_autogroup:               bool,
-    enable_autoothergroup:          bool,
-    enable_autonetworking:          bool,
+pub struct LoginUser {
+    pub userid:                         String,
+    pub username:                       String,
+    pub useremail:                      String,
+    pub photo:                          Option<String>,
+    pub devices:                        Option<Vec<Device>>,
+    pub enable_autogroup:               bool,
+    pub enable_autoothergroup:          bool,
+    pub enable_autonetworking:          bool,
 }
 
 #[derive(Clone, Debug, RustcDecodable, RustcEncodable)]
-struct Device {
+pub struct Device {
     deviceid:    Option<String>,
     devicename:  Option<String>,
     devicetype:  Option<i32>,

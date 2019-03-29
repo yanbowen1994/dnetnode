@@ -1,11 +1,19 @@
-use std::thread::spawn;
-use std::ffi::{OsStr, OsString};
-use sys_tool::{cmd_err_panic, cmd};
+use std::path;
+use std::fs;
+use std::ffi::OsString;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
+use sys_tool::{cmd_err_panic};
 use file_tool::File;
 use net_tool::get_wan_name;
 use super::check::check_tinc_status;
 use domain::Info;
 use core::borrow::Borrow;
+use domain::AuthInfo;
+
+const TINC_AUTH_PATH: &str = "auth/";
+const TINC_AUTH_FILENAME: &str = "auth.txt";
 
 pub struct Tinc {
     tinc_home:          String,
@@ -22,9 +30,10 @@ impl Tinc {
     }
 
     pub fn start_tinc(&mut self) -> bool {
+        let argument: Vec<&str> = vec![];
         let tinc_handle: duct::Expression = duct::cmd(
             OsString::from(self.tinc_home.to_string() + "/tincd"),
-            vec![OsString::from("".to_string())]).unchecked();
+            argument).unchecked();
         if let Ok(child) = tinc_handle.start() {
             self.tinc_handle = Some(child);
             return true;
@@ -32,13 +41,14 @@ impl Tinc {
         return false;
     }
 
-    pub fn stop_tinc(&self) -> bool {
+    pub fn stop_tinc(&mut self) -> bool {
         if let Some(child) = &self.tinc_handle {
             if let Ok(_) = child.kill() {
-                return true;
+                ()
             }
         }
-        return false;
+        self.tinc_handle = None;
+        return true;
     }
 
     pub fn is_tinc_exist(&self) -> bool {
@@ -281,5 +291,51 @@ impl Tinc {
                 + &filename
         );
         file.file_exists()
+    }
+
+    pub fn write_auth_file(&self,
+                           server_url:  &str,
+                           info:        &Info,
+    ) -> bool {
+        let auth_dir = path::PathBuf::from(&(self.tinc_home.to_string() + TINC_AUTH_PATH));
+        if !path::Path::new(&auth_dir).is_dir() {
+            if let Err(_) = fs::create_dir_all(&auth_dir) {
+                return false;
+            }
+        }
+
+        let file_path_buf = auth_dir.join(TINC_AUTH_FILENAME);
+        let file_path = path::Path::new(&file_path_buf);
+
+        let permissions = PermissionsExt::from_mode(0o755);
+        if file_path.is_file() {
+            if let Ok(file) = fs::File::open(&file_path) {
+                if let Err(_) = file.set_permissions(permissions) {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            if let Ok(file) = fs::File::create(&file_path) {
+                if let Err(_) = file.set_permissions(permissions) {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+        if let Some(file_str) = file_path.to_str() {
+            let file = File::new(file_str.to_string());
+            let auth_info = AuthInfo::load(server_url, info);
+            file.write(auth_info.to_json_str());
+        }
+        else {
+            return false;
+        }
+        return true;
     }
 }

@@ -2,4 +2,5 @@
 members = [
     "ovrouter",
     "setup",
+    "tinc-plugin",
 ]

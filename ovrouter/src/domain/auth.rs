@@ -17,7 +17,7 @@ impl AuthInfo {
         let url = server_url.to_string() + BACKGROUND_STATUSNOTIFY;
         let Apikey = info.proxy_info.uid.clone();
         let proxyIp = info.proxy_info.proxy_ip.clone();
-        let cookie = info.proxy_info.cookie.clone();
+        let cookie = info.proxy_info.cookie.clone().replace("\r\n", "");
         let Authorization = "test".to_string();
         AuthInfo {
             url,

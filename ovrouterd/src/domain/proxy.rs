@@ -5,6 +5,14 @@ extern crate uuid;
 
 use net_tool::{get_local_ip};
 
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(err_derive::Error, Debug)]
+pub enum Error {
+    #[error(display = "Can not get local ip")]
+    LocalIp(#[error(cause)] ::std::io::Error),
+}
+
 #[allow(non_snake_case)]
 #[derive(Debug, Clone)]
 pub struct OnlineProxy {
@@ -58,20 +66,17 @@ impl ProxyInfo {
         }
     }
 
-    pub fn create_uid(&mut self) -> bool {
+    pub fn create_uid(&mut self) {
         self.uid = uuid::Uuid::new_v4().to_string();
-        true
     }
 
-    pub fn load_local(&mut self) -> bool {
+    pub fn load_local(&mut self) -> Result<()> {
         self.auth_type = "0".to_string();
         self.server_type = "vppn1".to_string();
         self.os = "ubuntu".to_string();
-        if let Ok(local_ip) = get_local_ip() {
-            self.proxy_ip = local_ip.to_string();
-        } else {
-            return false;
-        };
-        true
+        self.proxy_ip = get_local_ip()
+            .map_err(Error::LocalIp)?
+            .to_string();
+        Ok(())
     }
 }

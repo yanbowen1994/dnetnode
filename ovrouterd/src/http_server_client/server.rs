@@ -17,24 +17,23 @@ use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
 use self::bytes::BytesMut;
 use super::futures::{Future, Stream};
-use rustc_serialize::json::{encode, decode};
 
 use net_tool::get_local_ip;
 use domain::Info;
-use tinc_manager::Tinc;
+use tinc_manager::TincOperator;
 
 #[derive(Clone)]
 struct AppState {
     info: Arc<Mutex<Info>>,
-    tinc: Arc<Mutex<Tinc>>,
+    tinc: Arc<Mutex<TincOperator>>,
 }
-#[derive(Clone, Debug, Deserialize, Serialize, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 pub struct KeyReport {
     mac:            String,
     vip:            String,
-    pubKey:        String,
-    proxypubKey:  String,
+    pubKey:         String,
+    proxypubKey:    String,
 }
 impl KeyReport {
     pub fn new() -> Self {
@@ -55,11 +54,11 @@ impl KeyReport {
         }
     }
     fn to_json(&self) -> String {
-        return encode(self).unwrap();
+        return serde_json::to_string(self).unwrap();
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Response {
     code:   u32,
     data:   Option<String>,
@@ -91,7 +90,7 @@ impl Response {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Request {
     uid:    String,
 }
@@ -103,7 +102,7 @@ impl Request {
     }
 }
 
-#[derive(Debug,Serialize, Deserialize, RustcDecodable, RustcEncodable)]
+#[derive(Debug,Serialize, Deserialize)]
 struct VirtualIp{
     vip: String,
 }
@@ -145,11 +144,11 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
                     let mut response = Response::uid_failed();
                     if let Ok(apikey) = apikey.to_str() {
                         if apikey == info.proxy_info.uid {
-                            match decode(req_str.as_str()) {
+                            match serde_json::from_str(req_str.as_str()) {
                                 Ok(key_report) => {
                                     let key_report: KeyReport = key_report;
                                     debug!("http_report_key - key_report: {:?}",key_report);
-                                    let operator = Tinc::new("/root/tinc".to_string(),"hosts".to_string());
+                                    let operator = TincOperator::new("/root/tinc".to_string());
                                     let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
                                     operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
                                     response = Response::succeed(key_report.to_json())
@@ -238,7 +237,7 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
 
             debug!("get_key - response data : {:?}",req_str);
 
-            let virtualIp:Option<VirtualIp> = match decode(&req_str){
+            let virtualIp:Option<VirtualIp> = match serde_json::from_str(&req_str){
                 Ok(virtualip) => {
                     Some(virtualip)
                 },
@@ -251,16 +250,20 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
             let response:Response = match virtualIp{
                 Some(virtualip) =>{
                     debug!("get_key - response vip : {}",virtualip.vip);
-                    let operator = Tinc::new("/root/tinc".to_string(),"".to_string());
+                    let operator = TincOperator::new("/root/tinc".to_string());
                     let filename = operator.get_client_filename_by_virtual_ip(virtualip.vip.as_str());
-                    let pubkey = operator.get_host_pub_key(filename.as_str());
-                    debug!("get_key - response msg : {}",pubkey);
-                    let response = Response {
-                        code:   200,
-                        data: Some(pubkey),
-                        msg: None,
-                    };
-                    response
+                    if let Ok(pubkey) = operator.get_host_pub_key(filename.as_str()) {
+                        debug!("get_key - response msg : {}",pubkey);
+                        let response = Response {
+                            code:   200,
+                            data: Some(pubkey),
+                            msg: None,
+                        };
+                        response
+                    }
+                    else {
+                        Response::not_found()
+                    }
                 },
                 None=>{
                     Response::not_found()
@@ -272,7 +275,7 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
         .responder()
 }
 
-pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<Tinc>>) {
+pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>) {
     // init
     if ::std::env::var("RUST_LOG").is_err() {
         ::std::env::set_var("RUST_LOG", "actix_web=info");

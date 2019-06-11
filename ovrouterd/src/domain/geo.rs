@@ -2,8 +2,17 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use super::serde_json::Value;
-use net_tool::url_get;
 use settings::Settings;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(err_derive::Error, Debug)]
+pub enum Error {
+    #[error(display = "Can not parse json geo data")]
+    ParseJosn(#[error(cause)] ::serde_json::Error),
+    #[error(display = "Can not parse json geo data")]
+    Reqwest(#[error(cause)] ::reqwest::Error),
+}
 
 #[derive(Debug, Clone)]
 pub struct GeoInfo {
@@ -43,36 +52,33 @@ impl GeoInfo {
         }
     }
 
-    pub fn load_local(&mut self, settings: &Settings) -> bool {
+    pub fn load_local(&mut self, settings: &Settings) -> Result<()> {
         let geo_url = &settings.server.geo_url;
-        if let Some(json) = get_geo_json(geo_url) {
-            self.country_code = json["country_code"].to_string().replace("\"", "");
-            self.country_code3 = json["country_code3"].to_string().replace("\"", "");
-            self.country_name = json["country_name"].to_string().replace("\"", "");
-            self.city = json["city"].to_string().replace("\"", "");
-            self.region_code = json["region_code"].to_string().replace("\"", "");
-            self.region_name = json["region_name"].to_string().replace("\"", "");
-            self.postal_code = json["postal_code"].to_string().replace("\"", "");
-            self.latitude = json["latitude"].to_string().replace("\"", "");
-            self.longitude = json["longitude"].to_string().replace("\"", "");
-            self.ipaddr = json["ipaddr"].to_string().replace("\"", "");
-            self.dma_code = json["dma_code"].to_string().replace("\"", "");
-            self.area_code = json["area_code"].to_string().replace("\"", "");
-            return true;
-        }
-        else {
-            return false;
-        };
-
+        let json = get_geo_json(geo_url)?;
+        self.country_code = json["country_code"].to_string().replace("\"", "");
+        self.country_code3 = json["country_code3"].to_string().replace("\"", "");
+        self.country_name = json["country_name"].to_string().replace("\"", "");
+        self.city = json["city"].to_string().replace("\"", "");
+        self.region_code = json["region_code"].to_string().replace("\"", "");
+        self.region_name = json["region_name"].to_string().replace("\"", "");
+        self.postal_code = json["postal_code"].to_string().replace("\"", "");
+        self.latitude = json["latitude"].to_string().replace("\"", "");
+        self.longitude = json["longitude"].to_string().replace("\"", "");
+        self.ipaddr = json["ipaddr"].to_string().replace("\"", "");
+        self.dma_code = json["dma_code"].to_string().replace("\"", "");
+        self.area_code = json["area_code"].to_string().replace("\"", "");
+        Ok(())
     }
 }
 
-fn get_geo_json(geo_url: &str) -> Option<Value> {
+fn get_geo_json(geo_url: &str) -> Result<Value> {
     loop {
-        if let Ok(res) = url_get(geo_url) {
-            if res.code == 200 {
-                let json: Value = serde_json::from_str(&res.data).unwrap();
-                return Some(json);
+        if let Ok(mut res) = reqwest::get(geo_url) {
+            if res.status().as_u16() == 200 {
+                let json_res = serde_json::from_str(
+                    &res.text().map_err(Error::Reqwest)?
+                ).map_err(Error::ParseJosn)?;
+                return Ok(json_res);
             }
         };
         sleep(Duration::new(1, 0));

@@ -1,6 +1,12 @@
 extern crate config;
 use self::config::{ConfigError, Config, File};
 
+#[derive(err_derive::Error, Debug)]
+pub enum Error {
+    #[error(display = "Can not parse settings")]
+    ConfigError(ConfigError)
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tinc {
     pub home_path: String,
@@ -30,14 +36,14 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn load_config() -> Result<Self, ConfigError> {
+    pub fn load_config() -> Result<Self, Error> {
         let mut settings = Config::new();
 
         settings
             .merge(File::with_name("settings.toml"))
             .expect("Error: Can not parse settings.");
 
-        settings.try_into()
+        settings.try_into().map_err(Error::ConfigError)
 
     }
 }

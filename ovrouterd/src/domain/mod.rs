@@ -4,6 +4,7 @@
 //! TincInfo： 本机tinc运行参数
 //! new() 创建空的结构体
 //! load_local() 根据本地信息创建结构体，将会读取tinc公钥，ip，vip等
+use std::io;
 
 use serde_json;
 
@@ -19,7 +20,17 @@ pub use self::tinc::TincInfo;
 mod auth;
 pub use self::auth::AuthInfo;
 
-use std::io;
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(err_derive::Error, Debug)]
+pub enum Error {
+    #[error(display = "Load geo info error.")]
+    GeoInfo(#[error(cause)] geo::Error),
+    #[error(display = "Can not create log dir")]
+    ProxyInfo(#[error(cause)] proxy::Error),
+    #[error(display = "Can not create log dir")]
+    Tinc(#[error(cause)] tinc::Error),
+}
 
 #[derive(Debug, Clone)]
 pub struct Info {
@@ -39,24 +50,19 @@ impl Info {
         }
     }
 
-    pub fn new_from_local(settings: &Settings) -> io::Result<Self> {
+    pub fn new_from_local(settings: &Settings) -> Result<Self> {
         let mut geo_info = GeoInfo::new();
-        if !geo_info.load_local(settings) {
-            return Err(io::Error::new(io::ErrorKind::InvalidData,
-                                      "Load geo info error"));
-        };
+        let _ = geo_info.load_local(settings).map_err(Error::GeoInfo)?;
         let mut proxy_info = ProxyInfo::new();
-        if !proxy_info.load_local() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData,
-                                      "Load local proxy info error"));
-        }
+        let _ = proxy_info.load_local().map_err(Error::ProxyInfo)?;
         // 使用geo ip 作为proxy ip, 而非使用本机路由default出口ip.
         proxy_info.proxy_ip = geo_info.ipaddr.clone();
         let mut tinc_info = TincInfo::new();
-        if !tinc_info.load_local(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
-            return Err(io::Error::new(io::ErrorKind::InvalidData,
-                                      "Load local tinc info error"));
-        }
+        let _ = tinc_info.load_local(
+            &settings.tinc.home_path,
+            &settings.tinc.pub_key_path
+        )
+            .map_err(Error::Tinc)?;
 
         debug!("geo_info: {:?}",geo_info);
         debug!("proxy_info: {:?}",proxy_info);

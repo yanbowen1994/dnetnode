@@ -6,8 +6,12 @@ extern crate chrono;
 extern crate serde;
 extern crate serde_json;
 
-extern crate rustc_serialize;
 extern crate core;
+
+extern crate reqwest;
+extern crate openssl;
+
+extern crate curl;
 
 pub mod file_tool;
 pub mod net_tool;
@@ -17,3 +21,4 @@ pub mod domain;
 pub mod tinc_manager;
 pub mod settings;
 pub mod http_server_client;
+pub mod daemon;

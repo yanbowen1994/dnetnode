@@ -34,7 +34,7 @@ impl Data {
 // 返回类型： 数据结构体
 ///
 /// example:
-/// #[derive(Clone, Debug, RustcDecodable, RustcEncodable, GraphQLObject)]
+/// #[derive(Clone, Debug, GraphQLObject)]
 ///pub struct ScanNode {
 ///    pub node_info:          Node,
 ///    pub status:             String,

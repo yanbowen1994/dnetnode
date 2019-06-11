@@ -9,18 +9,15 @@ extern crate ovrouter;
 
 use ovrouter::settings::{self, Settings};
 use ovrouter::daemon::Daemon;
-use ovrouter::tinc_manager::TincOperator;
-use ovrouter::domain::Info;
-use ovrouter::http_server_client::Client;
-use ovrouter::http_server_client::web_server;
 use ovrouter::logging::init_logger;
-use ovrouter::sys_tool::datetime;
 
 use std::convert::From;
 
 const LOG_FILENAME: &str = "ovrouter.log";
 #[cfg(unix)]
 const DEFAULT_LOG_DIR: &str = "/var/log/ovr/";
+
+pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
 pub const COMMIT_DATE: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-date.txt"));
 
@@ -49,10 +46,9 @@ fn main() {
 }
 
 fn init() -> Result<()>{
-//    let date = &datetime()[..];
     // 命令行提示
     let matches =  App::new("ovrouter")
-        .version( COMMIT_DATE)
+        .version(&format!("\nCommit data:{}\nCommit id:{}", COMMIT_DATE, COMMIT_ID).to_string()[..])
         .arg(Arg::with_name("debug")
             .short("d")
             .long("debug")

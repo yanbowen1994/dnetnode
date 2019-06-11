@@ -34,5 +34,3 @@ futures = "0.1.25"
 
 uuid = "0.7.1"
 openssl = "0.10"
-
-curl= ""

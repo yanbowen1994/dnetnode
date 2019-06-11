@@ -116,7 +116,6 @@ impl Client {
             return Err(Error::LoginFailed(
                 format!("Code:{} Msg:{}", res.status().as_u16(), err_msg).to_string()));
         }
-        return Err(Error::LoginFailed("Unknown reason.".to_string()));
     }
 
     pub fn proxy_register(&self,

@@ -126,11 +126,6 @@ pub fn cmd_err_panic(command:String) -> String {
     return output;
 }
 
-pub fn datetime() -> String {
-    let dt = Local::now();
-    dt.format("%Y-%m-%d %H:%M:%S").to_string()
-}
-
 #[cfg(target_os = "linux")]
 pub fn current_platform() -> (String, String) {
     let platform = os_type::current_platform();

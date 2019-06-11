@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use settings::Settings;
 use tinc_manager::check::*;
@@ -8,8 +8,6 @@ use tinc_manager::TincOperator;
 use domain::Info;
 use http_server_client::Client;
 use http_server_client::web_server;
-use logging::init_logger;
-use sys_tool::datetime;
 
 mod rpc_monitor;
 mod tinc_monitor;
@@ -84,7 +82,9 @@ impl Daemon {
             info_arc.clone(),
             daemon_event_tx.clone(),
         );
-        tinc_monitor::TincMonitor::new(tinc);
+        tinc_monitor::TincMonitor::new(tinc)
+            .map_err(Error::TincOperator)?
+            .spawn();
 
         Ok(Daemon {
             settings,
@@ -96,7 +96,6 @@ impl Daemon {
     }
 
     pub fn run(&mut self) {
-        let daemon_event_tx_clone = self.daemon_event_tx.clone();
         while let Ok(event) = self.daemon_event_rx.recv() {
             self.handle_event(event);
         }
@@ -160,14 +159,15 @@ impl Daemon {
 
     fn init_tinc(settings: &Settings) -> Result<TincOperator> {
         // 初始化tinc操作
-        let mut tinc = TincOperator::new(
+        let tinc = TincOperator::new(
             settings.tinc.home_path.clone()
         );
 
         // 监测tinc pub key 不存在或生成时间超过一个月，将生成tinc pub key
         info!("check_pub_key");
         if !check_pub_key(&settings.tinc.home_path, &settings.tinc.pub_key_path) {
-            tinc.create_pub_key();
+            tinc.create_pub_key()
+                .map_err(Error::TincOperator)?;
         }
         Ok(tinc)
     }

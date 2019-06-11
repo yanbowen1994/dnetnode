@@ -10,7 +10,7 @@ pub enum EventType {
 }
 
 fn handle_client(stream: &mut TcpStream) -> Result<EventType> {
-    let mut res = &mut[0; 128];
+    let res = &mut[0; 128];
     stream.read(res)?;
     let event_str = String::from_utf8_lossy(res).to_string().replace("\u{0}", "");
     let event_vec: Vec<&str> = event_str.split_whitespace().collect();

@@ -1,13 +1,10 @@
-use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::http_server_client::Client;
-use crate::domain::Info;
-use crate::daemon::DaemonEvent;
 use crate::tinc_manager::TincOperator;
-use std::sync::mpsc::Receiver;
 
-const TINC_FREQUENCY: u32 = 3;
+const TINC_FREQUENCY: u32 = 5;
+
+pub type Result<T> = std::result::Result<T, ::tinc_manager::operator::Error>;
 
 pub struct TincMonitor {
     tinc: TincOperator,
@@ -17,11 +14,11 @@ pub struct TincMonitor {
 impl TincMonitor {
     pub fn new(
         mut tinc:                  TincOperator,
-    ) -> Self {
-        tinc.start_tinc();
-        TincMonitor {
+    ) -> Result<Self> {
+        tinc.start_tinc()?;
+        Ok(TincMonitor {
             tinc,
-        }
+        })
     }
 
     pub fn spawn(self) {
@@ -29,26 +26,27 @@ impl TincMonitor {
     }
 
     fn run(mut self) {
-        let timeout_secs: u32 = TINC_FREQUENCY;
         loop {
             let start = Instant::now();
             self.exec_tinc_check();
             if let Some(remaining) =
-            Duration::from_secs(timeout_secs.into()).checked_sub(start.elapsed()) {
+            Duration::from_secs(TINC_FREQUENCY.into()).checked_sub(start.elapsed()) {
                 thread::sleep(remaining);
             }
         }
     }
 
     fn exec_tinc_check(&mut self) {
-        trace!("check_tinc_status");
         if let Ok(_) = self.tinc.check_tinc_status() {
+            info!("check tinc process: tinc exist.");
             return;
         }
         else {
+            info!("check tinc process: tinc not exist.");
             let mut i = 1;
             loop {
                 if let Ok(_) = self.tinc.restart_tinc() {
+                    info!("check tinc process: tinc restart finish.");
                     return;
                 }
                 else {

@@ -150,7 +150,7 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
                                     debug!("http_report_key - key_report: {:?}",key_report);
                                     let operator = TincOperator::new("/root/tinc".to_string());
                                     let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
-                                    operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
+                                    let _ = operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
                                     response = Response::succeed(key_report.to_json())
                                 },
                                 Err(_) => error!("http_report_key - response KeyReport {}", req_str.as_str()),

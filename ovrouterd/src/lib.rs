@@ -11,7 +11,7 @@ extern crate core;
 extern crate reqwest;
 extern crate openssl;
 
-extern crate curl;
+extern crate actix_web;
 
 pub mod file_tool;
 pub mod net_tool;

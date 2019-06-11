@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use crate::http_server_client::Client;
 use crate::domain::Info;
 use crate::daemon::DaemonEvent;
-use crate::tinc_manager::TincOperator;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -52,12 +51,12 @@ impl RpcMonitor {
         loop {
             let start = Instant::now();
             if let Err(_) = self.exec_heartbeat() {
-                self.daemon_event_tx.send(DaemonEvent::RpcFailed);
+                let _ = self.daemon_event_tx.send(DaemonEvent::RpcFailed);
                 return;
             }
 
             if let Err(_) = self.exec_online_proxy() {
-                self.daemon_event_tx.send(DaemonEvent::RpcFailed);
+                let _ = self.daemon_event_tx.send(DaemonEvent::RpcFailed);
                 return;
             }
 

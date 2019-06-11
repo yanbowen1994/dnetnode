@@ -132,7 +132,7 @@ pub fn get_mac() -> Option<String> {
 /// https post请求
 pub fn url_post(url: &str, data: &str, cookie: &str)
     -> Result<reqwest::Response> {
-    let mut res = reqwest::ClientBuilder::new()
+    let res = reqwest::ClientBuilder::new()
         .timeout(Duration::from_secs(5))
 //        .danger_accept_invalid_certs(true)
         .http1_title_case_headers()

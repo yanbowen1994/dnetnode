@@ -5,14 +5,12 @@ use std::fs;
 use std::io::{self, Write, Read};
 use std::ffi::OsString;
 #[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
 use std::net::IpAddr;
 use std::str::FromStr;
 
 use openssl::rsa::Rsa;
 
 use domain::{Info, AuthInfo, TincInfo};
-use net_tool;
 
 /// Results from fallible operations on the Tinc tunnel.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -47,6 +45,8 @@ const HOST_DOWN_FILENAME: &str = "host-down";
 #[cfg(windows)]
 const HOST_DOWN_FILENAME: &str = "host-down.bat";
 
+const PID_FILENAME: &str = "tinc.pid";
+
 /// Errors that can happen when using the Tinc tunnel.
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
@@ -54,9 +54,16 @@ pub enum Error {
     #[error(display = "duct can not start tinc")]
     StartTincError,
 
+    #[error(display = "duct can not start tinc")]
+    AnotherTincRunning,
+
     /// Unable to stop
     #[error(display = "duct can not stop tinc")]
     StopTincError,
+
+    /// tinc process not exist
+    #[error(display = "tinc pidfile not exist")]
+    PidfileNotExist,
 
     /// tinc process not exist
     #[error(display = "tinc process not exist")]
@@ -112,6 +119,10 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
+        if let Ok(_) = self.check_pidfile_exist() {
+            return Err(Error::AnotherTincRunning);
+        }
+
         let conf_tinc_home = "--config=".to_string() + &self.tinc_home;
         let conf_pidfile = "--pidfile=".to_string() + &self.tinc_home + "/tinc.pid";
         let argument: Vec<&str> = vec![
@@ -119,15 +130,17 @@ impl TincOperator {
             &conf_pidfile,
             "--no-detach",
         ];
-        let tinc_handle: duct::Expression = duct::cmd(
+        let duct_handle: duct::Expression = duct::cmd(
             OsString::from(self.tinc_home.to_string() + "/" + TINC_BIN_FILENAME),
             argument).unchecked();
-        self.tinc_handle = Some(tinc_handle.stderr_null().stdout_null().start()
+        self.tinc_handle = Some(duct_handle.stderr_null().stdout_null().start()
             .map_err(|e| {
                 log::error!("StartTincError {:?}", e.to_string());
                 Error::StartTincError
             })?
         );
+//        self.check_tinc_status()
+//            .map_err(|_|Error::StartTincError)?;
         Ok(())
     }
 
@@ -151,11 +164,19 @@ impl TincOperator {
         Err(Error::TincNotExist)
     }
 
+    pub fn check_pidfile_exist(&self) -> Result<()> {
+        match fs::File::open(&((&self.tinc_home).to_string() + PID_FILENAME)) {
+            Ok(_) => return Ok(()),
+            Err(_) => return Err(Error::PidfileNotExist),
+        }
+    }
+
     pub fn restart_tinc(&mut self) -> Result<()> {
         if let Ok(_) = self.check_tinc_status() {
             self.stop_tinc()?;
         }
-        self.start_tinc()
+        self.start_tinc()?;
+        self.check_pidfile_exist()
     }
 
     /// 根据IP地址获取文件名

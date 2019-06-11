@@ -4,8 +4,6 @@
 //! TincInfo： 本机tinc运行参数
 //! new() 创建空的结构体
 //! load_local() 根据本地信息创建结构体，将会读取tinc公钥，ip，vip等
-use std::io;
-
 use serde_json;
 
 use settings::Settings;

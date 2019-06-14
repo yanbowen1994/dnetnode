@@ -47,6 +47,9 @@ pub enum Error {
 
     #[error(display = "reqwest::Error.")]
     Reqwest(#[error(cause)] reqwest::Error),
+
+    #[error(display = "operator::Error.")]
+    TincOperator(#[error(cause)] ::tinc_manager::operator::Error),
 }
 
 #[derive(Debug)]
@@ -104,7 +107,10 @@ impl Client {
             let res_data = res.text().map_err(Error::Reqwest)?;
             debug!("proxy_login - response data: {:?}", res_data);
             let _login: Login = serde_json::from_str(&res_data)
-                .map_err(Error::LoginParseJsonStr)?;
+                .map_err(|e|{
+                    error!("proxy_login - response data: {:?}", res_data);
+                    Error::LoginParseJsonStr(e)
+                })?;
 
             return Ok(());
         }
@@ -120,7 +126,7 @@ impl Client {
 
     pub fn proxy_register(&self,
                           info: &mut Info)
-                          -> Result<()>  {
+                          -> Result<()> {
         let post = "/vppn/api/v2/proxy/register";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
@@ -144,9 +150,12 @@ impl Client {
         debug!("proxy_register - response code: {}", res.status().as_u16());
 
         if res.status().as_u16() == 200 {
-            let recv: RegisterRecv = serde_json::from_str(
-                &res.text().map_err(Error::Reqwest)?
-            ).map_err(Error::RegisterParseJsonStr)?;
+            let res_data = &res.text().map_err(Error::Reqwest)?;
+            let recv: RegisterRecv = serde_json::from_str(res_data)
+                .map_err(|e|{
+                error!("proxy_register - response data: {}", res_data);
+                Error::RegisterParseJsonStr(e)
+            })?;
 
             debug!("proxy_register - response data: {:?}", recv);
 
@@ -171,7 +180,7 @@ impl Client {
         Err(Error::RegisterFailed("Unknown reason.".to_string()))
     }
 
-    pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
+    pub fn proxy_get_online_proxy(&self, info: &mut Info, tinc_home: &str) -> Result<()> {
         let post = "/vppn/api/v2/proxy/getonlineproxy";
         let url = self.url.to_string() + post;
         let data = Register::new_from_info(info).to_json();
@@ -198,21 +207,27 @@ impl Client {
         debug!("proxy_get_online_proxy - response code: {}", res.status().as_u16());
 
         if res.status().as_u16() == 200 {
-            let recv: GetOnlinePorxyRecv = serde_json::from_str(
-                &res.text().map_err(Error::Reqwest)?
-            ).map_err(Error::GetOnlineProxyParseJsonStr)?;
+            let res_data = &res.text().map_err(Error::Reqwest)?;
+            let recv: GetOnlinePorxyRecv = serde_json::from_str(res_data)
+                .map_err(|e|{
+                    error!("proxy_get_online_proxy - response data: {}", res_data);
+                    Error::GetOnlineProxyParseJsonStr(e)
+            })?;
 
             if recv.code == 200 {
                 let proxy_vec: Vec<Proxy> = recv.data;
                 let local_pub_key = info.tinc_info.pub_key.clone();
                 let mut other_proxy = vec![];
+
+                let tinc = ::tinc_manager::TincOperator::new(tinc_home.to_string());
+
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
                             info.tinc_info.vip = vip;
                         }
                         else {
-                            error!("proxy_get_online_proxy - get online proxy data invalid");
+                            error!("proxy_get_online_proxy - response data: {}", res_data);
                             return Err(Error::GetOnlineProxyInvalidData);
                         }
                     }
@@ -220,11 +235,16 @@ impl Client {
                         if let Ok(other_ip) = IpAddr::from_str(&proxy.ip) {
                             if let Ok(other_vip) = IpAddr::from_str(&proxy.vip) {
                                 let other = OnlineProxy::from(other_ip, other_vip, proxy.pubkey);
+                                tinc.add_hosts(
+                                    &("proxy_".to_string()
+                                        + &tinc.get_filename_by_ip(&(&other.ip.clone()).to_string())),
+                                    &other.pubkey)
+                                    .map_err(Error::TincOperator)?;
                                 other_proxy.push(other);
                                 continue
                             }
                         }
-                        error!("proxy_get_online_proxy - get online proxy data invalid");
+                        error!("proxy_get_online_proxy - One proxy data invalid");
                     }
                 }
                 info.proxy_info.online_porxy = other_proxy;
@@ -264,7 +284,7 @@ impl Client {
                     Err(e) => {
                         error!("proxy_heart_beat - response {:?}", e);
 
-                        if Instant::now() - start > Duration::from_secs(10) {
+                        if Instant::now() - start > Duration::from_secs(15) {
                             return None;
                         };
                         continue;
@@ -281,10 +301,10 @@ impl Client {
         debug!("proxy_heart_beat - response code: {}",res.status().as_u16());
 
         if res.status().as_u16() == 200 {
-            let data = res.text().map_err(Error::Reqwest)?;
-            debug!("proxy_heart_beat - response data: {:?}", data);
+            let res_data = &res.text().map_err(Error::Reqwest)?;;
+            debug!("proxy_heart_beat - response data: {:?}", res_data);
 
-            let recv: Recv = serde_json::from_str(&data)
+            let recv: Recv = serde_json::from_str(&res_data)
                 .map_err(Error::HeartbeatJsonStr)?;
 
             if recv.code == 200 {

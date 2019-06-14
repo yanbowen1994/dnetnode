@@ -119,10 +119,6 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
-        if let Ok(_) = self.check_pidfile_exist() {
-            return Err(Error::AnotherTincRunning);
-        }
-
         let conf_tinc_home = "--config=".to_string() + &self.tinc_home;
         let conf_pidfile = "--pidfile=".to_string() + &self.tinc_home + "/tinc.pid";
         let argument: Vec<&str> = vec![
@@ -164,19 +160,11 @@ impl TincOperator {
         Err(Error::TincNotExist)
     }
 
-    pub fn check_pidfile_exist(&self) -> Result<()> {
-        match fs::File::open(&((&self.tinc_home).to_string() + PID_FILENAME)) {
-            Ok(_) => return Ok(()),
-            Err(_) => return Err(Error::PidfileNotExist),
-        }
-    }
-
     pub fn restart_tinc(&mut self) -> Result<()> {
         if let Ok(_) = self.check_tinc_status() {
             self.stop_tinc()?;
         }
-        self.start_tinc()?;
-        self.check_pidfile_exist()
+        self.start_tinc()
     }
 
     /// 根据IP地址获取文件名

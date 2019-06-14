@@ -80,6 +80,7 @@ impl Daemon {
         rpc_monitor::spawn(
             client_arc.clone(),
             info_arc.clone(),
+            settings.tinc.home_path.clone(),
             daemon_event_tx.clone(),
         );
         tinc_monitor::TincMonitor::new(tinc)
@@ -126,6 +127,12 @@ impl Daemon {
     fn handle_rpc_restart(&mut self,
                           client_arc: Arc<Mutex<Client>>,
     ) {
+        rpc_monitor::spawn(
+            client_arc.clone(),
+            self.info_arc.clone(),
+            self.settings.tinc.home_path.clone(),
+            self.daemon_event_tx.clone(),
+        );
         self.client_arc = client_arc;
     }
 
@@ -202,7 +209,7 @@ impl Daemon {
 
         // 初次获取其他proxy信息
         info!("proxy_get_online_proxy");
-        client.proxy_get_online_proxy(info).map_err(Error::ConductorConnect)?;
+        client.proxy_get_online_proxy(info, &settings.tinc.home_path).map_err(Error::ConductorConnect)?;
         return Ok(client);
     }
 }

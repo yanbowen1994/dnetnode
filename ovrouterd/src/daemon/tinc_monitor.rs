@@ -38,23 +38,34 @@ impl TincMonitor {
 
     fn exec_tinc_check(&mut self) {
         if let Ok(_) = self.tinc.check_tinc_status() {
-            info!("check tinc process: tinc exist.");
+            trace!("check tinc process: tinc exist.");
             return;
         }
-        else {
-            info!("check tinc process: tinc not exist.");
-            let mut i = 1;
-            loop {
-                if let Ok(_) = self.tinc.restart_tinc() {
+        error!("check tinc process: tinc not exist.");
+        let mut i = 1;
+        loop {
+            match self.tinc.restart_tinc() {
+                Ok(_) => {
                     info!("check tinc process: tinc restart finish.");
                     return;
-                }
-                else {
-                    error!("Restart tinc failed, try again after {} secs.", i * 5);
+                },
+                Err(e) => {
+                    error!("Restart tinc failed.\n{:?}\n try again after {} secs.", e, i * 5);
                     thread::sleep(Duration::from_secs(i * 5));
                     if i < 12 {
                         i += 1;
                     }
+                }
+            }
+            if let Ok(_) = self.tinc.restart_tinc() {
+                info!("check tinc process: tinc restart finish.");
+                return;
+            }
+            else {
+                error!("Restart tinc failed, try again after {} secs.", i * 5);
+                thread::sleep(Duration::from_secs(i * 5));
+                if i < 12 {
+                    i += 1;
                 }
             }
         }

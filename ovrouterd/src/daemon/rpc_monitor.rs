@@ -18,26 +18,30 @@ pub enum Error {
 pub struct RpcMonitor {
     client_arc:                 Arc<Mutex<Client>>,
     info_arc:                   Arc<Mutex<Info>>,
+    tinc_home:                  String,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 }
 
 pub fn spawn(
     client_arc:                 Arc<Mutex<Client>>,
     info_arc:                   Arc<Mutex<Info>>,
+    tinc_home:                  String,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 ) {
-    RpcMonitor::new(client_arc, info_arc, daemon_event_tx).spawn();
+    RpcMonitor::new(client_arc, info_arc, tinc_home, daemon_event_tx).spawn();
 }
 
 impl RpcMonitor {
     pub fn new(
         client_arc:                 Arc<Mutex<Client>>,
         info_arc:                   Arc<Mutex<Info>>,
+        tinc_home:                  String,
         daemon_event_tx:            mpsc::Sender<DaemonEvent>,
     ) -> Self {
         RpcMonitor {
             client_arc,
             info_arc,
+            tinc_home,
             daemon_event_tx,
         }
     }
@@ -96,7 +100,7 @@ impl RpcMonitor {
         loop {
             if let Ok(client) = self.client_arc.try_lock() {
                 if let Ok(mut info) = self.info_arc.try_lock() {
-                    if let Ok(_) = client.proxy_get_online_proxy(&mut info) {
+                    if let Ok(_) = client.proxy_get_online_proxy(&mut info, &self.tinc_home) {
                         return Ok(());
                     } else {
                         error!("proxy_get_online_proxy failed.");

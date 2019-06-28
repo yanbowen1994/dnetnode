@@ -337,44 +337,44 @@ impl TincOperator {
 
     /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
     /// 如果自己的vip修改,重启tinc
-//    pub fn check_info(&mut self, info: &Info) -> Result<()> {
-//        let mut need_restart = false;
-//        {
-//            let file_vip = self.get_vip()?;
-//            if file_vip != info.tinc_info.vip.to_string() {
-//                log::debug!("tinc operator check_info local {}, remote {}",
-//                       file_vip,
-//                       info.tinc_info.vip.to_string());
-//
-//                self.change_vip(info.tinc_info.vip.to_string())?;
-//
-//                self.set_hosts(true,
-//                                   &info.proxy_info.proxy_ip.to_string(),
-//                                   &info.tinc_info.pub_key)?;
-//
-//                need_restart = true;
-//            }
-//        }
-//        {
-//            for online_proxy in info.proxy_info.online_porxy.clone() {
-//                self.set_hosts(true,
-//                                   &online_proxy.ip.to_string(),
-//                                   &online_proxy.pubkey)?;
-//            }
-//        }
-//
-//        self.check_self_hosts_file(&self.tinc_home, &info)?;
-//        self.set_hosts(
-//            true,
-//            &info.proxy_info.proxy_ip,
-//            &info.tinc_info.pub_key)?;
-//
-//        if need_restart {
-//            self.set_tinc_conf_file(&info)?;
-//            self.restart_tinc()?;
-//        }
-//        return Ok(());
-//    }
+    pub fn check_info(&mut self, info: &Info) -> Result<()> {
+        let mut need_restart = false;
+        {
+            let file_vip = self.get_vip()?;
+            if file_vip != info.tinc_info.vip.to_string() {
+                log::debug!("tinc operator check_info local {}, remote {}",
+                       file_vip,
+                       info.tinc_info.vip.to_string());
+
+                self.change_vip(info.tinc_info.vip.to_string())?;
+
+                self.set_hosts(true,
+                                   &info.proxy_info.proxy_ip.to_string(),
+                                   &info.tinc_info.pub_key)?;
+
+                need_restart = true;
+            }
+        }
+        {
+            for online_proxy in info.proxy_info.online_porxy.clone() {
+                self.set_hosts(true,
+                                   &online_proxy.ip.to_string(),
+                                   &online_proxy.pubkey)?;
+            }
+        }
+
+        self.check_self_hosts_file(&self.tinc_home, &info)?;
+        self.set_hosts(
+            true,
+            &info.proxy_info.proxy_ip,
+            &info.tinc_info.pub_key)?;
+
+        if need_restart {
+            self.set_tinc_conf_file(&info)?;
+            self.stop_tinc()?;
+        }
+        return Ok(());
+    }
 
     /// 添加hosts文件
     /// if is_proxy{ 文件名=proxy_10_253_x_x }

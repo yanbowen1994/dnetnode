@@ -219,7 +219,7 @@ impl Client {
                 let local_pub_key = info.tinc_info.pub_key.clone();
                 let mut other_proxy = vec![];
 
-                let tinc = ::tinc_manager::TincOperator::new(tinc_home.to_string());
+                let mut tinc = ::tinc_manager::TincOperator::new(tinc_home.to_string());
 
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
@@ -238,7 +238,12 @@ impl Client {
                                 tinc.add_hosts(
                                     &("proxy_".to_string()
                                         + &tinc.get_filename_by_ip(&(&other.ip.clone()).to_string())),
-                                    &other.pubkey)
+                                    &("Address=".to_string() +
+                                        &(&other.ip.clone()).to_string() +
+                                        "\n" +
+                                        &other.pubkey +
+                                        "Port=50069")
+                                )
                                     .map_err(Error::TincOperator)?;
                                 other_proxy.push(other);
                                 continue
@@ -248,6 +253,7 @@ impl Client {
                     }
                 }
                 info.proxy_info.online_porxy = other_proxy;
+                tinc.check_info(info);
                 return Ok(());
             }
             else {

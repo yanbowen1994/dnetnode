@@ -73,10 +73,12 @@ impl Daemon {
 
         // 启动web_server,线程
         let tinc_home_path = settings.tinc.home_path.clone();
+        let server_port = settings.client.server_port.clone();
         thread::spawn(move ||
             web_server(info_arc_clone,
                        Arc::new(Mutex::new(
-                           TincOperator::new(tinc_home_path)))));
+                           TincOperator::new(tinc_home_path))),
+                       &server_port));
         rpc_monitor::spawn(
             client_arc.clone(),
             info_arc.clone(),

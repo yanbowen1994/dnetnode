@@ -275,7 +275,7 @@ fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error 
         .responder()
 }
 
-pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>) {
+pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>, server_port: &str) {
     // init
     if ::std::env::var("RUST_LOG").is_err() {
         ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -307,7 +307,7 @@ pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>
             .resource("/vppn/tinc/api/v2/proxy/getpublickey", |r| {
                 r.method(http::Method::GET).with(get_key)
             })
-    }).bind_ssl(get_local_ip().unwrap().to_string() + ":10087", builder)
+    }).bind_ssl(get_local_ip().unwrap().to_string() + ":" + server_port, builder)
         .unwrap()
         .start();
 //    let _ = sys.run();

@@ -1,10 +1,16 @@
-extern crate chrono;
-#[macro_use]
+//#[cfg(feature = "serde")]
+//#[cfg_attr(feature = "serde", macro_use)]
 extern crate serde;
 
 #[macro_use]
-extern crate log;
+extern crate serde_derive;
 
+extern crate derive_try_from_primitive;
+
+mod operator;
+pub use operator::{TincOperator, Error as TincOperatorError};
+mod info;
+pub use info::{TincInfo, TincRunMode, ConnectTo};
 pub mod tinc_tcp_stream;
 pub mod control;
 pub mod listener;

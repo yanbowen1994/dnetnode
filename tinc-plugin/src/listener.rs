@@ -1,7 +1,12 @@
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream, Shutdown};
 use std::io::{Error, ErrorKind, Result, Read};
+use std::sync::mpsc;
+use std::thread;
 
-#[derive(Debug)]
+//use serde::{de::DeserializeOwned, Serialize};
+//#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[repr(i32)]
 pub enum EventType {
     Up,
     Down,
@@ -34,14 +39,25 @@ fn handle_client(stream: &mut TcpStream) -> Result<EventType> {
     return Ok(out);
 }
 
-pub fn spawn() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 50070));
+fn listen(addr: SocketAddr, tinc_event_tx: mpsc::Sender<EventType>) {
     let listener = TcpListener::bind(&addr).expect("");
     for res_stream in listener.incoming() {
         if let Ok(mut stream) = res_stream {
             if let Ok(event) = handle_client(&mut stream) {
-                println!("{:?}", event);
+                log::info!("Tinc event {:?}", event);
+                let _ = tinc_event_tx.send(event.clone());
+                if event == EventType::Down {
+                    let _ = stream.shutdown(Shutdown::Both);
+                    break;
+                }
             }
         }
     }
+}
+
+pub fn spawn() -> mpsc::Receiver<EventType> {
+    let (tinc_event_tx, tinc_event_rx) = mpsc::channel();
+    let addr = SocketAddr::from(([127, 0, 0, 1], 50070));
+    thread::spawn(move ||listen(addr, tinc_event_tx));
+    tinc_event_rx
 }

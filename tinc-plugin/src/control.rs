@@ -34,11 +34,10 @@ pub fn dump_subnets(pid_path: &str) -> Result<()> {
 }
 
 
-pub fn dump_connections(pid_path: &str) -> Result<()> {
+pub fn dump_connections(pid_path: &str) -> Result<String> {
     let mut tinc_stream = TincStream::new(pid_path)?;
-    let _res = tinc_stream.dump_connections()?;
-    Ok(())
-
+    let res = tinc_stream.dump_connections()?;
+    Ok(res)
 }
 
 pub fn dump_graph(pid_path: &str) -> Result<()> {

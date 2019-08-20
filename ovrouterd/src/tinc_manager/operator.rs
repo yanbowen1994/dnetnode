@@ -409,13 +409,6 @@ impl TincOperator {
 
     /// 修改tinc虚拟ip
     fn change_vip(&self, vip: String) -> Result<()> {
-        let wan_name = match get_wan_name() {
-            Ok(x) => x,
-            Err(_) => {
-                log::warn!("change_vip get dev wan failed, use defualt.");
-                "eth0".to_string()
-            }
-        };
         {
             let buf = "#! /bin/sh\n\
             dev=tun0\n\
@@ -506,6 +499,7 @@ impl TincOperator {
                     tinc_info.vip = vip;
                     return Ok(tinc_info);
                 }
+
             }
         }
         return Err(io::Error::new(io::ErrorKind::InvalidData, "tinc config file error"));

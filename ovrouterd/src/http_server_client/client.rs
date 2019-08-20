@@ -7,6 +7,7 @@ use domain::Info;
 use domain::OnlineProxy;
 use settings::Settings;
 use std::time::{Instant, Duration};
+use std::thread::sleep;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -75,11 +76,16 @@ impl Client {
         debug!("proxy_login - request data:{}",data);
 
         let post = || {
+            let mut wait_sec = 0;
             loop {
                 let _res = match url_post(&url, &data, "") {
                     Ok(x) => return x,
                     Err(e) => {
                         error!("proxy_login - response {}", e);
+                        sleep(std::time::Duration::from_secs(wait_sec));
+                        if wait_sec < 10 {
+                            wait_sec += 1;
+                        }
                         continue;
                     }
                 };
@@ -253,7 +259,8 @@ impl Client {
                     }
                 }
                 info.proxy_info.online_porxy = other_proxy;
-                tinc.check_info(info)?;
+                tinc.check_info(info)
+                    .map_err(Error::TincOperator)?;
                 return Ok(());
             }
             else {

@@ -50,10 +50,10 @@ fn init() -> Result<()>{
     let matches =  App::new("ovrouter")
         .version(&format!("\nCommit data:{}\nCommit id:{}", COMMIT_DATE, COMMIT_ID).to_string()[..])
         .arg(Arg::with_name("debug")
-            .short("d")
-            .long("debug")
-            .value_name("log_level")
-            .takes_value(true))
+        .short("d")
+        .long("debug")
+        .value_name("log_level")
+        .takes_value(true))
         .get_matches();
 
     let mut arg_log_level = log::LevelFilter::Off;

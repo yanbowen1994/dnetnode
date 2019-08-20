@@ -114,7 +114,7 @@ const MAX_SIZE: usize = 262_144; // max payload size is 256k
 ///     req.payload() return  tokio 异步操作
 ///         add_then()中，为body解析方法，可以为闭包或函数
 ///             HttpResponse::Ok().json(response) 以json格式返回struct Response
-fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
     let info = info_arc.lock().unwrap().clone();
 
@@ -178,7 +178,7 @@ fn report_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Err
         .responder()
 }
 
-fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
     let info = info_arc.lock().unwrap();
     let key_report = KeyReport::new_from_info(&info);
@@ -211,7 +211,7 @@ fn check_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Erro
         .responder()
 }
 
-fn get_key(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>>  {
+fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
 //    let msg;
 //    {

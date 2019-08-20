@@ -253,7 +253,7 @@ impl Client {
                     }
                 }
                 info.proxy_info.online_porxy = other_proxy;
-                tinc.check_info(info);
+                tinc.check_info(info)?;
                 return Ok(());
             }
             else {

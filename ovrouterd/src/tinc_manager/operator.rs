@@ -422,10 +422,6 @@ impl TincOperator {
             vpngw=".to_string() + &vip + "\n\
             echo 1 > /proc/sys/net/ipv4/ip_forward\n\
             ifconfig ${dev} ${vpngw} netmask 255.0.0.0\n\
-            iptables -t nat -F\n\
-            iptables -t nat -A POSTROUTING -s ${vpngw}/8 -o "
-                + &wan_name
-                + " -j MASQUERADE\n\
             exit 0";
 
             let path = self.tinc_home.clone() + "/tinc-up";
@@ -510,7 +506,6 @@ impl TincOperator {
                     tinc_info.vip = vip;
                     return Ok(tinc_info);
                 }
-
             }
         }
         return Err(io::Error::new(io::ErrorKind::InvalidData, "tinc config file error"));

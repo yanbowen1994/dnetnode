@@ -6,7 +6,7 @@
 //! load_local() 根据本地信息创建结构体，将会读取tinc公钥，ip，vip等
 use serde_json;
 
-use settings::Settings;
+use settings::get_settings;
 
 mod geo;
 pub use self::geo::GeoInfo;
@@ -37,10 +37,10 @@ pub struct Info {
     pub tinc_info: TincInfo,
 }
 impl Info {
-    pub fn new() -> Self {
+    pub fn new(tinc_home: &str) -> Self {
         let geo_info = GeoInfo::new();
         let proxy_info = ProxyInfo::new();
-        let tinc_info = TincInfo::new();
+        let tinc_info = TincInfo::new(tinc_home);
         Info {
             geo_info,
             proxy_info,
@@ -48,18 +48,16 @@ impl Info {
         }
     }
 
-    pub fn new_from_local(settings: &Settings) -> Result<Self> {
+    pub fn new_from_local() -> Result<Self> {
+        let settings = get_settings();
         let mut geo_info = GeoInfo::new();
         let _ = geo_info.load_local(settings).map_err(Error::GeoInfo)?;
         let mut proxy_info = ProxyInfo::new();
         let _ = proxy_info.load_local().map_err(Error::ProxyInfo)?;
         // 使用geo ip 作为proxy ip, 而非使用本机路由default出口ip.
         proxy_info.proxy_ip = geo_info.ipaddr.clone();
-        let mut tinc_info = TincInfo::new();
-        let _ = tinc_info.load_local(
-            &settings.tinc.home_path,
-            &settings.tinc.pub_key_path
-        )
+        let mut tinc_info = TincInfo::new(&settings.tinc.home_path);
+        let _ = tinc_info.load_local()
             .map_err(Error::Tinc)?;
 
         debug!("geo_info: {:?}",geo_info);

@@ -7,15 +7,17 @@ use clap::{App, Arg};
 
 extern crate ovrouter;
 
-use ovrouter::settings::{self, Settings};
+use ovrouter::settings::{self, Settings, get_settings};
 use ovrouter::daemon::Daemon;
 use ovrouter::logging::init_logger;
 
 use std::convert::From;
 
-const LOG_FILENAME: &str = "ovrouter.log";
+const LOG_FILENAME: &str = "dnetovr.log";
 #[cfg(unix)]
-const DEFAULT_LOG_DIR: &str = "/var/log/ovr/";
+const DEFAULT_LOG_DIR: &str = "/var/log/dnetovr/";
+#[cfg(unix)]
+const DEFAULT_CONFIG_DIR: &str = "/root/dnetovr";
 
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
@@ -25,6 +27,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
+    #[error(display = "Can find settings.toml, please use --config to specify configuration file.")]
+    NoSettingFile,
+
     #[error(display = "Can not parse settings.toml.")]
     ParseSetting(#[error(cause)] settings::Error),
     #[error(display = "Can not create log dir.")]
@@ -37,7 +42,7 @@ fn main() {
     let exit_code = match init() {
         Ok(_) => 0,
         Err(error) => {
-            error!("{:?} {}", error, error);
+            error!("{:?}\n{}", error, error);
             1
         }
     };
@@ -47,43 +52,60 @@ fn main() {
 
 fn init() -> Result<()>{
     // 命令行提示
-    let matches =  App::new("ovrouter")
-        .version(&format!("\nCommit data:{}\nCommit id:{}", COMMIT_DATE, COMMIT_ID).to_string()[..])
-        .arg(Arg::with_name("debug")
-        .short("d")
-        .long("debug")
-        .value_name("log_level")
-        .takes_value(true))
+    let matches =  App::new("dnetovr v1.0.5.0")
+        .version(&format!("\nCommit date: {}\nCommit id:   {}", COMMIT_DATE, COMMIT_ID).to_string()[..])
+        .args(&vec![
+            Arg::with_name("debug")
+                .short("d")
+                .long("debug")
+                .value_name("log_level")
+                .takes_value(true),
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("config_dir")
+                .takes_value(true)
+        ])
         .get_matches();
 
-    let mut arg_log_level = log::LevelFilter::Off;
+    let mut log_level = log::LevelFilter::Off;
     match matches.value_of("debug") {
-        Some(log_level) => {
-            match log_level {
-                _ if log_level == "0" => arg_log_level = log::LevelFilter::Error,
-                _ if log_level == "1" => arg_log_level = log::LevelFilter::Warn,
-                _ if log_level == "2" => arg_log_level = log::LevelFilter::Info,
-                _ if log_level == "3" => arg_log_level = log::LevelFilter::Debug,
-                _ if log_level == "4" => arg_log_level = log::LevelFilter::Trace,
+        Some(arg_log_level) => {
+            match arg_log_level {
+                _ if arg_log_level == "0" => log_level = log::LevelFilter::Error,
+                _ if arg_log_level == "1" => log_level = log::LevelFilter::Warn,
+                _ if arg_log_level == "2" => log_level = log::LevelFilter::Info,
+                _ if arg_log_level == "3" => log_level = log::LevelFilter::Debug,
+                _ if arg_log_level == "4" => log_level = log::LevelFilter::Trace,
                 _ => (),
             }
         }
         None => ()
     }
 
+    let config_dir = match matches.value_of("config") {
+        Some(x) => x,
+        None => DEFAULT_CONFIG_DIR,
+    };
     // 解析settings.toml文件
-    let settings:Settings = Settings::load_config().map_err(Error::ParseSetting)?;
-    let log_level = settings.client.log_level.clone();
+    Settings::load_config(config_dir)
+        .map_err(|e|{
+            let err = Error::ParseSetting(e);
+            println!("{:?}\n{}", err, err);
+            err
+        })?;
+    let settings = get_settings();
 
-    let mut setting_log_level = log::LevelFilter::Off;
-    match log_level {
-        Some(log_level) => {
-            match log_level {
-                _ if log_level == "Error" => setting_log_level = log::LevelFilter::Error,
-                _ if log_level == "Warn" => setting_log_level = log::LevelFilter::Warn,
-                _ if log_level == "Info" => setting_log_level = log::LevelFilter::Info,
-                _ if log_level == "Debug" => setting_log_level = log::LevelFilter::Debug,
-                _ if log_level == "Trace" => setting_log_level = log::LevelFilter::Trace,
+    let settings_log_level = settings.client.log_level.clone();
+
+    match settings_log_level {
+        Some(settings_log_level) => {
+            match settings_log_level {
+                _ if settings_log_level == "Error" => log_level = log::LevelFilter::Error,
+                _ if settings_log_level == "Warn" => log_level = log::LevelFilter::Warn,
+                _ if settings_log_level == "Info" => log_level = log::LevelFilter::Info,
+                _ if settings_log_level == "Debug" => log_level = log::LevelFilter::Debug,
+                _ if settings_log_level == "Trace" => log_level = log::LevelFilter::Trace,
                 _  => (),
             }
         }
@@ -118,7 +140,7 @@ fn init() -> Result<()>{
         std::process::exit(1);
     }
 
-    let mut daemon = Daemon::start(settings).map_err(Error::DaemonInit)?;
+    let mut daemon = Daemon::start().map_err(Error::DaemonInit)?;
     daemon.run();
     Ok(())
 }

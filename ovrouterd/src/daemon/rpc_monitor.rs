@@ -18,30 +18,26 @@ pub enum Error {
 pub struct RpcMonitor {
     client_arc:                 Arc<Mutex<Client>>,
     info_arc:                   Arc<Mutex<Info>>,
-    tinc_home:                  String,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 }
 
 pub fn spawn(
     client_arc:                 Arc<Mutex<Client>>,
     info_arc:                   Arc<Mutex<Info>>,
-    tinc_home:                  String,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 ) {
-    RpcMonitor::new(client_arc, info_arc, tinc_home, daemon_event_tx).spawn();
+    RpcMonitor::new(client_arc, info_arc, daemon_event_tx).spawn();
 }
 
 impl RpcMonitor {
     pub fn new(
         client_arc:                 Arc<Mutex<Client>>,
         info_arc:                   Arc<Mutex<Info>>,
-        tinc_home:                  String,
         daemon_event_tx:            mpsc::Sender<DaemonEvent>,
     ) -> Self {
         RpcMonitor {
             client_arc,
             info_arc,
-            tinc_home,
             daemon_event_tx,
         }
     }
@@ -59,11 +55,6 @@ impl RpcMonitor {
                 return;
             }
 
-            if let Err(_) = self.exec_online_proxy() {
-                let _ = self.daemon_event_tx.send(DaemonEvent::RpcFailed);
-                return;
-            }
-
             if let Some(remaining) =
             Duration::from_secs(timeout_secs.into()).checked_sub(start.elapsed()) {
                 thread::sleep(remaining);
@@ -77,8 +68,8 @@ impl RpcMonitor {
         let start = Instant::now();
         loop {
             if let Ok(client) = self.client_arc.try_lock() {
-                if let Ok(info) = self.info_arc.try_lock() {
-                    if let Ok(_) = client.proxy_heart_beat(&info) {
+                if let Ok(mut info) = self.info_arc.try_lock() {
+                    if let Ok(_) = client.proxy_heart_beat(&mut info) {
                         return Ok(());
                     } else {
                         error!("Heart beat send failed.");

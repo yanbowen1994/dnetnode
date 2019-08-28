@@ -1,10 +1,11 @@
 use std::thread;
 use std::time::{Duration, Instant};
 use crate::tinc_manager::TincOperator;
+use tinc_plugin::TincOperatorError;
 
 const TINC_FREQUENCY: u32 = 5;
 
-pub type Result<T> = std::result::Result<T, ::tinc_manager::operator::Error>;
+pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
 pub struct TincMonitor {
     tinc: TincOperator,
@@ -22,7 +23,7 @@ impl TincMonitor {
     }
 
     pub fn spawn(self) {
-        thread::spawn(||self.run());
+        thread::spawn(move ||self.run());
     }
 
     fn run(mut self) {
@@ -39,7 +40,7 @@ impl TincMonitor {
     fn exec_tinc_check(&mut self) {
         if let Ok(_) = self.tinc.check_tinc_status() {
             trace!("check tinc process: tinc exist.");
-            return;
+            return ();
         }
         error!("check tinc process: tinc not exist.");
         let mut i = 1;

@@ -1,6 +1,5 @@
 [workspace]
 members = [
     "ovrouterd",
-    "setup",
     "tinc-plugin",
 ]

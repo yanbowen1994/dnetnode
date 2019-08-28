@@ -264,18 +264,66 @@ fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
                     else {
                         Response::not_found()
                     }
-                },
-                None=>{
-                    Response::not_found()
-                }
-            };
+#[derive(Debug, Serialize, Deserialize)]
+struct Version {
+    VERSION: String,
+}
 
+fn version(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(|body| {
+            let response = Version {
+                VERSION: "v1.0.5.0".to_owned(),
+            };
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()
 }
 
-pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>, server_port: &str) {
+#[derive(Debug, Serialize, Deserialize)]
+struct Runtime {
+    lastRuntime: String,
+}
+
+fn runtime(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(|body| {
+            let last_runtime = match get_settings().last_runtime.clone() {
+                Some(x) => x,
+                None => "".to_owned(),
+            };
+            let response = Runtime {
+                lastRuntime: last_runtime,
+            };
+            Ok(HttpResponse::Ok().json(response)) // <- send response
+        })
+        .responder()
+}
+
+pub fn web_server(info_arc:     Arc<Mutex<Info>>,
+                  tinc_arc:     Arc<Mutex<TincOperator>>,
+                  daemon_tx:    std::sync::mpsc::Sender<DaemonEvent>,
+) {
+    let settings = get_settings();
+    let local_port = &settings.client.local_port;
     // init
     if ::std::env::var("RUST_LOG").is_err() {
         ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -285,9 +333,22 @@ pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>
     // load ssl keys
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
-        .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap();
-    builder.set_certificate_chain_file("cert.pem").unwrap();
+        .set_private_key_file(&settings.client.local_https_server_privkey_file, SslFiletype::PEM)
+        .map_err(|e|{
+            error!("Https web server could not load privkey.\n  path: {}\n  {}",
+                   &settings.client.local_https_server_privkey_file,
+                   e.to_string());
+            let _ = daemon_tx.send(DaemonEvent::ShutDown);
+            e
+        }).unwrap();
+    builder.set_certificate_chain_file(&settings.client.local_https_server_certificate_file)
+        .map_err(|e|{
+            error!("Https web server could not load certificate.\n  path: {}\n  {}",
+                   &settings.client.local_https_server_privkey_file,
+                   e.to_string());
+            let _ = daemon_tx.send(DaemonEvent::ShutDown);
+            e
+        }).unwrap();
 
     server::new(move || {
         // init， 传入AppState
@@ -307,7 +368,15 @@ pub fn web_server(info_arc: Arc<Mutex<Info>>, tinc_arc: Arc<Mutex<TincOperator>>
             .resource("/vppn/tinc/api/v2/proxy/getpublickey", |r| {
                 r.method(http::Method::GET).with(get_key)
             })
-    }).bind_ssl(get_local_ip().unwrap().to_string() + ":" + server_port, builder)
+
+            .resource("/version", |r| {
+                r.method(http::Method::GET).with(version)
+            })
+
+            .resource("/runtime", |r| {
+                r.method(http::Method::GET).with(runtime)
+            })
+    }).bind_ssl("0.0.0.0:".to_owned() + local_port, builder)
         .unwrap()
         .start();
 //    let _ = sys.run();

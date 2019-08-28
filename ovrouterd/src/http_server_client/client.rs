@@ -4,15 +4,23 @@ use std::str::FromStr;
 
 use net_tool::url_post;
 use domain::Info;
-use domain::OnlineProxy;
-use settings::Settings;
+use settings::{Settings, get_settings};
 use std::time::{Instant, Duration};
 use std::thread::sleep;
+use tinc_plugin::TincOperatorError;
+use reqwest::Response;
+
+const HEART_BEAT_TIMEOUT: u64 = 10;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
+    #[error(display = "Login can not parse json str.")]
+    ParseJsonStr(#[error(cause)] serde_json::Error),
+
+    #[error(display = "Fail to DNS parse conductor cluster domain.")]
+    ParseConductorDomain(String),
     #[error(display = "Login can not parse json str.")]
     LoginParseJsonStr(#[error(cause)] serde_json::Error),
 
@@ -50,17 +58,45 @@ pub enum Error {
     Reqwest(#[error(cause)] reqwest::Error),
 
     #[error(display = "operator::Error.")]
-    TincOperator(#[error(cause)] ::tinc_manager::operator::Error),
+    TincOperator(#[error(cause)] TincOperatorError),
 }
 
 #[derive(Debug)]
 pub struct Client {
-    url: String,
+    url:        String,
+    username:   String,
+    password:   String,
 }
 impl Client {
     pub fn new(url: String) -> Self {
+        let settings = get_settings();
+        let domain = &settings.server.url.to_owned();
+        let username = settings.client.username.to_owned();
+        let password = settings.client.password.to_owned();
         Client {
             url,
+            username,
+            password,
+        }
+    }
+    
+    fn post(&self, url: &str, data: &str, uid: &str) -> Result<Response> {
+        let mut wait_sec = 0;
+        loop {
+            let _res = match url_post(&url, &data, uid) {
+                Ok(x) => return Ok(x),
+                Err(e) => {
+                    error!("post - response {:?}", e);
+                    sleep(std::time::Duration::from_secs(wait_sec));
+                    if wait_sec < 5 {
+                        wait_sec += 1;
+                    }
+                    else {
+                        return Err(Error::Reqwest(e))
+                    }
+                    continue;
+                }
+            };
         }
     }
 
@@ -75,23 +111,7 @@ impl Client {
         debug!("proxy_login - request url: {} ",url);
         debug!("proxy_login - request data:{}",data);
 
-        let post = || {
-            let mut wait_sec = 0;
-            loop {
-                let _res = match url_post(&url, &data, "") {
-                    Ok(x) => return x,
-                    Err(e) => {
-                        error!("proxy_login - response {}", e);
-                        sleep(std::time::Duration::from_secs(wait_sec));
-                        if wait_sec < 10 {
-                            wait_sec += 1;
-                        }
-                        continue;
-                    }
-                };
-            }
-        };
-        let mut res = post();
+        let mut res = self.post(&url, &data, "")?;
 
         debug!("proxy_login - response code: {}", res.status().as_u16());
         debug!("proxy_login - response header: {:?}", res.headers());
@@ -140,18 +160,7 @@ impl Client {
         debug!("proxy_register - request info: {:?}", info);
         debug!("proxy_register - request url: {}", url);
         debug!("proxy_register - request data: {}", data);
-        let post = || {
-            loop {
-                let _res = match url_post(&url, &data, &cookie) {
-                    Ok(x) => return x,
-                    Err(e) => {
-                        error!("proxy_register - response {}", e);
-                        continue;
-                    }
-                };
-            }
-        };
-        let mut res = post();
+	let mut res = self.post(&url, &data, &cookie)?;
 
         debug!("proxy_register - response code: {}", res.status().as_u16());
 

@@ -13,7 +13,7 @@ use std::str::FromStr;
 use duct;
 use openssl::rsa::Rsa;
 
-use crate::{TincInfo, TincRunMode};
+use crate::{TincInfo, TincRunMode, TincStream};
 
 /// Results from fallible operations on the Tinc tunnel.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -27,7 +27,7 @@ const TINC_BIN_FILENAME: &str = "tincd.exe";
 
 const PRIV_KEY_FILENAME: &str = "rsa_key.priv";
 
-const PUB_KEY_FILENAME: &str = "rsa_key.pub";
+pub const PUB_KEY_FILENAME: &str = "rsa_key.pub";
 
 #[cfg(unix)]
 const TINC_UP_FILENAME: &str = "tinc-up";
@@ -99,7 +99,7 @@ pub enum Error {
 
     /// Error while running "ip route".
     #[error(display = "Error while running \"ip route\"")]
-    FailedToRunIp(#[error(cause)] io::Error),
+    FailedToRunIpRoute(#[error(cause)] io::Error),
 
     /// Io error
     #[error(display = "Io error")]
@@ -109,6 +109,9 @@ pub enum Error {
     #[error(display = "No wan dev")]
     NoWanDev,
 
+    /// Address loaded from file is invalid
+    #[error(display = "Address loaded from file is invalid")]
+    ParseLocalIpError(#[error(cause)] std::net::AddrParseError),
 
     /// Address loaded from file is invalid
     #[error(display = "Address loaded from file is invalid")]
@@ -130,7 +133,6 @@ pub enum Error {
 /// Tinc operator
 pub struct TincOperator {
     tinc_home:              String,
-    tinc_handle:            Option<duct::Handle>,
     mutex:                  Mutex<i32>,
     mode:                   TincRunMode,
 }
@@ -139,8 +141,7 @@ impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new(tinc_home: &str, mode: TincRunMode) {
         let operator = TincOperator {
-            tinc_home:      tinc_home.to_string() + "/tinc/",
-            tinc_handle:    None,
+            tinc_home:      tinc_home.to_string(),
             mutex:          Mutex::new(0),
             mode,
         };
@@ -169,58 +170,77 @@ impl TincOperator {
     }
 
     /// 启动tinc 返回duct::handle
-    pub fn start_tinc(&mut self) -> Result<()> {
-        let conf_tinc_home = "--config=".to_string() + &self.tinc_home;
-        let conf_pidfile = "--pidfile=".to_string() + &self.tinc_home + "/tinc.pid";
-        let argument: Vec<&str> = vec![
-            &conf_tinc_home,
-            &conf_pidfile,
-            "--no-detach",
-        ];
+    pub fn start_tinc(&mut self) -> Result<duct::Handle> {
+        let conf_tinc_home = "--config=".to_string()
+            + &self.tinc_home;
+        let conf_pidfile = "--pidfile=".to_string()
+            + &self.tinc_home + "/tinc.pid";
+
+        // Set tinc running dir, for tincd link lib openssl.
+        let current_dir = std::env::current_dir()
+            .map_err(|e|Error::IoError(e.to_string()))?;
+        std::env::set_current_dir("/root/tinc")
+            .map_err(|e|Error::IoError(e.to_string()))?;
         let duct_handle: duct::Expression = duct::cmd(
-            OsString::from(self.tinc_home.to_string() + "/" + TINC_BIN_FILENAME),
-            argument).unchecked();
-        self.tinc_handle = Some(duct_handle.stderr_null().stdout_null().start()
+            OsString::from(self.tinc_home.to_string() + TINC_BIN_FILENAME),
+            vec![
+                &conf_tinc_home[..],
+                &conf_pidfile[..],
+                "--no-detach",
+            ])
+            .unchecked();
+        std::env::set_current_dir(current_dir)
+            .map_err(|e|Error::IoError(e.to_string()))?;
+
+        let tinc_handle = duct_handle.stderr_capture().stdout_null().start()
             .map_err(|e| {
                 log::error!("StartTincError {:?}", e.to_string());
                 Error::StartTincError
-            })?
-        );
-        Ok(())
+            })?;
+
+        let _ = tinc_handle.try_wait();
+        Ok(tinc_handle)
     }
 
-    pub fn get_tinc_handle(&mut self) -> Option<duct::Handle> {
-        self.tinc_handle.take()
-    }
-
-    pub fn stop_tinc(&mut self) -> Result<()> {
-        if let Some(child) = &self.tinc_handle {
-            if let Err(e) = crate::control::stop(
-                self.pid_file.to_str().unwrap()
-            ) {
-                log::warn!("{}", e);
-                child.kill().map_err(|_|Error::StopTincError)?
-            } else {};
+    pub fn stop_tinc(&mut self, tinc_handle: &Option<duct::Handle>) -> Result<()> {
+        let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
+        if let Ok(mut tinc_stream) = TincStream::new(&tinc_pid) {
+            if let Ok(_) = tinc_stream.stop() {
+                return Ok(());
+            }
         }
-        self.tinc_handle = None;
+        if let Some(child) = tinc_handle {
+            child.kill().map_err(|_| Error::StopTincError)?;
+        }
         Ok(())
     }
 
-    pub fn check_tinc_status(&mut self) -> Result<()> {
-        if let Some(child) = &self.tinc_handle {
+    pub fn check_tinc_status(&mut self, tinc_handle: &Option<duct::Handle>) -> Result<()> {
+        if let Some(child) = tinc_handle {
             let out = child.try_wait()
                 .map_err(|_|Error::TincNotExist)?;
 
             if let None = out {
+                return Ok(())
+            }
+
+            if let Some(mut out) = out {
+                if let Some(code) = out.status.code() {
+                    return Err(Error::TincNotExist);
+                }
                 return Ok(());
             }
         }
-        Err(Error::TincNotExist)
+        else {
+            return Err(Error::TincNotExist);
+        }
+        return Ok(());
     }
 
-    pub fn restart_tinc(&mut self) -> Result<()> {
-        if let Ok(_) = self.check_tinc_status() {
-            self.stop_tinc()?;
+    pub fn restart_tinc(&mut self, tinc_handle: &Option<duct::Handle>)
+        -> Result<duct::Handle> {
+        if let Ok(_) = self.check_tinc_status(tinc_handle) {
+            self.stop_tinc(tinc_handle)?;
         }
         self.start_tinc()
     }
@@ -234,11 +254,13 @@ impl TincOperator {
             filename.push_str(splits[0]);
             filename.push_str("_");
         }
-        filename.push_str(splits[1]);
-        filename.push_str("_");
-        filename.push_str(splits[2]);
-        filename.push_str("_");
-        filename.push_str(splits[3]);
+        else if splits.len() > 3 {
+            filename.push_str(splits[1]);
+            filename.push_str("_");
+            filename.push_str(splits[2]);
+            filename.push_str("_");
+            filename.push_str(splits[3]);
+        }
         filename
     }
 
@@ -542,7 +564,10 @@ impl TincOperator {
                            &online_proxy.ip.to_string(),
                            &online_proxy.pubkey)?;
         };
-        self.set_hosts(is_proxy, &info.vip.to_string(), &info.pub_key)
+
+        let ip;
+	if  = info.ip.to_string();;
+        self.set_hosts(is_proxy, &ip, &info.pub_key)
     }
 
     fn set_tinc_up(&self, tinc_info: &TincInfo) -> Result<()> {

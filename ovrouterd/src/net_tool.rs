@@ -15,13 +15,7 @@ use sys_tool::{cmd};
 //for url get
 use reqwest;
 
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(err_derive::Error, Debug)]
-pub enum Error {
-    #[error(display = "Login can not parse json str.")]
-    Reqwest(#[error(cause)] reqwest::Error),
-}
+pub type Result<T> = std::result::Result<T, reqwest::Error>;
 
 use std::io::{stdout, Write, Read};
 

@@ -72,11 +72,11 @@ fn init() -> Result<()>{
     match matches.value_of("debug") {
         Some(arg_log_level) => {
             match arg_log_level {
-                _ if arg_log_level == "0" => log_level = log::LevelFilter::Error,
-                _ if arg_log_level == "1" => log_level = log::LevelFilter::Warn,
-                _ if arg_log_level == "2" => log_level = log::LevelFilter::Info,
-                _ if arg_log_level == "3" => log_level = log::LevelFilter::Debug,
-                _ if arg_log_level == "4" => log_level = log::LevelFilter::Trace,
+                "0" => log_level = log::LevelFilter::Error,
+                "1" => log_level = log::LevelFilter::Warn,
+                "2" => log_level = log::LevelFilter::Info,
+                "3" => log_level = log::LevelFilter::Debug,
+                "4" => log_level = log::LevelFilter::Trace,
                 _ => (),
             }
         }
@@ -100,24 +100,16 @@ fn init() -> Result<()>{
 
     match settings_log_level {
         Some(settings_log_level) => {
-            match settings_log_level {
-                _ if settings_log_level == "Error" => log_level = log::LevelFilter::Error,
-                _ if settings_log_level == "Warn" => log_level = log::LevelFilter::Warn,
-                _ if settings_log_level == "Info" => log_level = log::LevelFilter::Info,
-                _ if settings_log_level == "Debug" => log_level = log::LevelFilter::Debug,
-                _ if settings_log_level == "Trace" => log_level = log::LevelFilter::Trace,
+            match &settings_log_level[..] {
+                "Error" => log_level = log::LevelFilter::Error,
+                "Warn" => log_level = log::LevelFilter::Warn,
+                "Info" => log_level = log::LevelFilter::Info,
+                "Debug" => log_level = log::LevelFilter::Debug,
+                "Trace" => log_level = log::LevelFilter::Trace,
                 _  => (),
             }
         }
         None => ()
-    }
-
-    let mut log_level = log::LevelFilter::Off;
-    if arg_log_level != log_level {
-        log_level = arg_log_level;
-    }
-    else if arg_log_level != log_level {
-        log_level = setting_log_level;
     }
 
     let mut _log_dir: PathBuf = match settings.client.log_dir.clone() {

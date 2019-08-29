@@ -30,7 +30,7 @@ impl TincOperator {
         PluginTincOperator::new(&settings.tinc.home_path,
                                 TincRunMode::Proxy);
 
-        Self{
+        Self {
             tinc_handle: None,
         }
     }
@@ -44,13 +44,12 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
-        let tinc_handle = PluginTincOperator::instance().start_tinc()?;
-        self.tinc_handle = Some(tinc_handle);
+        PluginTincOperator::mut_instance().start_tinc()?;
         return Ok(());
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {
-        PluginTincOperator::instance().stop_tinc(&self.tinc_handle)
+        PluginTincOperator::mut_instance().stop_tinc()
     }
 
     pub fn create_tinc_dirs(&self) -> Result<()> {
@@ -58,23 +57,20 @@ impl TincOperator {
     }
 
     pub fn check_tinc_status(&mut self) -> Result<()> {
-        PluginTincOperator::instance().check_tinc_status(&self.tinc_handle)
+        PluginTincOperator::mut_instance().check_tinc_status()
     }
 
     pub fn restart_tinc(&mut self) -> Result<()> {
-        let tinc_handle = PluginTincOperator::instance()
-            .restart_tinc(&self.tinc_handle)?;
-        self.tinc_handle = Some(tinc_handle);
-        return Ok(());
+        PluginTincOperator::mut_instance().restart_tinc()
     }
 
     /// 添加子设备
-    pub fn add_hosts(&self, host_name: &str, pub_key: &str) -> Result<()> {
-        PluginTincOperator::instance().add_hosts(host_name, pub_key)
+    pub fn set_hosts(&self, is_proxy: bool, ip: &str, pubkey: &str) -> Result<()> {
+        PluginTincOperator::instance().set_hosts(is_proxy, ip, pubkey)
     }
 
     /// 获取子设备公钥
-    pub fn get_host_pub_key(&self, host_name:&str) -> Result<String> {
+    pub fn get_host_pub_key(&self, host_name: &str) -> Result<String> {
         PluginTincOperator::instance().get_host_pub_key(host_name)
     }
 
@@ -89,14 +85,14 @@ impl TincOperator {
     }
 
     /// 修改本地公钥
-    pub fn set_pub_key(&mut self, pub_key: &str) -> Result<()> {
-        let path = self.tinc_home.clone() + &self.pub_key_path;
-        let mut file =  fs::File::create(path.clone())
-            .map_err(|_|Error::CreatePubKeyError)?;
-        file.write(pub_key.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        return Ok(());
-    }
+//    pub fn set_pub_key(&mut self, pub_key: &str) -> Result<()> {
+//        let path = self.tinc_home.clone() + &self.pub_key_path;
+//        let mut file =  fs::File::create(path.clone())
+//            .map_err(|_|Error::CreatePubKeyError)?;
+//        file.write(pub_key.as_bytes())
+//            .map_err(|e|TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
+//        return Ok(());
+//    }
 
     /// 获取本地tinc虚拟ip
     pub fn get_vip(&self) -> Result<IpAddr> {
@@ -117,26 +113,29 @@ impl TincOperator {
             mode,
             connect_to,
         };
-        PluginTincOperator::instance().set_info_to_local(&tinc_info)
+        PluginTincOperator::mut_instance().set_info_to_local(&tinc_info)
     }
 
     pub fn get_client_filename_by_virtual_ip(&self, vip: &str) -> String {
         PluginTincOperator::get_filename_by_ip(false, vip)
     }
 
+    pub fn get_proxy_filename_by_virtual_ip(&self, vip: &str) -> String {
+        PluginTincOperator::get_filename_by_ip(true, vip)
+    }
 
     // 写TINC_AUTH_PATH/TINC_AUTH_FILENAME(auth/auth.txt),用于tinc reporter C程序
     // TODO 去除C上报tinc上线信息流程,以及去掉auth/auth.txt.
     pub fn write_auth_file(&self,
-                           server_url:  &str,
-                           info:        &Info,
+                           server_url: &str,
+                           info: &Info,
     ) -> Result<()> {
         let settings = get_settings();
         let path = settings.tinc.home_path.to_string() + TINC_AUTH_PATH;
         let auth_dir = std::path::PathBuf::from(&(path));
         if !std::path::Path::new(&auth_dir).is_dir() {
             fs::create_dir_all(&auth_dir)
-                .map_err(|e|TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
+                .map_err(|e| TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
         }
 
         let file_path_buf = auth_dir.join(TINC_AUTH_FILENAME);
@@ -160,105 +159,12 @@ impl TincOperator {
         if let Some(file_str) = file_path.to_str() {
             let path = file_str.to_string();
             let mut file = fs::File::create(path.clone())
-                .map_err(|e|TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
+                .map_err(|e| TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
             let auth_info = AuthInfo::load(server_url, info);
             file.write(auth_info.to_json_str().as_bytes())
-                .map_err(|e|TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
+                .map_err(|e| TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
         }
 
         return Ok(());
-    }
-
-    /// Load local tinc config file vpnserver for tinc vip and pub_key.
-    /// Success return true.
-    pub fn load_local(&mut self, tinc_home: &str, pub_key_path: &str) -> io::Result<TincInfo> {
-        let mut tinc_info = TincInfo::new();
-        {
-            let mut res = String::new();
-            let mut _file = fs::File::open(tinc_home.to_string() + pub_key_path)?;
-            _file.read_to_string(&mut res)?;
-            tinc_info.pub_key = res.clone();
-        }
-        {
-            if let Ok(vip_str) = self.get_vip() {
-                if let Ok(vip) = IpAddr::from_str(&vip_str) {
-                    tinc_info.vip = vip;
-                    return Ok(tinc_info);
-                }
-
-            }
-        }
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "tinc config file error"));
-    }
-
-    fn set_tinc_up(&self) -> Result<()> {
-        #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -u");
-        #[cfg(unix)]
-            let buf = "#!/bin/sh\n".to_string() + &self.tinc_home + "/tinc-report -u";
-
-        let path = self.tinc_home.clone() + "/" + TINC_UP_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        Ok(())
-    }
-
-    fn set_tinc_down(&self) -> Result<()> {
-        #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -d");
-        #[cfg(unix)]
-            let buf = "#!/bin/sh\n".to_string() + &self.tinc_home + "/tinc-report -d";
-
-        let path = self.tinc_home.clone() + "/" + TINC_DOWN_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        Ok(())
-    }
-
-    fn set_host_up(&self) -> Result<()> {
-        #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -hu ${NODE}");
-        #[cfg(unix)]
-            let buf = "#!/bin/sh\n".to_string() + &self.tinc_home + "/tinc-report -hu ${NODE}";
-
-        let path = self.tinc_home.clone() + "/" + HOST_UP_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        Ok(())
-    }
-
-    fn set_host_down(&self) -> Result<()> {
-        #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -hd ${NODE}");
-        #[cfg(unix)]
-            let buf = "#!/bin/sh\n".to_string() + &self.tinc_home + "/tinc-report -hd ${NODE}";
-
-        let path = self.tinc_home.clone() + "/" + HOST_UP_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        Ok(())
-    }
-}
-
-/// 获取出口网卡, 网卡名
-pub fn get_wan_name() -> Result<String> {
-    let output = duct::cmd(OsString::from("/bin/ip"),
-                           vec!(OsString::from("route")))
-        .read()
-        .map_err(|e|Error::FailedToRunIp(e))?;
-    match output
-        .lines()
-        .find(|line|line.trim().starts_with("default via "))
-        .and_then(|line| line.trim().split_whitespace().nth(4)) {
-        Some(dev) => Ok(dev.to_string()),
-        None => Err(Error::NoWanDev)
     }
 }

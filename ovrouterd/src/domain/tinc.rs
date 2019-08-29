@@ -5,8 +5,8 @@ use std::io::Read;
 
 use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
 
-use tinc_manager::tinc_connections;
 use settings::get_settings;
+use tinc_manager::TincOperator;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -47,7 +47,7 @@ impl TincInfo {
     // Load local tinc config file vpnserver for tinc vip and pub_key.
     // Success return true.
     pub fn load_local(&mut self) -> Result<()> {
-        if let Ok(vip) = self.load_local_vip(tinc_home) {
+        if let Ok(vip) = self.load_local_vip() {
             self.vip = vip;
         }
         if let Ok(pub_key) = self.load_local_pubkey() {
@@ -56,11 +56,9 @@ impl TincInfo {
         return Ok(());
     }
 
-    fn load_local_vip(&self, tinc_home: &str) -> Result<IpAddr> {
-        let tinc = TincOperator::new(tinc_home.to_string());
-        IpAddr::from_str(
-            &tinc.get_vip().map_err(Error::GetVip)?
-        ).map_err(Error::ParseVip)
+    fn load_local_vip(&self) -> Result<IpAddr> {
+        let tinc = TincOperator::new();
+        tinc.get_vip().map_err(Error::GetVip)
     }
 
     fn load_local_pubkey(&self) -> Result<String> {

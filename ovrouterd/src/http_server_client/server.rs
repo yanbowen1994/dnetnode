@@ -18,9 +18,10 @@ use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use self::bytes::BytesMut;
 use super::futures::{Future, Stream};
 
-use net_tool::get_local_ip;
 use domain::Info;
 use tinc_manager::TincOperator;
+use daemon::DaemonEvent;
+use settings::get_settings;
 
 #[derive(Clone)]
 struct AppState {
@@ -148,9 +149,10 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
                                 Ok(key_report) => {
                                     let key_report: KeyReport = key_report;
                                     debug!("http_report_key - key_report: {:?}",key_report);
-                                    let operator = TincOperator::new("/root/tinc".to_string());
-                                    let filename = operator.get_client_filename_by_virtual_ip(key_report.vip.as_str());
-                                    let _ = operator.add_hosts(filename.as_str(),key_report.pubKey.as_str());
+                                    let operator = TincOperator::new();
+                                    let _ = operator.set_hosts(false,
+                                                               key_report.vip.as_str(),
+                                                               key_report.pubKey.as_str());
                                     response = Response::succeed(key_report.to_json())
                                 },
                                 Err(_) => error!("http_report_key - response KeyReport {}", req_str.as_str()),
@@ -250,7 +252,7 @@ fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
             let response:Response = match virtualIp{
                 Some(virtualip) =>{
                     debug!("get_key - response vip : {}",virtualip.vip);
-                    let operator = TincOperator::new("/root/tinc".to_string());
+                    let operator = TincOperator::new();
                     let filename = operator.get_client_filename_by_virtual_ip(virtualip.vip.as_str());
                     if let Ok(pubkey) = operator.get_host_pub_key(filename.as_str()) {
                         debug!("get_key - response msg : {}",pubkey);
@@ -264,6 +266,17 @@ fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
                     else {
                         Response::not_found()
                     }
+                },
+                None=>{
+                    Response::not_found()
+                }
+            };
+
+            Ok(HttpResponse::Ok().json(response)) // <- send response
+        })
+        .responder()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Version {
     VERSION: String,

@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::Duration;
 
 use settings::get_settings;
 use tinc_manager::check::*;
@@ -195,16 +194,10 @@ impl Daemon {
         let settings = get_settings();
 
         let tinc = TincOperator::new();
+
+        // 初始化上报操作
+        let client = Client::new();
         loop {
-            // 初始化上报操作
-            let client = match Client::new() {
-                Ok(x) => x,
-                Err(e) => {
-                    error!("{:?} Reconnect to conductor cluster.", e);
-                    thread::sleep(Duration::from_secs(1));
-                    continue;
-                }
-            };
             // Client Login
             {
                 if let Err(e) = client.proxy_login(&settings, info).map_err(Error::ConductorConnect) {

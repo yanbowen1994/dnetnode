@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 
 use net_tool::url_post;
-use domain::Info;
+use domain::{Info, OnlineProxy};
 use settings::{Settings, get_settings};
 use std::time::{Instant, Duration};
 use std::thread::sleep;
@@ -63,18 +63,15 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct Client {
-    url:        String,
     username:   String,
     password:   String,
 }
 impl Client {
-    pub fn new(url: String) -> Self {
+    pub fn new() -> Self {
         let settings = get_settings();
-        let domain = &settings.server.url.to_owned();
         let username = settings.client.username.to_owned();
         let password = settings.client.password.to_owned();
         Client {
-            url,
             username,
             password,
         }
@@ -104,8 +101,7 @@ impl Client {
                        settings:    &Settings,
                        info:        &mut Info,
     ) -> Result<()> {
-        let post = "/login";
-        let url = self.url.to_string() + post;
+        let url = get_settings().server.url.clone() + "/login";
         let data = User::new_from_settings(settings).to_json();
 
         debug!("proxy_login - request url: {} ",url);
@@ -153,8 +149,7 @@ impl Client {
     pub fn proxy_register(&self,
                           info: &mut Info)
                           -> Result<()> {
-        let post = "/vppn/api/v2/proxy/register";
-        let url = self.url.to_string() + post;
+        let url = get_settings().server.url.clone() + "/vppn/api/v2/proxy/register";
         let data = Register::new_from_info(info).to_json();
         let cookie = info.proxy_info.cookie.clone();
         debug!("proxy_register - request info: {:?}", info);
@@ -195,9 +190,11 @@ impl Client {
         Err(Error::RegisterFailed("Unknown reason.".to_string()))
     }
 
-    pub fn proxy_get_online_proxy(&self, info: &mut Info, tinc_home: &str) -> Result<()> {
-        let post = "/vppn/api/v2/proxy/getonlineproxy";
-        let url = self.url.to_string() + post;
+    pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
+        let settings = get_settings();
+        let url = settings.server.url.clone()
+            + "/vppn/api/v2/proxy/getonlineproxy";
+
         let data = Register::new_from_info(info).to_json();
         let cookie = info.proxy_info.cookie.clone();
         trace!("proxy_get_online_proxy - request info: {:?}",info);
@@ -234,7 +231,7 @@ impl Client {
                 let local_pub_key = info.tinc_info.pub_key.clone();
                 let mut other_proxy = vec![];
 
-                let mut tinc = ::tinc_manager::TincOperator::new(tinc_home.to_string());
+                let tinc = ::tinc_manager::TincOperator::new();
 
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
@@ -250,9 +247,9 @@ impl Client {
                         if let Ok(other_ip) = IpAddr::from_str(&proxy.ip) {
                             if let Ok(other_vip) = IpAddr::from_str(&proxy.vip) {
                                 let other = OnlineProxy::from(other_ip, other_vip, proxy.pubkey);
-                                tinc.add_hosts(
-                                    &("proxy_".to_string()
-                                        + &tinc.get_filename_by_ip(&(&other.ip.clone()).to_string())),
+                                tinc.set_hosts(
+                                    true,
+                                    &other.ip.to_string(),
                                     &("Address=".to_string() +
                                         &(&other.ip.clone()).to_string() +
                                         "\n" +
@@ -268,8 +265,7 @@ impl Client {
                     }
                 }
                 info.proxy_info.online_porxy = other_proxy;
-                tinc.check_info(info)
-                    .map_err(Error::TincOperator)?;
+
                 return Ok(());
             }
             else {
@@ -290,8 +286,8 @@ impl Client {
     }
 
     pub fn proxy_heart_beat(&self, info: &Info) -> Result<()> {
-        let post = "/vppn/api/v2/proxy/hearBeat";
-        let url = self.url.to_string() + post;
+        let url = get_settings().server.url.clone()
+            + "/vppn/api/v2/proxy/hearBeat";
         let data = Heartbeat::new_from_info(info).to_json();
         let cookie = info.proxy_info.cookie.clone();
 
@@ -306,7 +302,7 @@ impl Client {
                     Err(e) => {
                         error!("proxy_heart_beat - response {:?}", e);
 
-                        if Instant::now() - start > Duration::from_secs(15) {
+                        if Instant::now() - start > Duration::from_secs(HEART_BEAT_TIMEOUT) {
                             return None;
                         };
                         continue;

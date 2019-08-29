@@ -50,7 +50,13 @@ impl RpcMonitor {
         let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
         loop {
             let start = Instant::now();
+
             if let Err(_) = self.exec_heartbeat() {
+                let _ = self.daemon_event_tx.send(DaemonEvent::RpcFailed);
+                return;
+            }
+
+            if let Err(_) = self.exec_online_proxy() {
                 let _ = self.daemon_event_tx.send(DaemonEvent::RpcFailed);
                 return;
             }
@@ -91,7 +97,7 @@ impl RpcMonitor {
         loop {
             if let Ok(client) = self.client_arc.try_lock() {
                 if let Ok(mut info) = self.info_arc.try_lock() {
-                    if let Ok(_) = client.proxy_get_online_proxy(&mut info, &self.tinc_home) {
+                    if let Ok(_) = client.proxy_get_online_proxy(&mut info) {
                         return Ok(());
                     } else {
                         error!("proxy_get_online_proxy failed.");

@@ -6,6 +6,7 @@ use std::io::{Error, ErrorKind, Result, Read};
 use std::time::Duration;
 use std::str::FromStr;
 
+#[allow(dead_code)]
 #[repr(i8)]
 pub enum  Request {
     All                      = -1,
@@ -36,6 +37,7 @@ pub enum  Request {
     Last                     = 24,
 }
 
+#[allow(dead_code)]
 #[repr(i8)]
 pub enum RequestType {
     ReqInvalid               = -1,

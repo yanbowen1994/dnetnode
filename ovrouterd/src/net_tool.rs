@@ -131,7 +131,7 @@ pub fn url_post(url: &str, data: &str, cookie: &str)
 //        .danger_accept_invalid_certs(true)
         .http1_title_case_headers()
         .gzip(false)
-        .build().map_err(Error::Reqwest)?
+        .build()?
         .request(reqwest::Method::POST,
                  reqwest::Url::from_str(url).unwrap())
         .header(reqwest::header::CONTENT_TYPE,
@@ -140,7 +140,7 @@ pub fn url_post(url: &str, data: &str, cookie: &str)
                 cookie)
         .header(reqwest::header::USER_AGENT, "")
         .body(data.to_string())
-        .send().map_err(Error::Reqwest)?;
+        .send()?;
     Ok(res)
 }
 

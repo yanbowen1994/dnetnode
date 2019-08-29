@@ -16,7 +16,6 @@ pub enum Error {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tinc {
     pub home_path: String,
-    pub pub_key_path: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -41,6 +40,7 @@ pub struct Settings {
     pub server: Server,
     pub client: Client,
     pub tinc: Tinc,
+    pub last_runtime: Option<String>
 }
 
 impl Settings {
@@ -75,7 +75,7 @@ pub fn get_settings() -> &'static Settings {
         if EL == 0 as *mut _ {
             panic!("Get settings instance, before init");
         }
-        &mut *EL
+        & *EL
     }
 }
 

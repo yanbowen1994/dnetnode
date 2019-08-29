@@ -1,6 +1,7 @@
 use std::io::Result;
 
 use super::tinc_tcp_stream::TincStream;
+use crate::tinc_tcp_stream::SourceConnection;
 
 pub fn stop(pid_path: &str) -> Result<()> {
     let mut tinc_stream = TincStream::new(pid_path)?;
@@ -34,7 +35,7 @@ pub fn dump_subnets(pid_path: &str) -> Result<()> {
 }
 
 
-pub fn dump_connections(pid_path: &str) -> Result<String> {
+pub fn dump_connections(pid_path: &str) -> Result<Vec<SourceConnection>> {
     let mut tinc_stream = TincStream::new(pid_path)?;
     let res = tinc_stream.dump_connections()?;
     Ok(res)

@@ -125,7 +125,7 @@ impl TincStream {
         let cmd = format!("{} {}\n", Request::Control as i8, RequestType::ReqRestart as i8);
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
-        if Self::check_res(&res, Request::Control as i8, RequestType::ReqReload as i8) {
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqRestart as i8) {
             return Ok(());
         }
         return Err(Error::new(ErrorKind::InvalidData, "Restart failed."));

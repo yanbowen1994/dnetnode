@@ -187,7 +187,6 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
-        let _ = self.mutex.lock();
         let conf_tinc_home = "--config=".to_string()
             + &self.tinc_home;
         let conf_pidfile = "--pidfile=".to_string()
@@ -216,13 +215,14 @@ impl TincOperator {
             })?;
 
         let _ = tinc_handle.try_wait();
-
-        self.tinc_handle = Some(tinc_handle);
+        {
+            let _ = self.mutex.lock();
+            self.tinc_handle = Some(tinc_handle);
+        }
         Ok(())
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {
-        let _ = self.mutex.lock();
         let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
         if let Ok(mut tinc_stream) = TincStream::new(&tinc_pid) {
             if let Ok(_) = tinc_stream.stop() {
@@ -232,11 +232,14 @@ impl TincOperator {
         if let Some(child) = &self.tinc_handle {
             child.kill().map_err(|_| Error::StopTincError)?;
         }
+        {
+            let _ = self.mutex.lock();
+            self.tinc_handle = None;
+        }
         Ok(())
     }
 
-    pub fn check_tinc_status(&mut self) -> Result<()> {
-        let _ = self.mutex.lock();
+    pub fn check_tinc_status(&self) -> Result<()> {
         if self.tinc_handle.is_none() {
             return Ok(());
         }
@@ -338,7 +341,7 @@ impl TincOperator {
     }
 
     /// 修改本地公钥
-    pub fn set_local_pub_key(&mut self, pub_key: &str) -> Result<()> {
+    pub fn set_local_pub_key(&self, pub_key: &str) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         let path = self.tinc_home.clone() + PUB_KEY_FILENAME;
         let mut file =  fs::File::create(path.clone())
@@ -414,7 +417,9 @@ impl TincOperator {
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
                    PingTimeout=10\n\
-                   Device = /dev/net/tun\n";
+                   Device = /dev/net/tun\n\
+                   AutoConnect=no\n\
+                   MaxConnectionBurst=1000\n";
         }
         #[cfg(target_os = "macos")]
         {
@@ -426,7 +431,9 @@ impl TincOperator {
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
                    PingTimeout=10\n\
-                   Device = /dev/tap0\n";
+                   Device = /dev/tap0\n\
+                   AutoConnect=no\n\
+                   MaxConnectionBurst=1000\n";
         }
         #[cfg(windows)]
         {
@@ -437,7 +444,9 @@ impl TincOperator {
                    Interface=dnet\n\
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
-                   PingTimeout=10";
+                   PingTimeout=10\n\
+                   AutoConnect=no\n\
+                   MaxConnectionBurst=1000\n";
         }
 
         let path = self.tinc_home.clone() + "/tinc.conf";

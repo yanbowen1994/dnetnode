@@ -1,7 +1,0 @@
-[Unit]
-Description=Ovrouter server
-
-[Service]
-Type=forking
-ExecStart=/root/ovr/ovrouter -d 2
-ExecStop=/bin/killall ovrouter tincd

@@ -1,0 +1,10 @@
+[Unit]
+Description=DNet proxy
+After=network.target
+
+[Service]
+User=root
+ExecStart=/root/dnetovr/dnetovr -d 1 -c /root/dnetovr
+
+[Install]
+WantedBy=multi-user.target

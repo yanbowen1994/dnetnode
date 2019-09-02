@@ -1,0 +1,10 @@
+Package: dnetovr
+Version: 1.0.0
+Architecture: amd64
+Maintainer: YanBowen <>
+Installed-Size: 10
+Depends: libc6 (>= 2.23)
+Section: net
+Priority: optional
+Homepage: https://dnetlab.com/
+Description: dnet proxy

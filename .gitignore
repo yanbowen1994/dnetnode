@@ -11,3 +11,4 @@ Cargo.lock
 .idea
 settings.toml
 target
+/service_script/vagrant/.vagrant

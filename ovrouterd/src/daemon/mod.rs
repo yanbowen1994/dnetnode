@@ -202,12 +202,14 @@ impl Daemon {
             {
                 if let Err(e) = client.proxy_login(&settings, info).map_err(Error::ConductorConnect) {
                     error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
 
                 if let Err(e) = tinc.write_auth_file(&settings.server.url, info)
                     .map_err(Error::TincOperator) {
                     error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
@@ -217,6 +219,7 @@ impl Daemon {
             {
                 if let Err(e) = client.proxy_register(info).map_err(Error::ConductorConnect) {
                     error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
@@ -226,6 +229,7 @@ impl Daemon {
             {
                 if let Err(e) = client.proxy_heart_beat(info).map_err(Error::ConductorConnect) {
                     error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }

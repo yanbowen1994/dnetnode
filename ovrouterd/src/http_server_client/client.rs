@@ -191,6 +191,7 @@ impl Client {
     }
 
     pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
+        let _ = info.tinc_info.load_local();
         let settings = get_settings();
         let url = settings.server.url.clone()
             + "/vppn/api/v2/proxy/getonlineproxy";

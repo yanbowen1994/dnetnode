@@ -30,8 +30,8 @@ pub enum Error {
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {
-    pub vip:     IpAddr,
-    pub pub_key: String,
+    pub vip:            IpAddr,
+    pub pub_key:        String,
     pub connections:    u32,
     pub edges:          u32,
     pub nodes:          u32,

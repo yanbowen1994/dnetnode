@@ -281,6 +281,11 @@ impl TincOperator {
             filename = "proxy".to_string() + "_";
             filename.push_str(splits[0]);
             filename.push_str("_");
+            filename.push_str(splits[2]);
+            filename.push_str("_");
+            filename.push_str(splits[3]);
+            filename.push_str("_");
+            filename.push_str(splits[4]);
         }
         else if splits.len() > 3 {
             filename.push_str(splits[1]);

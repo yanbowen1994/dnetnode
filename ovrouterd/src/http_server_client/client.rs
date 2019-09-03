@@ -285,7 +285,7 @@ impl Client {
         return Err(Error::GetOnlineProxy("Unknown reason.".to_string()));
     }
 
-    pub fn proxy_heart_beat(&self, info: &Info) -> Result<()> {
+    pub fn proxy_heart_beat(&self, info: &mut Info) -> Result<()> {
         let url = get_settings().server.url.clone()
             + "/vppn/api/v2/proxy/hearBeat";
         let data = Heartbeat::new_from_info(info).to_json();
@@ -386,10 +386,11 @@ impl Register {
     }
 }
 
-#[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct VecProxy {
-    inner: Vec<Proxy>,
+struct GetOnlinePorxyRecv {
+    code:        i32,
+    msg:         Option<String>,
+    data:        Vec<Proxy>,
 }
 
 #[allow(non_snake_case)]
@@ -397,30 +398,36 @@ struct VecProxy {
 struct Proxy {
     id:                 String,
     ip:                 String,
-    country:            String,
-    region:             String,
-    city:               String,
+    country:            Option<String>,
+    region:             Option<String>,
+    city:               Option<String>,
     username:           Option<String>,
-    teamcount:          u32,
-    ispublic:           bool,
+    teamcount:          Option<u32>,
+    ispublic:           Option<bool>,
     vip:                String,
     pubkey:             String,
-
 }
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Heartbeat {
     authID: String,
-    proxyIp: String,
-    pubKey: String,
+    connections:    u32,
+    edges:          u32,
+    nodes:          u32,
+    proxyIp:        String,
+    pubKey:         String,
 }
 impl Heartbeat {
-    fn new_from_info(info :&Info) -> Self {
+    fn new_from_info(info :&mut Info) -> Self {
+        let _ = info.tinc_info.flush_connections();
         Heartbeat {
-            authID:    info.proxy_info.uid.to_string(),
-            proxyIp:   info.proxy_info.proxy_ip.to_string(),
-            pubKey:    info.tinc_info.pub_key.to_string(),
+            authID:         info.proxy_info.uid.to_string(),
+            connections:    info.tinc_info.connections,
+            edges:          info.tinc_info.edges,
+            nodes:          info.tinc_info.nodes,
+            proxyIp:        info.proxy_info.proxy_ip.to_string(),
+            pubKey:         info.tinc_info.pub_key.to_string(),
         }
     }
 
@@ -487,11 +494,4 @@ struct RegisterRecv {
     code:        i32,
     msg:         Option<String>,
     data:        Option<JavaRegister>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct GetOnlinePorxyRecv {
-    code:        i32,
-    msg:         Option<String>,
-    data:        Vec<Proxy>,
 }

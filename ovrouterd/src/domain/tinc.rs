@@ -7,6 +7,7 @@ use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
 
 use settings::get_settings;
 use tinc_manager::TincOperator;
+use tinc_manager::tinc_connections;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -31,6 +32,9 @@ pub enum Error {
 pub struct TincInfo {
     pub vip:     IpAddr,
     pub pub_key: String,
+    pub connections:    u32,
+    pub edges:          u32,
+    pub nodes:          u32,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -40,6 +44,9 @@ impl TincInfo {
         TincInfo {
             vip,
             pub_key,
+            connections:    0,
+            edges:          0,
+            nodes:          0,
             tinc_home:      tinc_home.to_owned(),
         }
     }
@@ -59,6 +66,17 @@ impl TincInfo {
     fn load_local_vip(&self) -> Result<IpAddr> {
         let tinc = TincOperator::new();
         tinc.get_vip().map_err(Error::GetVip)
+    }
+
+    pub fn flush_connections(&mut self)
+                             -> Result<()> {
+        let (connections, edges, nodes) = tinc_connections (
+            &(self.tinc_home.to_string() + "/tinc.pid"))
+            .map_err(Error::TincDump)?;
+        self.connections = connections;
+        self.edges = edges;
+        self.nodes = nodes;
+        Ok(())
     }
 
     fn load_local_pubkey(&self) -> Result<String> {

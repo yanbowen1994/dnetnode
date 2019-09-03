@@ -12,3 +12,4 @@ Cargo.lock
 settings.toml
 target
 /service_script/vagrant/.vagrant
+/service_script/vagrant/.bash_history

@@ -167,6 +167,8 @@ if [ "$time2" = "$time1" ]; then
 	echo Compiler failed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	exit 1
 fi
+cp $git_tinc/src/tincd /root/tinc
+cp $git_tinc/src/tinc /root/tinc
 
 echo "Compile tinc... ... ... ... ... ... successfully!"
 
@@ -192,8 +194,8 @@ export OPENSSL_DIR="/usr/local"
 export OPENSSL_STATIC="1"
 
 echo "git clone ovrouter"
-git clone http://bowen.yan:siteview123%21%40%23@gitlab.dnetlab.com/dnet/ovrouter_netgear.git
-cd ovrouter_netgear
+git clone http://bowen.yan:siteview123%21%40%23@gitlab.dnetlab.com/dnet/ovrouter_Rust.git
+cd ovrouter_Rust
 
 echo "cargo build"
 while [ ! -f "./target/release/dnetovr" ]; do
@@ -205,15 +207,17 @@ cd /root
 
 mkdir -p /root/dnetovr/DEBIAN /root/dnetovr/lib/systemd/system /root/dnetovr/root/dnetovr /root/dnetovr/root/tinc/lib
 
-cp /root/ovrouter_netgear/cert.pem ./dnetovr/root/dnetovr
-cp /root/ovrouter_netgear/key.pem ./dnetovr/root/dnetovr
-cp /root/ovrouter_netgear/settings.toml.example ./dnetovr/root/dnetovr/settings.toml
-cp /root/ovrouter_netgear/target/release/dnetovr ./dnetovr/root/dnetovr
+cp /root/ovrouter_Rust/cert.pem ./dnetovr/root/dnetovr
+cp /root/ovrouter_Rust/key.pem ./dnetovr/root/dnetovr
+cp /root/ovrouter_Rust/settings.toml.example ./dnetovr/root/dnetovr/settings.toml
+cp /root/ovrouter_Rust/target/release/dnetovr ./dnetovr/root/dnetovr
 
-cp /root/ovrouter_netgear/service_script/control  ./dnetovr/DEBIAN
-cp /root/ovrouter_netgear/service_script/dnetovr.service  ./dnetovr/lib/systemd/system/dnetovr.service
+cp /root/ovrouter_Rust/service_script/control  ./dnetovr/DEBIAN
+cp /root/ovrouter_Rust/service_script/dnetovr.service  ./dnetovr/lib/systemd/system/dnetovr.service
 
-cp /root/tinc /root/dnetovr/root
+cp /root/tinc /root/dnetovr/root -rf
 
 dpkg-deb -b /root/dnetovr
+
+cp /root/dnetovr.deb /mnt/dnetovr
 echo "All build finsh"

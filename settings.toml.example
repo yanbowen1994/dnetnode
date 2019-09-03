@@ -8,7 +8,7 @@ geo_url = "http://52.25.79.82:10000/geoip_json.php"
 [client]
 log_level = "debug"
 log_dir = "/var/log/dnetovr/"
-username = "admin"
+username = "proxyovr"
 password = "password"
 local_port = "443"
 local_https_server_certificate_file = "/root/dnetovr/cert.pem"

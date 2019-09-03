@@ -22,6 +22,7 @@ use domain::Info;
 use tinc_manager::TincOperator;
 use daemon::DaemonEvent;
 use settings::get_settings;
+use reqwest::header::HeaderValue;
 
 #[derive(Clone)]
 struct AppState {
@@ -59,6 +60,14 @@ impl KeyReport {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
+struct CheckPubkey {
+    vip:            String,
+    pubKey:         String,
+    proxypubKey:    String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Response {
     code:   u32,
@@ -82,11 +91,20 @@ impl Response {
         }
     }
 
-    fn not_found() -> Self {
-        Response {
-            code:  404,
-            data: None,
-            msg:   Some("Not Found".to_string()),
+    fn not_found(msg: &str) -> Self {
+        if msg == "" {
+            return Response {
+                code: 404,
+                data: None,
+                msg: Some("Not Found".to_string()),
+            };
+        }
+        else {
+            return Response {
+                code: 404,
+                data: None,
+                msg: Some(msg.to_string()),
+            };
         }
     }
 }
@@ -110,6 +128,42 @@ struct VirtualIp{
 
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 
+// if check ok return null else return Response of error.
+fn check_apikey(info_arc: Arc<Mutex<Info>>, apikey: Option<&HeaderValue>)
+                -> Option<Response> {
+    let uid;
+    {
+        let info = info_arc.lock().unwrap();
+        uid = info.proxy_info.uid.clone();
+    }
+
+    if let Some(client_apikey) = apikey {
+        debug!("http_report_key - response apikey: {:?}", client_apikey);
+        if let Ok(client_apikey) = client_apikey.to_str() {
+            if client_apikey == &uid {
+                return None;
+            }
+            else {
+                error!("http_client - response api key authentication failure");
+                let response = Response {
+                    code: 401,
+                    data: None,
+                    msg: Some("Apikey invalid".to_owned()),
+                };
+                return Some(response);
+            }
+        }
+    }
+    error!("http_client - response no api key");
+
+    let response = Response {
+        code: 404,
+        data: None,
+        msg:  Some("No Apikey".to_owned()),
+    };
+    return Some(response);
+}
+
 /// req: http请求
 ///     req,state() return AppState
 ///     req.payload() return  tokio 异步操作
@@ -117,6 +171,11 @@ const MAX_SIZE: usize = 262_144; // max payload size is 256k
 ///             HttpResponse::Ok().json(response) 以json格式返回struct Response
 fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
+
+    let response = check_apikey(
+        info_arc.clone(),
+        req.headers().get("Apikey"));
+
     let info = info_arc.lock().unwrap().clone();
 
     debug!("http_report_key - response url : {:?}",req.uri());
@@ -132,48 +191,31 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
             }
         })
         .and_then(move |body| {
+            if let Some(response) = response {
+                return Ok(HttpResponse::Ok().json(response));
+            }
+
             let by = &body.to_vec()[..];
-            let req_str = String::from_utf8_lossy(by).replace("\n","");
+            let req_str = String::from_utf8_lossy(by);
 
             debug!("http_report_key - response data : {:?}",req_str);
 
-            let response:Response  = match req.headers().get("apikey"){
-                Some(apikey) => {
-
-                    debug!("http_report_key - response apikey: {:?}", apikey);
-
-                    let mut response = Response::uid_failed();
-                    if let Ok(apikey) = apikey.to_str() {
-                        if apikey == info.proxy_info.uid {
-                            match serde_json::from_str(req_str.as_str()) {
-                                Ok(key_report) => {
-                                    let key_report: KeyReport = key_report;
-                                    debug!("http_report_key - key_report: {:?}",key_report);
-                                    let operator = TincOperator::new();
-                                    let _ = operator.set_hosts(false,
-                                                               key_report.vip.as_str(),
-                                                               key_report.pubKey.as_str());
-                                    response = Response::succeed(key_report.to_json())
-                                },
-                                Err(_) => error!("http_report_key - response KeyReport {}", req_str.as_str()),
-                            }
-                        }
-                        else {
-                            error!("http_report_key - response api key authentication failure")
-                        }
-                    }
-                    else {
-                        error!("http_report_key - response apikey.to_str() failed")
-                    }
-                    response
-                }
-                None => {
-
-                    debug!("http_report_key - apikey not found");
-
-                    Response::not_found()
-                }
-            };
+            let response;
+            match serde_json::from_str(req_str.as_ref()) {
+                Ok(key_report) => {
+                    let key_report: KeyReport = key_report;
+                    debug!("http_report_key - key_report: {:?}",key_report);
+                    let operator = TincOperator::new();
+                    let _ = operator.set_hosts(false,
+                                               key_report.vip.as_str(),
+                                               key_report.pubKey.as_str());
+                    response = Response::succeed(key_report.to_json())
+                },
+                Err(e) => {
+                    error!("http_report_key - response KeyReport {}", req_str.as_ref());
+                    response = Response::not_found(&("KeyReport ".to_owned() + &e.to_string()));
+                },
+            }
 
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
@@ -182,6 +224,11 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
 
 fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
+
+    let response = check_apikey(
+        info_arc.clone(),
+        req.headers().get("Apikey"));
+
     let info = info_arc.lock().unwrap();
     let key_report = KeyReport::new_from_info(&info);
 
@@ -198,16 +245,35 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
             }
         })
         .and_then(|body| {
+            if let Some(response) = response {
+                return Ok(HttpResponse::Ok().json(response));
+            }
+
             let by = &body.to_vec()[..];
             let req_str = String::from_utf8_lossy(by);
 
             debug!("check_key - response data : {:?}",req_str);
 
-            let response = Response {
-                code:   200,
-                data:   None,
-                msg:    Some("".to_string()),
-            };
+            if let Ok(check_pubkey) = serde_json::from_str(req_str.as_ref()) {
+                let check_pubkey: CheckPubkey = check_pubkey;
+                debug!("http_check_key - check_pubkey: {:?}", check_pubkey);
+                let operator = TincOperator::new();
+                let filename = operator.get_client_filename_by_virtual_ip(
+                    check_pubkey.vip.as_str());
+                if let Ok(pubkey) = operator.get_host_pub_key(
+                    filename.as_str()) {
+                    if pubkey == check_pubkey.pubKey {
+                        let response = Response {
+                            code: 200,
+                            data: Some(pubkey),
+                            msg: None,
+                        };
+                        return Ok(HttpResponse::Ok().json(response)); // <- send response
+                    }
+                }
+            }
+
+            let response = Response::not_found("");
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()
@@ -215,13 +281,14 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
 
 fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
     let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
-//    let msg;
-//    {
-//        let info = info_arc.lock().unwrap();
-//        msg = info.tinc_info.vip.to_string();
-//    }
 
-    debug!("http_report_key - response url : {:?}",req.uri());
+    let response = check_apikey(
+        info_arc.clone(),
+        req.headers().get("Apikey"));
+
+    debug!("http_report_key - response url : {:?}", req.query());
+    let query = req.query();
+    let vip = query.get("vip").cloned();
 
     req.payload()
         .from_err()
@@ -234,41 +301,31 @@ fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
             }
         })
         .and_then(|body| {
-            let by = &body.to_vec()[..];
-            let req_str = String::from_utf8_lossy(by);
+            // uuid failed return 401 or 404.
+            if let Some(response) = response {
+                return Ok(HttpResponse::Ok().json(response));
+            }
 
-            debug!("get_key - response data : {:?}",req_str);
-
-            let virtualIp:Option<VirtualIp> = match serde_json::from_str(&req_str){
-                Ok(virtualip) => {
-                    Some(virtualip)
-                },
-                Err(e) =>{
-                    error!("get_key - resolve json : {:?}",e);
-                    None
-                }
-            };
-
-            let response:Response = match virtualIp{
-                Some(virtualip) =>{
-                    debug!("get_key - response vip : {}",virtualip.vip);
+            let response: Response = match vip {
+                Some(vip) => {
+                    debug!("get_key - response vip : {}", vip);
                     let operator = TincOperator::new();
-                    let filename = operator.get_client_filename_by_virtual_ip(virtualip.vip.as_str());
+                    let filename = operator.get_client_filename_by_virtual_ip(&vip);
                     if let Ok(pubkey) = operator.get_host_pub_key(filename.as_str()) {
                         debug!("get_key - response msg : {}",pubkey);
                         let response = Response {
                             code:   200,
-                            data: Some(pubkey),
-                            msg: None,
+                            data:   Some(pubkey),
+                            msg:    None,
                         };
                         response
                     }
                     else {
-                        Response::not_found()
+                        Response::not_found("No such host.")
                     }
                 },
                 None=>{
-                    Response::not_found()
+                    Response::not_found("")
                 }
             };
 

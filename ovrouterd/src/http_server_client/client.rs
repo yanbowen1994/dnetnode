@@ -7,8 +7,8 @@ use domain::{Info, OnlineProxy};
 use settings::{Settings, get_settings};
 use std::time::{Instant, Duration};
 use std::thread::sleep;
-use tinc_plugin::TincOperatorError;
 use reqwest::Response;
+use tinc_plugin::TincOperatorError;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
 
@@ -191,7 +191,6 @@ impl Client {
     }
 
     pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
-        let _ = info.tinc_info.load_local();
         let settings = get_settings();
         let url = settings.server.url.clone()
             + "/vppn/api/v2/proxy/getonlineproxy";
@@ -228,6 +227,8 @@ impl Client {
             })?;
 
             if recv.code == 200 {
+                let _ = info.tinc_info.load_local();
+
                 let proxy_vec: Vec<Proxy> = recv.data;
                 let local_pub_key = info.tinc_info.pub_key.clone();
                 let mut other_proxy = vec![];
@@ -237,7 +238,11 @@ impl Client {
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
-                            info.tinc_info.vip = vip;
+                            if info.tinc_info.vip != vip {
+                                info.tinc_info.vip = vip;
+                                tinc.set_info_to_local(info)
+                                    .map_err(Error::TincOperator)?;
+                            }
                         }
                         else {
                             error!("proxy_get_online_proxy - response data: {}", res_data);

@@ -278,14 +278,19 @@ impl TincOperator {
         let splits = ip.split(".").collect::<Vec<&str>>();
         let mut filename = String::new();
         if is_proxy {
-            filename = "proxy".to_string() + "_";
-            filename.push_str(splits[0]);
-            filename.push_str("_");
-            filename.push_str(splits[2]);
-            filename.push_str("_");
-            filename.push_str(splits[3]);
-            filename.push_str("_");
-            filename.push_str(splits[4]);
+            if splits.len() >= 4 {
+                filename = "proxy".to_string() + "_";
+                filename.push_str(splits[0]);
+                filename.push_str("_");
+                filename.push_str(splits[1]);
+                filename.push_str("_");
+                filename.push_str(splits[2]);
+                filename.push_str("_");
+                filename.push_str(splits[3]);
+            }
+            else {
+                filename.push_str("vpnserver");
+            }
         }
         else if splits.len() > 3 {
             filename.push_str(splits[1]);

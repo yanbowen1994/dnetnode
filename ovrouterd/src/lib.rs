@@ -11,7 +11,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate tinc_plugin;
 
-pub mod file_tool;
+//pub mod file_tool;
 pub mod net_tool;
 pub mod sys_tool;
 pub mod logging;

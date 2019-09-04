@@ -3,7 +3,7 @@ use std::path::PathBuf;
 #[macro_use]
 extern crate log;
 extern crate clap;
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 
 extern crate ovrouter;
 
@@ -50,7 +50,7 @@ fn main() {
     std::process::exit(exit_code);
 }
 
-fn init() -> Result<()>{
+fn init() -> Result<()> {
     // 命令行提示
     let matches =  App::new("dnetovr v1.0.5.0")
         .version(&format!("\nCommit date: {}\nCommit id:   {}", COMMIT_DATE, COMMIT_ID).to_string()[..])
@@ -68,6 +68,33 @@ fn init() -> Result<()>{
         ])
         .get_matches();
 
+    get_config(&matches)?;
+
+    set_log(&matches)?;
+
+    let mut daemon = Daemon::start().map_err(Error::DaemonInit)?;
+    daemon.run();
+    Ok(())
+}
+
+fn get_config(matches: &ArgMatches) -> Result<()> {
+    let config_dir = match matches.value_of("config") {
+        Some(x) => x,
+        None => DEFAULT_CONFIG_DIR,
+    };
+    // 解析settings.toml文件
+    Settings::load_config(config_dir)
+        .map_err(|e|{
+            let err = Error::ParseSetting(e);
+            println!("{:?}\n{}", err, err);
+            err
+        })?;
+    return Ok(());
+}
+
+fn set_log(matches: &ArgMatches) -> Result<()> {
+    let settings = get_settings();
+
     let mut log_level = log::LevelFilter::Off;
     match matches.value_of("debug") {
         Some(arg_log_level) => {
@@ -80,36 +107,23 @@ fn init() -> Result<()>{
                 _ => (),
             }
         }
-        None => ()
-    }
+        None => {
+            let settings_log_level = settings.client.log_level.clone();
 
-    let config_dir = match matches.value_of("config") {
-        Some(x) => x,
-        None => DEFAULT_CONFIG_DIR,
-    };
-    // 解析settings.toml文件
-    Settings::load_config(config_dir)
-        .map_err(|e|{
-            let err = Error::ParseSetting(e);
-            println!("{:?}\n{}", err, err);
-            err
-        })?;
-    let settings = get_settings();
-
-    let settings_log_level = settings.client.log_level.clone();
-
-    match settings_log_level {
-        Some(settings_log_level) => {
-            match &settings_log_level[..] {
-                "Error" => log_level = log::LevelFilter::Error,
-                "Warn" => log_level = log::LevelFilter::Warn,
-                "Info" => log_level = log::LevelFilter::Info,
-                "Debug" => log_level = log::LevelFilter::Debug,
-                "Trace" => log_level = log::LevelFilter::Trace,
-                _  => (),
+            match settings_log_level {
+                Some(settings_log_level) => {
+                    match &settings_log_level[..] {
+                        "Error" => log_level = log::LevelFilter::Error,
+                        "Warn" => log_level = log::LevelFilter::Warn,
+                        "Info" => log_level = log::LevelFilter::Info,
+                        "Debug" => log_level = log::LevelFilter::Debug,
+                        "Trace" => log_level = log::LevelFilter::Trace,
+                        _  => (),
+                    }
+                }
+                None => ()
             }
         }
-        None => ()
     }
 
     let mut _log_dir: PathBuf = match settings.client.log_dir.clone() {
@@ -131,8 +145,5 @@ fn init() -> Result<()>{
         println!("Error: Can't start logger.\n{:?}", e);
         std::process::exit(1);
     }
-
-    let mut daemon = Daemon::start().map_err(Error::DaemonInit)?;
-    daemon.run();
     Ok(())
 }

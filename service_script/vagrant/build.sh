@@ -199,7 +199,7 @@ cd ovrouter_Rust
 
 echo "cargo build"
 while [ ! -f "./target/release/dnetovr" ]; do
-    /root/.cargo/bin/cargo build --release
+    /root/.cargo/bin/cargo build --release --package proxy-daemon --bin dnetovr
 done
 echo "cargo build finsh"
 

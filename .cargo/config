@@ -1,1 +1,4 @@
 rustflags="-C target-feature=+crt-static"
+[target.arm-unknown-linux-musleabihf]
+linker = "arm-openwrt-linux-ld"
+rustflags="-C link-arg=-s -C target-feature=+crt-static"

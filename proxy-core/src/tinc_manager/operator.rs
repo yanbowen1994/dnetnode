@@ -7,7 +7,7 @@ use std::fs;
 use std::io::Write;
 
 use domain::{Info, AuthInfo};
-use settings::get_settings;
+use common_core::get_settings;
 use tinc_plugin::{TincRunMode, ConnectTo};
 
 use tinc_plugin::{TincOperator as PluginTincOperator,

@@ -1,4 +1,4 @@
-use settings::get_settings;
+use common_core::get_settings;
 use tinc_plugin::PUB_KEY_FILENAME;
 use std::time::SystemTime;
 use std::path::Path;

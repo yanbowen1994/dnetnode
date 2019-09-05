@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use net_tool::url_post;
 use domain::{Info, OnlineProxy};
-use settings::{Settings, get_settings};
+use common_core::{Settings, get_settings};
 use std::time::{Instant, Duration};
 use std::thread::sleep;
 use reqwest::Response;

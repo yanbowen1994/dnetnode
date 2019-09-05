@@ -22,8 +22,8 @@ pub struct Tinc {
 pub struct Server {
     pub url: String,
     pub geo_url: String,
-
 }
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Client {
     pub log_level: Option<String>,

@@ -5,7 +5,7 @@ use std::io::Read;
 
 use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
 
-use settings::get_settings;
+use common_core::get_settings;
 use tinc_manager::TincOperator;
 use tinc_manager::tinc_connections;
 
@@ -38,7 +38,8 @@ pub struct TincInfo {
     tinc_home:          String,
 }
 impl TincInfo {
-    pub fn new(tinc_home: &str) -> Self {
+    pub fn new() -> Self {
+        let tinc_home = &get_settings().tinc.home_path;
         let vip = IpAddr::from_str("10.255.255.254").unwrap();
         let pub_key = "".to_owned();
         TincInfo {

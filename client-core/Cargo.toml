@@ -1,0 +1,6 @@
+[package]
+name = "client-core"
+version = "0.1.0"
+authors = ["yanbowen <bowen.yan@gitblit.com>"]
+
+[dependencies]

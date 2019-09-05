@@ -1,0 +1,15 @@
+[package]
+name = "proxy-daemon"
+version = "0.1.0"
+authors = ["yanbowen <bowen.yan@gitblit.com>"]
+
+[[bin]]
+name = "dnetovr"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2.32"
+common-core = { path = "../common-core" }
+err-derive = "0.1.5"
+log = "0.4"
+proxy-core = { path = "../proxy-core" }

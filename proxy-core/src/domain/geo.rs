@@ -2,7 +2,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use super::serde_json::Value;
-use settings::Settings;
+use common_core::get_settings;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -52,7 +52,8 @@ impl GeoInfo {
         }
     }
 
-    pub fn load_local(&mut self, settings: &Settings) -> Result<()> {
+    pub fn load_local(&mut self) -> Result<()> {
+        let settings = get_settings();
         let geo_url = &settings.server.geo_url;
         let json = get_geo_json(geo_url)?;
         self.country_code = json["country_code"].to_string().replace("\"", "");

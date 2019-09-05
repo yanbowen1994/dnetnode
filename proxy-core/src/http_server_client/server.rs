@@ -21,7 +21,7 @@ use super::futures::{Future, Stream};
 use domain::Info;
 use tinc_manager::TincOperator;
 use daemon::DaemonEvent;
-use settings::get_settings;
+use common_core::get_settings;
 use reqwest::header::HeaderValue;
 
 #[derive(Clone)]

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
-use settings::get_settings;
+use common_core::get_settings;
 use tinc_manager::check::*;
 use tinc_manager::TincOperator;
 use domain::Info;

@@ -20,7 +20,7 @@ use super::futures::{Future, Stream};
 
 use domain::Info;
 use tinc_manager::TincOperator;
-use daemon::DaemonEvent;
+use common_core::daemon::DaemonEvent;
 use common_core::get_settings;
 use reqwest::header::HeaderValue;
 
@@ -393,7 +393,7 @@ pub fn web_server(info_arc:     Arc<Mutex<Info>>,
                   daemon_tx:    std::sync::mpsc::Sender<DaemonEvent>,
 ) {
     let settings = get_settings();
-    let local_port = &settings.client.local_port;
+    let local_port = &settings.proxy.local_port;
     // init
     if ::std::env::var("RUST_LOG").is_err() {
         ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -403,18 +403,18 @@ pub fn web_server(info_arc:     Arc<Mutex<Info>>,
     // load ssl keys
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
-        .set_private_key_file(&settings.client.local_https_server_privkey_file, SslFiletype::PEM)
+        .set_private_key_file(&settings.proxy.local_https_server_privkey_file, SslFiletype::PEM)
         .map_err(|e|{
             error!("Https web server could not load privkey.\n  path: {}\n  {}",
-                   &settings.client.local_https_server_privkey_file,
+                   &settings.proxy.local_https_server_privkey_file,
                    e.to_string());
             let _ = daemon_tx.send(DaemonEvent::ShutDown);
             e
         }).unwrap();
-    builder.set_certificate_chain_file(&settings.client.local_https_server_certificate_file)
+    builder.set_certificate_chain_file(&settings.proxy.local_https_server_certificate_file)
         .map_err(|e|{
             error!("Https web server could not load certificate.\n  path: {}\n  {}",
-                   &settings.client.local_https_server_privkey_file,
+                   &settings.proxy.local_https_server_privkey_file,
                    e.to_string());
             let _ = daemon_tx.send(DaemonEvent::ShutDown);
             e

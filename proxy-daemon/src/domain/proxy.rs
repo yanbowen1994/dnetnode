@@ -3,9 +3,7 @@ use std::str::FromStr;
 
 extern crate uuid;
 
-use net_tool::{get_local_ip};
-
-pub type Result<T> = std::result::Result<T, Error>;
+use common_core::net_tool::get_local_ip;
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
@@ -70,13 +68,12 @@ impl ProxyInfo {
         self.uid = uuid::Uuid::new_v4().to_string();
     }
 
-    pub fn load_local(&mut self) -> Result<()> {
+    pub fn load_local(&mut self) {
         self.auth_type = "0".to_string();
         self.server_type = "vppn1".to_string();
         self.os = "ubuntu".to_string();
-        self.proxy_ip = get_local_ip()
-            .map_err(Error::LocalIp)?
-            .to_string();
-        Ok(())
+        if let Ok(wan_ip) = get_local_ip() {
+            self.proxy_ip = wan_ip.to_string();
+        }
     }
 }

@@ -1,13 +1,14 @@
 //! upload proxy status
 use std::net::IpAddr;
 use std::str::FromStr;
-
-use net_tool::url_post;
-use domain::{Info, OnlineProxy};
-use common_core::{Settings, get_settings};
 use std::time::{Instant, Duration};
 use std::thread::sleep;
+
 use reqwest::Response;
+use common_core::net_tool::url_post;
+use common_core::{Settings, get_settings};
+
+use domain::{Info, OnlineProxy};
 use tinc_plugin::TincOperatorError;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
@@ -69,8 +70,8 @@ pub struct Client {
 impl Client {
     pub fn new() -> Self {
         let settings = get_settings();
-        let username = settings.client.username.to_owned();
-        let password = settings.client.password.to_owned();
+        let username = settings.proxy.username.to_owned();
+        let password = settings.proxy.password.to_owned();
         Client {
             username,
             password,
@@ -360,30 +361,22 @@ struct JavaRegister {
 struct Register {
     auth_id: String,
     auth_type: String,
-    area: String,
-    countryCode: String,
     proxyIp: String,
     pubKey: String,
     os: String,
     server_type: String,
     ssh_port: String,
-    latitude: String,
-    longitude: String,
 }
 impl Register {
     fn new_from_info(info :&Info) -> Self {
         Register {
             auth_id: info.proxy_info.uid.to_string(),
             auth_type: info.proxy_info.auth_type.to_string(),
-            area: info.geo_info.area_code.to_string(),
-            countryCode: info.geo_info.country_code.to_string(),
             proxyIp: info.proxy_info.proxy_ip.to_string(),
             pubKey: info.tinc_info.pub_key.to_string(),
             os: info.proxy_info.os.to_string(),
             server_type: info.proxy_info.server_type.to_string(),
             ssh_port: info.proxy_info.ssh_port.to_string(),
-            latitude: info.geo_info.latitude.to_string(),
-            longitude: info.geo_info.longitude.to_string(),
         }
     }
 
@@ -450,8 +443,8 @@ struct User {
 impl User {
     fn new_from_settings(settings: &Settings) -> Self {
         User {
-            username: settings.client.username.clone(),
-            password: settings.client.password.clone(),
+            username: settings.proxy.username.clone(),
+            password: settings.proxy.password.clone(),
         }
     }
     fn to_json(&self) -> String {

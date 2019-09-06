@@ -20,9 +20,7 @@ const TINC_AUTH_PATH: &str = "auth/";
 const TINC_AUTH_FILENAME: &str = "auth.txt";
 
 /// Tinc operator
-pub struct TincOperator {
-    tinc_handle: Option<duct::Handle>,
-}
+pub struct TincOperator {}
 impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
@@ -30,16 +28,7 @@ impl TincOperator {
         PluginTincOperator::new(&settings.tinc.home_path,
                                 TincRunMode::Proxy);
 
-        Self {
-            tinc_handle: None,
-        }
-    }
-
-    pub fn get_tinc_handle(&self) -> Option<&duct::Handle> {
-        if let Some(child) = &self.tinc_handle {
-            return Some(child);
-        }
-        None
+        Self {}
     }
 
     /// 启动tinc 返回duct::handle
@@ -54,6 +43,10 @@ impl TincOperator {
 
     pub fn create_tinc_dirs(&self) -> Result<()> {
         PluginTincOperator::instance().create_tinc_dirs()
+    }
+
+    pub fn check_pub_key(&self) -> bool {
+        PluginTincOperator::instance().check_pub_key()
     }
 
     pub fn check_tinc_status(&mut self) -> Result<()> {

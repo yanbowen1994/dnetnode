@@ -25,7 +25,7 @@ pub struct Server {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Client {
+pub struct Proxy {
     pub log_level: Option<String>,
     pub log_dir: Option<String>,
     pub username: String,
@@ -38,7 +38,7 @@ pub struct Client {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
     pub server: Server,
-    pub client: Client,
+    pub proxy: Proxy,
     pub tinc: Tinc,
     pub last_runtime: Option<String>
 }
@@ -76,15 +76,6 @@ pub fn get_settings() -> &'static Settings {
             panic!("Get settings instance, before init");
         }
         & *EL
-    }
-}
-
-pub fn get_settings_mut() -> &'static mut Settings {
-    unsafe {
-        if EL == 0 as *mut _ {
-            panic!("Get settings instance, before init");
-        }
-        &mut *EL
     }
 }
 

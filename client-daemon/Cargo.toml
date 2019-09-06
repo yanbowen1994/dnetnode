@@ -5,4 +5,3 @@ authors = ["yanbowen <bowen.yan@gitblit.com>"]
 
 [dependencies]
 clap = "2.32"
-proxy-core = { path = "../proxy-core" }

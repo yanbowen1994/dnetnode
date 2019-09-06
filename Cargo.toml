@@ -1,9 +1,7 @@
 [workspace]
 members = [
-    "client-core",
     "client-daemon",
     "common-core",
-    "proxy-core",
     "proxy-daemon",
     "tinc-plugin",
 ]

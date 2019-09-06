@@ -54,14 +54,13 @@ impl TincInfo {
 
     // Load local tinc config file vpnserver for tinc vip and pub_key.
     // Success return true.
-    pub fn load_local(&mut self) -> Result<()> {
+    pub fn load_local(&mut self) {
         if let Ok(vip) = self.load_local_vip() {
             self.vip = vip;
         }
         if let Ok(pub_key) = self.load_local_pubkey() {
             self.pub_key = pub_key;
         }
-        return Ok(());
     }
 
     fn load_local_vip(&self) -> Result<IpAddr> {

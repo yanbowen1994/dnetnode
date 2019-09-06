@@ -10,14 +10,13 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::to_vec;
 
-use sys_tool::{cmd};
-
 //for url get
 use reqwest;
 
 pub type Result<T> = std::result::Result<T, reqwest::Error>;
 
 use std::io::{stdout, Write, Read};
+use std::process::Command;
 
 pub struct Device {
     pub if_name:    String,
@@ -33,51 +32,51 @@ impl Device {
         }
     }
 
-    pub fn local() -> Self {
-        let mut device = Device::new();
-        device.ip = get_local_ip().unwrap();
-        device.get_if_name();
-        device.get_mac();
-        device
-    }
+//    pub fn local() -> Self {
+//        let mut device = Device::new();
+//        device.ip = get_local_ip().unwrap();
+//        device.get_if_name();
+//        device.get_mac();
+//        device
+//    }
 
-    fn get_if_name(&mut self) -> bool {
-        let local_ip = self.ip.to_string();
-        let (code, output) = cmd(
-            "ip address|grep ".to_string() + &local_ip + " | awk '{print $(7)}'");
+//    fn get_if_name(&mut self) -> bool {
+//        let local_ip = self.ip.to_string();
+//        let (code, output) = cmd(
+//            "ip address|grep ".to_string() + &local_ip + " | awk '{print $(7)}'");
+//
+//        if code != 0 {
+//            return false;
+//        }
+//        self.if_name = output;
+//        return true;
+//    }
 
-        if code != 0 {
-            return false;
-        }
-        self.if_name = output;
-        return true;
-    }
-
-    fn get_mac(&mut self) -> bool {
-        let if_name = self.if_name.to_string();
-        let (code, output) = cmd(
-            "ifconfig|grep ".to_string() + &if_name + "| awk '{print $5}'");
-
-        if code != 0 {
-            return false;
-        }
-        self.mac = output;
-        return true;
-    }
+//    fn get_mac(&mut self) -> bool {
+//        let if_name = self.if_name.to_string();
+//        let (code, output) = cmd(
+//            "ifconfig|grep ".to_string() + &if_name + "| awk '{print $5}'");
+//
+//        if code != 0 {
+//            return false;
+//        }
+//        self.mac = output;
+//        return true;
+//    }
 }
 
-pub fn get_wan_name() -> Option<String> {
-    let local_ip = get_local_ip().unwrap().to_string();
-
-    let (code, output) = cmd(
-        "ip address|grep ".to_string() + &local_ip + " | awk '{print $(7)}'");
-
-    if code != 0 {
-        return None;
-    }
-
-    Some(output)
-}
+//pub fn get_wan_name() -> Option<String> {
+//    let local_ip = get_local_ip().unwrap().to_string();
+//
+//    let (code, output) = cmd(
+//        "ip address|grep ".to_string() + &local_ip + " | awk '{print $(7)}'");
+//
+//    if code != 0 {
+//        return None;
+//    }
+//
+//    Some(output)
+//}
 
 // 连接8.8.8.8 或8.8.4.4 获取信号输出网卡ip，多网卡取路由表默认外网连接ip
 // get_localip().unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)))
@@ -85,43 +84,39 @@ pub fn get_local_ip() -> std::io::Result<IpAddr> {
     let timeout = Duration::new(3 as u64, 0 as u32);
     let addr0 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8,8,8,8)), 53);
     // 如果可以连接到8.8.8.8 || 8.8.4.4 获取出口ip，如果失败获取网卡ip
-    let socket = match TcpStream::connect_timeout(&addr0, timeout) {
-        Ok(x) => x,
-        Err(_) => {
-            let addr1 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8,8,4,4)), 53);
-            let socket1 = match TcpStream::connect_timeout(&addr1, timeout) {
-                Ok(x) => x,
-                Err(e) => {
-                    let (code, output) = cmd(
-                        "ip address|grep -w inet | awk 'NR == 2' | awk '{print $(2)}'".to_string());
-                    if !code == 0 {
-                        return Err(e);
-                    }
-                    let ip: Vec<&str> = output.split("/").collect();
-                    match IpAddr::from_str(ip[0]){
-                        Ok(ip) => return Ok(ip),
-                        Err(_) => return Err(e),
-                    };
-                }
-            };
-            socket1
-        }
+
+    let ip;
+    if let Ok(socket) = TcpStream::connect_timeout(&addr0, timeout) {
+        ip = socket.local_addr()?.ip();
+    }
+    else {
+        let output = Command::new("bash")
+            .arg("-c")
+            .arg("ip address|grep -w inet | awk 'NR == 2' | awk '{print $(2)}'")
+            .output()?
+            .stdout;
+
+        let output = String::from_utf8(output)
+            .map_err(|_|std::io::Error::new(std::io::ErrorKind::InvalidData, ""))?;
+
+        let ip_vec: Vec<&str> = output.split("/").collect();
+        ip = IpAddr::from_str(ip_vec[0])
+            .map_err(|_|std::io::Error::new(std::io::ErrorKind::InvalidData, ""))?;
     };
-    let ip = socket.local_addr()?.ip();
     Ok(ip)
 }
 
-pub fn get_mac() -> Option<String> {
-    let if_name = get_wan_name().unwrap();
-    let (code, output) = cmd(
-        "ifconfig|grep ".to_string() + &if_name + "| awk '{print $5}'");
-
-    if code != 0 {
-        return None;
-    }
-    Some(output)
-
-}
+//pub fn get_mac() -> Option<String> {
+//    let if_name = get_wan_name().unwrap();
+//    let (code, output) = cmd(
+//        "ifconfig|grep ".to_string() + &if_name + "| awk '{print $5}'");
+//
+//    if code != 0 {
+//        return None;
+//    }
+//    Some(output)
+//
+//}
 
 /// https post请求
 pub fn url_post(url: &str, data: &str, cookie: &str)

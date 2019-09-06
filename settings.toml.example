@@ -1,17 +1,21 @@
+[log]
+log_level = "debug"
+log_dir = "/var/log/dnetovr/"
+
 [tinc]
 home_path = "/root/tinc/"
-pub_key_path = "key/rsa_key.pub"
 
 [server]
 url = "https://api-qa.vlan.cn"
 geo_url = "http://52.25.79.82:10000/geoip_json.php"
 
-[client]
-log_level = "debug"
-log_dir = "/var/log/dnetovr/"
+[Proxy]
 username = "proxyovr"
 password = "password"
 local_port = "10087"
 local_https_server_certificate_file = "/root/dnetovr/cert.pem"
 local_https_server_privkey_file = "/root/dnetovr/key.pem"
 proxy_type = "other"
+
+[client]
+tunnel_auto_connect = true

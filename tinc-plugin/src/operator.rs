@@ -14,6 +14,8 @@ use duct;
 use openssl::rsa::Rsa;
 
 use crate::{TincInfo, TincRunMode, TincStream};
+use std::path::Path;
+use std::time::SystemTime;
 
 /// Results from fallible operations on the Tinc tunnel.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -300,6 +302,21 @@ impl TincOperator {
             filename.push_str(splits[3]);
         }
         filename
+    }
+
+    pub fn check_pub_key(&self) -> bool {
+        let pubkey_path = self.tinc_home.to_owned() + PUB_KEY_FILENAME;
+        let path = Path::new(&pubkey_path);
+        if let Ok(fs) = std::fs::metadata(path) {
+            if let Ok(time) = fs.modified() {
+                if let Ok(now) = SystemTime::now().duration_since(time) {
+                    if now.as_secs() / 60 / 60 / 24 < 30 {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /// openssl Rsa 创建2048位密钥对, 并存放到tinc配置文件中

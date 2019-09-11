@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate err_derive;
 #[macro_use]
 extern crate log;
@@ -21,5 +20,6 @@ pub use settings::{Settings, get_settings, Error as SettingsError};
 mod shutdown;
 pub use shutdown::set_shutdown_signal_handler;
 
+mod management_interface;
+
 pub mod net_tool;
-//pub mod sys_tool;

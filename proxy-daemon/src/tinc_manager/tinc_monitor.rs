@@ -1,21 +1,22 @@
 use std::thread;
 use std::time::{Duration, Instant};
-use std::sync::mpsc;
+use std::sync::{mpsc, Mutex, Arc};
 
 use crate::tinc_manager::TincOperator;
-use tinc_plugin::TincOperatorError;
 use common_core::traits::TunnelTrait;
-use common_core::daemon::DaemonEvent;
+use common_core::daemon::{DaemonEvent, TunnelCommand};
 
 const TINC_FREQUENCY: u32 = 5;
 
 pub struct TincMonitor {
-    tinc: TincOperator,
-    daemon_event_tx: mpsc::Sender<DaemonEvent>,
+    tinc:                   TincOperator,
+    connect_cmd_mutex:      Arc<Mutex<bool>>,
+    daemon_event_tx:        mpsc::Sender<DaemonEvent>,
+    tunnel_command_rx:      mpsc::Receiver<TunnelCommand>,
 }
 
 impl TunnelTrait for TincMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<TunnelCommand>) {
         let tinc = TincOperator::new();
 
         // 初始化tinc操作
@@ -35,10 +36,16 @@ impl TunnelTrait for TincMonitor {
                 .unwrap_or(());
         }
 
-        TincMonitor {
+        let (tunnel_command_tx, tunnel_command_rx) = mpsc::channel();
+
+        let tinc_monitor = TincMonitor {
             tinc,
+            connect_cmd_mutex: Arc::new(Mutex::new(false)),
             daemon_event_tx,
-        }
+            tunnel_command_rx,
+        };
+
+        return (tinc_monitor, tunnel_command_tx)
     }
 
     fn start_monitor(self) {
@@ -49,6 +56,27 @@ impl TunnelTrait for TincMonitor {
 
 impl TincMonitor {
     fn run(mut self) {
+        while let Ok(event) = self.tunnel_command_rx.recv() {
+            match event {
+                TunnelCommand::Connect => {
+                    if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
+                        *connect_cmd_mutex = true;
+                    }
+                    self.connect();
+                }
+                TunnelCommand::Disconnect => {
+                    if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
+                        *connect_cmd_mutex = false;
+                    }
+                }
+            }
+        }
+    }
+
+    fn connect(&mut self) {
+        let _ = self.tinc.start_tinc()
+            .map_err(|e|
+                self.daemon_event_tx.send(DaemonEvent::TunnelInitFailed(e.to_string())));
         loop {
             let start = Instant::now();
             self.exec_tinc_check();
@@ -57,6 +85,10 @@ impl TincMonitor {
                 thread::sleep(remaining);
             }
         }
+    }
+
+    fn disconnect(&mut self) {
+        self.tinc.stop_tinc();
     }
 
     fn exec_tinc_check(&mut self) {

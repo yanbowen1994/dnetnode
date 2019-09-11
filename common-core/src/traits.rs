@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex, mpsc};
-use crate::daemon::DaemonEvent;
+use crate::daemon::{DaemonEvent, TunnelCommand};
 
 pub enum RpcRequest {
     Status,
@@ -17,7 +17,9 @@ pub trait InfoTrait {
     fn create_uid(&mut self);
 }
 
-pub trait TunnelTrait {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self;
+pub trait TunnelTrait
+    where Self: std::marker::Sized
+{
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<TunnelCommand>);
     fn start_monitor(self);
 }

@@ -1,22 +1,22 @@
-# DNetovr
-[中文说明](./README_zh.md)
-## platform
-Linux  
-Ubuntu16.04 ubuntu18.04 to complete the test. Other PC Linux should work.  
-openwrt armv7 to complete the test.
+# DNet proxy and client
+## 平台
+### Linux  
+ubuntu16.04 ubuntu18.04 测试. 其他PC Linux平台理论可行  
+openwrt libc采用musl, libopenssl为对应架构, 对应libc下编译并使用静态连接, 已测试armv7架构
 ### windows
- win7, win10 to complete the test.
+ win7, win10已测试
 ### macos
  macos10+
 
-## Compilation instructions
-1. Install the rust build environment.
-2. Modify openssl directory and whether statically link openssl in the ./env.sh.
+# proxy
+## 编译说明
+1. 安装rust编译环境
+2. 修改./env.sh openssl目录和是否静态链接openssl  
 3. cargo build --release --package proxy-daemon --bin dnetovr
 
-## Generate a .deb installation package under ubuntu
-[config files](./service_script/README.md)    
-File tree
+## 生成ubuntu下.deb安装包
+[配置文件](./service_script/README.md)  
+文件结构
 ```
 .
 ├── DEBIAN
@@ -46,54 +46,54 @@ File tree
         └── tincd
 ```
 
-## Install Notes
-### Install
+## 安装说明
+### 安装
 ```
 sudo dpkg -i dnetovr.deb
 ```
-### Remove
+### 删除
 ```
 sudo dpkg -P dnetovr
 ```
-## Config File Notes
+## 配置文件说明
 ```toml
 [tinc]
-#Tinc config directory
+#tinc 配置文件目录
 home_path = "/root/tinc/"
 
 [server]
-#Conductor url, default https
+#conductor url 默认https
 url = "test.insight.netgear.com"
-#Geo server url, not nullable
+#geo信息服务器url, 不可为空
 geo_url = "http://52.25.79.82:10000/geoip_json.php"
 
 [client]
-#Debug level [error, warn, info, debug, trace]
+#debug等级[error, warn, info, debug, trace]
 log_level = "debug"
-#Log dir storage address, default is "/var/log/dnetovr/".
+#log文件存储地址, 为空时默认"/var/log/dnetovr/"
 log_dir = "/var/log/dnetovr/"
-#Username and password for the proxy connection to the conductor
+#proxy连接到conductor的用户名,密码
 username = "admin"
 password = "password"
-#Local service listening port. Need to be modified synchronously with conductor.
+#本地服务监听端口, 修改时需要与conductor同步修改
 local_port = "443"
-#Local service certificate file
+#本地服务证书文件
 local_https_server_certificate_file = "/root/dnetovr/cert.pem"
-#Local service priv_key file
+#本地服务密钥文件
 local_https_server_privkey_file = "/root/dnetovr/key.pem"
-#set proxy type
+#代理类型
 proxy_type = "other"
 ```
 
-### Start dnetovr service 
+### 启动服务
 ```
 sudo service dnetovr start
 ```
-### Check dnetovr service status 
+### 查看服务状态
 ```
 sudo service dnetovr status
 ```
-### stop dnetovr service
+### 关闭服务
 ```
 sudo service dnetovr stop
 ```

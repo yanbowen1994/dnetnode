@@ -1,8 +1,7 @@
 use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
 
-use crate::get_settings;
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
+use crate::management_interface::ManagementCommand;
 
 //pub type Result<T> = std::result::Result<T, Error>;
 //
@@ -56,9 +55,13 @@ enum DaemonExecutionState {
     Finished,
 }
 
+pub enum TunnelCommand {
+    Connect,
+    Disconnect,
+}
+
 #[derive(Clone, Debug)]
-pub enum DaemonEvent
-{
+pub enum DaemonEvent {
     // -> self.Status.rpc.Connected
     RpcConnected,
 
@@ -75,6 +78,8 @@ pub enum DaemonEvent
     // ->
     TunnelInitFailed(String),
 
+    ManagementInterfaceEvent(ManagementCommand),
+
     // Ctrl + c && kill
     ShutDown,
 }
@@ -86,6 +91,7 @@ pub struct Daemon<Info>
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
+    tunnel_command_tx:      mpsc::Sender<TunnelCommand>,
 }
 
 impl<Info> Daemon<Info>
@@ -101,7 +107,7 @@ impl<Info> Daemon<Info>
 
         // tinc操作 main loop：监测tinc运行，修改pub key
         // web_server：添加hosts
-        let mut tinc = Tunnel::new(daemon_event_tx.clone());
+        let (tinc, tunnel_command_tx) = Tunnel::new(daemon_event_tx.clone());
         tinc.start_monitor();
 
         // 获取本地 tinc geo 和 ip信息，创建proxy uuid
@@ -115,14 +121,15 @@ impl<Info> Daemon<Info>
         //          目前 初始化后 main loop 和web_server 都只做读取
         let info_arc = Arc::new(Mutex::new(info));
 
-        let mut rpc = Rpc::new(info_arc.clone(), daemon_event_tx.clone());
-        rpc.start_monitor();
+        let mut _rpc = Rpc::new(info_arc.clone(), daemon_event_tx.clone());
+        _rpc.start_monitor();
 
         Daemon {
             info_arc,
             daemon_event_tx,
             daemon_event_rx,
             status: State::new(),
+            tunnel_command_tx,
         }
     }
 
@@ -155,6 +162,9 @@ impl<Info> Daemon<Info>
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
+            DaemonEvent::ManagementInterfaceEvent(cmd) => {
+                self.handle_management_interface_event(cmd);
+            }
             // Ctrl + c && kill
             DaemonEvent::ShutDown => {
                 self.handle_shutdown();
@@ -164,5 +174,9 @@ impl<Info> Daemon<Info>
 
     fn handle_shutdown(&mut self) {
         self.status.daemon = DaemonExecutionState::Finished;
+    }
+
+    fn handle_management_interface_event(&mut self, cmd: ManagementCommand) {
+
     }
 }

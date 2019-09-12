@@ -5,11 +5,12 @@ use std::time::{Instant, Duration};
 use std::thread::sleep;
 
 use reqwest::Response;
-use common_core::net_tool::url_post;
-use common_core::{Settings, get_settings};
-
-use domain::{Info, OnlineProxy};
 use tinc_plugin::TincOperatorError;
+
+use crate::net_tool::url_post;
+use crate::settings::{Settings, get_settings};
+use crate::info::{Info, OnlineProxy};
+use crate::tinc_manager;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
 
@@ -234,7 +235,7 @@ impl Client {
                 let local_pub_key = info.tinc_info.pub_key.clone();
                 let mut other_proxy = vec![];
 
-                let tinc = ::tinc_manager::TincOperator::new();
+                let tinc = tinc_manager::TincOperator::new();
 
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {

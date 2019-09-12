@@ -2,8 +2,6 @@ extern crate config;
 use self::config::{ConfigError, Config, File};
 use std::path::Path;
 
-static mut EL: *mut Settings = 0 as *mut _;
-
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
     #[error(display = "Can find settings.toml, please use --config to specify configuration file.")]
@@ -14,37 +12,38 @@ pub enum Error {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Tinc {
-    pub home_path: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Server {
-    pub url: String,
-    pub geo_url: String,
+pub struct Common {
+    pub home_path:       Option<String>,
+    pub log_level:       Option<String>,
+    pub log_dir:         Option<String>,
+    pub mode:            Option<String>,
+    pub conductor_url:   Option<String>,
+    pub username:        Option<String>,
+    pub password:        Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Proxy {
-    pub log_level: Option<String>,
-    pub log_dir: Option<String>,
-    pub username: String,
-    pub password: String,
-    pub local_port: String,
-    pub local_https_server_certificate_file: String,
-    pub local_https_server_privkey_file: String,
+    pub local_port:                             Option<String>,
+    pub local_https_server_certificate_file:    Option<String>,
+    pub local_https_server_privkey_file:        Option<String>,
+    pub proxy_type:                             Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Settings {
-    pub server: Server,
-    pub proxy: Proxy,
-    pub tinc: Tinc,
-    pub last_runtime: Option<String>
+pub struct Client {
+    pub auto_connect:                              Option<String>,
 }
 
-impl Settings {
-    pub fn load_config(config_dir: &str) -> Result<(), Error> {
+#[derive(Clone, Debug, Deserialize)]
+pub(crate) struct FileSettings {
+    pub common: Option<Common>,
+    pub proxy:  Option<Proxy>,
+    pub client:   Option<Client>,
+}
+
+impl FileSettings {
+    pub(crate) fn load_config(config_dir: &str) -> Result<FileSettings, Error> {
         let mut settings = Config::new();
 
         let config_file = config_dir.to_owned() + "/settings.toml";
@@ -58,33 +57,17 @@ impl Settings {
             .merge(File::with_name(&(config_dir.to_owned() + "/settings.toml")))
             .expect("Error: Can not parse settings.");
 
-        let mut settings: Settings = settings.try_into().map_err(Error::ConfigError)?;
-
-        let now = chrono::Utc::now().to_string();
-        settings.last_runtime = Some(now);
-
-        unsafe {
-            EL = Box::into_raw(Box::new(settings));
-        };
-        Ok(())
+        let mut settings: FileSettings = settings.try_into().map_err(Error::ConfigError)?;
+        Ok(settings)
     }
 }
 
-pub fn get_settings() -> &'static Settings {
-    unsafe {
-        if EL == 0 as *mut _ {
-            panic!("Get settings instance, before init");
-        }
-        & *EL
-    }
-}
 
 #[test]
 fn test_setting() {
-    Settings::load_config("/root/dnetovr")
+    Settings::load_config("/root/Rust/ovrouter_Rust")
         .map_err(|e|{
             eprintln!("{:?}\n{}", e, e);
         })
         .expect("Error: Can not parse settings.");
-    let _settings = get_settings();
 }

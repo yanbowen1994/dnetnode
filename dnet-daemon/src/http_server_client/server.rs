@@ -18,10 +18,10 @@ use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use self::bytes::BytesMut;
 use super::futures::{Future, Stream};
 
-use domain::Info;
-use tinc_manager::TincOperator;
-use common_core::daemon::DaemonEvent;
-use common_core::get_settings;
+use crate::info::Info;
+use crate::tinc_manager::TincOperator;
+use crate::daemon::DaemonEvent;
+use crate::settings::get_settings;
 use reqwest::header::HeaderValue;
 
 #[derive(Clone)]

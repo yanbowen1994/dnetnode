@@ -1,0 +1,42 @@
+[package]
+name = "dnet-daemon"
+version = "0.1.0"
+authors = ["bowen.yan <bowen.yan@siteview.com>"]
+edition = "2018"
+
+[[bin]]
+name = "dnet-daemon"
+path = "src/main.rs"
+
+[dependencies]
+actix = "0.7"
+actix-web = { version = "0.7", features=["ssl"] }
+clap = "2.32"
+chrono = "0.4.6"
+config="0.9"
+bytes = "0.4"
+duct = "0.12"
+err-derive = "0.1.5"
+fern = { version = "0.5", features = ["colored"] }
+futures = "0.1"
+log = "0.4"
+openssl = "0.10"
+os_type = "2.2.0"
+regex = "1.1.0"
+reqwest = "0.9"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+simple-signal = "1.1"
+talpid-ipc = { path = "../talpid-ipc" }
+tinc-plugin = { path = "../tinc-plugin" }
+tokio = "0.1"
+trust-dns-resolver = "0.12.0"
+uuid = "0.7.1"
+
+jsonrpc-client-core = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
+jsonrpc-client-ipc = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
+jsonrpc-core = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
+jsonrpc-ipc-server = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
+jsonrpc-pubsub = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
+jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }

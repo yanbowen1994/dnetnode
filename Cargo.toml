@@ -1,8 +1,7 @@
 [workspace]
 members = [
-    "client-daemon",
-    "common-core",
-    "proxy-daemon",
+    "dnet-daemon",
+    "talpid-ipc",
     "tinc-plugin",
 ]
 

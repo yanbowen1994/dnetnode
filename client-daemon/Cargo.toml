@@ -1,7 +1,0 @@
-[package]
-name = "client-daemon"
-version = "0.1.0"
-authors = ["yanbowen <bowen.yan@gitblit.com>"]
-
-[dependencies]
-clap = "2.32"

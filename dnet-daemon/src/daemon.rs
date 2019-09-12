@@ -1,22 +1,14 @@
 use std::sync::{Arc, Mutex, mpsc};
 
+use serde_json::to_value;
+
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
-use crate::management_interface::ManagementCommand;
+use crate::cmd_api::types::{IpcCommand, CommandResponse};
+use crate::info::Info;
+use crate::http_server_client::RpcMonitor;
+use crate::tinc_manager::TincMonitor;
 
-//pub type Result<T> = std::result::Result<T, Error>;
-//
-//#[derive(err_derive::Error, Debug)]
-//pub enum Error {
-//    #[error(display = "Get local info")]
-//    GetLocalInfo(#[error(cause)] ::domain::Error),
-
-//    #[error(display = "Conductor connect failed.")]
-//    ConductorConnect(#[error(cause)] ::http_server_client::client::Error),
-
-//    #[error(display = "Tinc operator error.")]
-//    TincOperator(#[error(cause)] TincOperatorError),
-//}
-
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct State {
     rpc:        RpcState,
     tunnel:     TunnelState,
@@ -33,14 +25,14 @@ impl State {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 enum RpcState {
     Connecting,
     Connected,
     ReConnecting,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 enum TunnelState {
     Connecting,
     Connected,
@@ -49,7 +41,7 @@ enum TunnelState {
     TunnelInitFailed(String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 enum DaemonExecutionState {
     Running,
     Finished,
@@ -78,15 +70,13 @@ pub enum DaemonEvent {
     // ->
     TunnelInitFailed(String),
 
-    ManagementInterfaceEvent(ManagementCommand),
+    IpcCommand(IpcCommand),
 
     // Ctrl + c && kill
     ShutDown,
 }
 
-pub struct Daemon<Info>
-    where Info: InfoTrait,
-{
+pub struct Daemon {
     info_arc:               Arc<Mutex<Info>>,
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
@@ -94,34 +84,22 @@ pub struct Daemon<Info>
     tunnel_command_tx:      mpsc::Sender<TunnelCommand>,
 }
 
-impl<Info> Daemon<Info>
-    where Info: InfoTrait,
-{
-    pub fn start<Rpc, Tunnel>() -> Self
-        where Rpc: RpcTrait<Info>,
-              Tunnel: TunnelTrait,
-    {
+impl Daemon {
+    pub fn start() -> Self {
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
-        // tinc操作 main loop：监测tinc运行，修改pub key
-        // web_server：添加hosts
-        let (tinc, tunnel_command_tx) = Tunnel::new(daemon_event_tx.clone());
+        let (tinc, tunnel_command_tx) = TincMonitor::new(daemon_event_tx.clone());
         tinc.start_monitor();
 
-        // 获取本地 tinc geo 和 ip信息，创建proxy uuid
         info!("Get local info.");
         let mut info = Info::new(daemon_event_tx.clone());
         info.create_uid();
 
-        // 信息包括 geo信息：初次启动获取，目前初始化后无更新
-        //          tinc信息： 本机tinc运行参数
-        //          proxy信息：公网ip， uuid等
-        //          目前 初始化后 main loop 和web_server 都只做读取
         let info_arc = Arc::new(Mutex::new(info));
 
-        let mut _rpc = Rpc::new(info_arc.clone(), daemon_event_tx.clone());
+        let mut _rpc = RpcMonitor::new(info_arc.clone(), daemon_event_tx.clone());
         _rpc.start_monitor();
 
         Daemon {
@@ -162,8 +140,8 @@ impl<Info> Daemon<Info>
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
-            DaemonEvent::ManagementInterfaceEvent(cmd) => {
-                self.handle_management_interface_event(cmd);
+            DaemonEvent::IpcCommand(cmd) => {
+                self.handle_ipc_command_event(cmd);
             }
             // Ctrl + c && kill
             DaemonEvent::ShutDown => {
@@ -176,7 +154,29 @@ impl<Info> Daemon<Info>
         self.status.daemon = DaemonExecutionState::Finished;
     }
 
-    fn handle_management_interface_event(&mut self, cmd: ManagementCommand) {
-
+    fn handle_ipc_command_event(&mut self, cmd: IpcCommand) {
+        match cmd {
+            IpcCommand::TunnelConnect(tx) => {
+                self.tunnel_command_tx.send(TunnelCommand::Connect);
+                tx.send(CommandResponse::success());
+            }
+            IpcCommand::TunnelDisConnect(tx) => {
+                self.tunnel_command_tx.send(TunnelCommand::Disconnect);
+                tx.send(CommandResponse::success());
+            }
+            IpcCommand::TunnelStatus(tx) => {
+                let mut response = CommandResponse::success();
+                response.data = Some(to_value(&self.status.tunnel).unwrap());
+                tx.send(response);
+            }
+            IpcCommand::RpcStatus(tx) => {
+                let mut response = CommandResponse::success();
+                response.data = Some(to_value(&self.status.rpc).unwrap());
+                tx.send(response);
+            }
+            IpcCommand::GroupInfo(tx, id) => {
+                tx.send(CommandResponse::success());
+            }
+        }
     }
 }

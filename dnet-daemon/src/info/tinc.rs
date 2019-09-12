@@ -5,9 +5,9 @@ use std::io::Read;
 
 use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
 
-use common_core::get_settings;
-use tinc_manager::TincOperator;
-use tinc_manager::tinc_connections;
+use crate::settings::get_settings;
+use crate::tinc_manager::{TincOperator, tinc_connections};
+//use crate::tinc_manager::tinc_connections;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

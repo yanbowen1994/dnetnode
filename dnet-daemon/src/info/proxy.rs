@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 extern crate uuid;
 
-use common_core::net_tool::get_local_ip;
+use crate::net_tool::get_local_ip;
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {

@@ -6,7 +6,7 @@
 //! load_local() 根据本地信息创建结构体，将会读取tinc公钥，ip，vip等
 use std::sync::mpsc;
 
-use common_core::traits::InfoTrait;
+use crate::traits::InfoTrait;
 
 mod proxy;
 pub use self::proxy::ProxyInfo;
@@ -15,7 +15,7 @@ mod tinc;
 pub use self::tinc::TincInfo;
 mod auth;
 pub use self::auth::AuthInfo;
-use common_core::daemon::DaemonEvent;
+use crate::daemon::DaemonEvent;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

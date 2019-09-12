@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use std::sync::{mpsc, Mutex, Arc};
 
 use crate::tinc_manager::TincOperator;
-use common_core::traits::TunnelTrait;
-use common_core::daemon::{DaemonEvent, TunnelCommand};
+use crate::traits::TunnelTrait;
+use crate::daemon::{DaemonEvent, TunnelCommand};
 
 const TINC_FREQUENCY: u32 = 5;
 

@@ -1,4 +1,4 @@
-use crate::tinc_plugin::{TincStream};
+use tinc_plugin::TincStream;
 
 pub fn tinc_connections(pid_path: &str) -> ::std::io::Result<(u32, u32, u32)> {
     let mut tinc_stream = TincStream::new(pid_path)?;

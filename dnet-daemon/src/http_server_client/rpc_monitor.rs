@@ -2,15 +2,12 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use common_core::daemon::DaemonEvent;
-use common_core::traits::RpcTrait;
-use common_core::get_settings;
-
-use http_server_client::Client;
-use domain::Info;
-
-use tinc_manager::TincOperator;
-use http_server_client::web_server;
+use crate::daemon::DaemonEvent;
+use crate::traits::RpcTrait;
+use crate::settings::get_settings;
+use crate::http_server_client::{Client, web_server};
+use crate::info::Info;
+use crate::tinc_manager::TincOperator;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 

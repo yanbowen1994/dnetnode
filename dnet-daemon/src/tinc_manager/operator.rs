@@ -6,11 +6,11 @@ use std::str::FromStr;
 use std::fs;
 use std::io::Write;
 
-use domain::{Info, AuthInfo};
-use common_core::get_settings;
-use tinc_plugin::{TincRunMode, ConnectTo};
-
-use tinc_plugin::{TincOperator as PluginTincOperator,
+use crate::info::{Info, AuthInfo};
+use crate::settings::get_settings;
+use tinc_plugin::{TincRunMode,
+                  ConnectTo,
+                  TincOperator as PluginTincOperator,
                   TincInfo as PluginTincInfo,
                   TincOperatorError};
 

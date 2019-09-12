@@ -1,10 +1,13 @@
 use std::path::PathBuf;
 use std::convert::From;
 
+#[macro_use]
+extern crate log;
 use clap::{App, Arg, ArgMatches};
 
-use crate::{Settings, get_settings};
-use crate::init_logger;
+extern crate dnet_daemon;
+use dnet_daemon::settings::{Settings, get_settings, Error as SettingsError};
+use dnet_daemon::init_logger;
 
 const LOG_FILENAME: &str = "dnetovr.log";
 #[cfg(unix)]
@@ -23,9 +26,30 @@ pub enum Error {
     #[error(display = "Can find settings.toml, please use --config to specify configuration file.")]
     NoSettingFile,
     #[error(display = "Can not parse settings.toml.")]
-    ParseSetting(#[error(cause)] crate::SettingsError),
+    ParseSetting(#[error(cause)] SettingsError),
     #[error(display = "Can not create log dir.")]
     CreateLogDir(#[error(cause)] ::std::io::Error),
+}
+
+use dnet_daemon::daemon::{Daemon, DaemonEvent};
+use dnet_daemon::info::Info;
+use dnet_daemon::http_server_client::RpcMonitor;
+use dnet_daemon::tinc_manager::TincMonitor;
+
+fn main() {
+    let exit_code = match init() {
+        Ok(_) => {
+            start_daemon();
+            0
+        },
+        Err(error) => {
+            println!("{:?}\n{}", error, error);
+            1
+        }
+    };
+
+    debug!("Process exiting with code {}", exit_code);
+    std::process::exit(exit_code);
 }
 
 pub fn init() -> Result<()> {
@@ -122,4 +146,9 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+fn start_daemon() {
+    let mut daemon = Daemon::start();
+    daemon.run();
 }

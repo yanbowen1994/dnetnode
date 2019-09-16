@@ -1,6 +1,6 @@
 [package]
 name = "dnet-daemon"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["bowen.yan <bowen.yan@siteview.com>"]
 edition = "2018"
 
@@ -11,10 +11,11 @@ path = "src/main.rs"
 [dependencies]
 actix = "0.7"
 actix-web = { version = "0.7", features=["ssl"] }
+bytes = "0.4"
 clap = "2.32"
 chrono = "0.4.6"
 config="0.9"
-bytes = "0.4"
+dnet-path = { path = "../dnet-path" }
 duct = "0.12"
 err-derive = "0.1.5"
 fern = { version = "0.5", features = ["colored"] }

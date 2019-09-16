@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::convert::From;
 
 #[macro_use]
 extern crate log;
@@ -9,15 +8,13 @@ extern crate dnet_daemon;
 use dnet_daemon::settings::{Settings, get_settings, Error as SettingsError};
 use dnet_daemon::init_logger;
 
-const LOG_FILENAME: &str = "dnetovr.log";
-#[cfg(unix)]
-const DEFAULT_LOG_DIR: &str = "/var/log/dnetovr/";
-#[cfg(unix)]
-const DEFAULT_CONFIG_DIR: &str = "/root/dnetovr";
-
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
 pub const COMMIT_DATE: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-date.txt"));
+
+pub const LOG_FILENAME: &str = "dnet.log";
+
+pub const DEFAULT_CONFIG_DIR: &str = "/opt/dnet";
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -31,10 +28,7 @@ pub enum Error {
     CreateLogDir(#[error(cause)] ::std::io::Error),
 }
 
-use dnet_daemon::daemon::{Daemon, DaemonEvent};
-use dnet_daemon::info::Info;
-use dnet_daemon::http_server_client::RpcMonitor;
-use dnet_daemon::tinc_manager::TincMonitor;
+use dnet_daemon::daemon::Daemon;
 
 fn main() {
     let exit_code = match init() {
@@ -54,7 +48,7 @@ fn main() {
 
 pub fn init() -> Result<()> {
     // 命令行提示
-    let matches =  App::new("dnetovr v1.0.5.0")
+    let matches =  App::new("dnet 1.0.0")
         .version(&format!("\nCommit date: {}\nCommit id:   {}", COMMIT_DATE, COMMIT_ID).to_string()[..])
         .args(&vec![
             Arg::with_name("debug")
@@ -83,7 +77,7 @@ fn get_config(matches: &ArgMatches) -> Result<()> {
         None => DEFAULT_CONFIG_DIR,
     };
     // 解析settings.toml文件
-    Settings::load_config(config_dir)
+    Settings::new(config_dir)
         .map_err(|e|{
             let err = Error::ParseSetting(e);
             println!("{:?}\n{}", err, err);
@@ -108,28 +102,19 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
             }
         }
         None => {
-            let settings_log_level = settings.proxy.log_level.clone();
-
-            match settings_log_level {
-                Some(settings_log_level) => {
-                    match &settings_log_level[..] {
-                        "Error" => log_level = log::LevelFilter::Error,
-                        "Warn" => log_level = log::LevelFilter::Warn,
-                        "Info" => log_level = log::LevelFilter::Info,
-                        "Debug" => log_level = log::LevelFilter::Debug,
-                        "Trace" => log_level = log::LevelFilter::Trace,
-                        _  => (),
-                    }
-                }
-                None => ()
+            let settings_log_level = settings.common.log_level.clone();
+            match &settings_log_level[..] {
+                "Error" => log_level = log::LevelFilter::Error,
+                "Warn" => log_level = log::LevelFilter::Warn,
+                "Info" => log_level = log::LevelFilter::Info,
+                "Debug" => log_level = log::LevelFilter::Debug,
+                "Trace" => log_level = log::LevelFilter::Trace,
+                _  => (),
             }
         }
     }
 
-    let mut _log_dir: PathBuf = match settings.proxy.log_dir.clone() {
-        Some(dir) => PathBuf::from(dir),
-        None => PathBuf::from(DEFAULT_LOG_DIR),
-    };
+    let mut _log_dir: PathBuf = settings.common.log_dir.clone();
 
     if !std::path::Path::new(&_log_dir).is_dir() {
         std::fs::create_dir_all(&_log_dir).map_err(Error::CreateLogDir)?;

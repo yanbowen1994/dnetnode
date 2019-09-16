@@ -25,7 +25,8 @@ impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
         let settings = get_settings();
-        PluginTincOperator::new(&settings.tinc.home_path,
+        PluginTincOperator::new(&(settings.common.home_path.clone()
+            .join("tinc").to_str().unwrap().to_string() + "/"),
                                 TincRunMode::Proxy);
 
         Self {}
@@ -124,7 +125,8 @@ impl TincOperator {
                            info: &Info,
     ) -> Result<()> {
         let settings = get_settings();
-        let path = settings.tinc.home_path.to_string() + TINC_AUTH_PATH;
+        let path = settings.common.home_path.clone()
+            .join("tinc").join("TINC_AUTH_PATH").to_str().unwrap().to_string();
         let auth_dir = std::path::PathBuf::from(&(path));
         if !std::path::Path::new(&auth_dir).is_dir() {
             fs::create_dir_all(&auth_dir)

@@ -376,10 +376,7 @@ fn runtime(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
             }
         })
         .and_then(|body| {
-            let last_runtime = match get_settings().last_runtime.clone() {
-                Some(x) => x,
-                None => "".to_owned(),
-            };
+            let last_runtime = get_settings().last_runtime.clone();
             let response = Runtime {
                 lastRuntime: last_runtime,
             };

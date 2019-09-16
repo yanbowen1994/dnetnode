@@ -4,6 +4,7 @@ extern crate log;
 extern crate tokio;
 #[macro_use]
 extern crate serde;
+extern crate dnet_path;
 
 mod cmd_api;
 pub mod http_server_client;

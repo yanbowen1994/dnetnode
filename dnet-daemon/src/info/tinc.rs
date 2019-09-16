@@ -39,7 +39,8 @@ pub struct TincInfo {
 }
 impl TincInfo {
     pub fn new() -> Self {
-        let tinc_home = &get_settings().tinc.home_path;
+        let tinc_home = &get_settings().common.home_path.clone()
+            .join("tinc").to_str().unwrap().to_string();
         let vip = IpAddr::from_str("10.255.255.254").unwrap();
         let pub_key = "".to_owned();
         TincInfo {
@@ -81,7 +82,8 @@ impl TincInfo {
 
     fn load_local_pubkey(&self) -> Result<String> {
         let settings = get_settings();
-        let tinc_home = settings.tinc.home_path.clone();
+        let tinc_home = settings.common.home_path.clone()
+            .join("tinc").to_str().unwrap().to_string();
         let mut res = String::new();
         let mut _file = File::open(tinc_home + PUB_KEY_FILENAME)
             .map_err(Error::FileNotExit)?;

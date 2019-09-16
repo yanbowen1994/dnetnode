@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "dnet-daemon",
+    "dnet-path",
     "talpid-ipc",
     "tinc-plugin",
 ]

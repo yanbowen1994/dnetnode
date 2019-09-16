@@ -71,8 +71,8 @@ pub struct Client {
 impl Client {
     pub fn new() -> Self {
         let settings = get_settings();
-        let username = settings.proxy.username.to_owned();
-        let password = settings.proxy.password.to_owned();
+        let username = settings.common.username.to_owned();
+        let password = settings.common.password.to_owned();
         Client {
             username,
             password,
@@ -103,7 +103,7 @@ impl Client {
                        settings:    &Settings,
                        info:        &mut Info,
     ) -> Result<()> {
-        let url = get_settings().server.url.clone() + "/login";
+        let url = get_settings().common.conductor_url.clone() + "/login";
         let data = User::new_from_settings(settings).to_json();
 
         debug!("proxy_login - request url: {} ",url);
@@ -151,7 +151,7 @@ impl Client {
     pub fn proxy_register(&self,
                           info: &mut Info)
                           -> Result<()> {
-        let url = get_settings().server.url.clone() + "/vppn/api/v2/proxy/register";
+        let url = get_settings().common.conductor_url.clone() + "/vppn/api/v2/proxy/register";
         let data = Register::new_from_info(info).to_json();
         let cookie = info.proxy_info.cookie.clone();
         debug!("proxy_register - request info: {:?}", info);
@@ -194,7 +194,7 @@ impl Client {
 
     pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
         let settings = get_settings();
-        let url = settings.server.url.clone()
+        let url = settings.common.conductor_url.clone()
             + "/vppn/api/v2/proxy/getonlineproxy";
 
         let data = Register::new_from_info(info).to_json();
@@ -294,7 +294,7 @@ impl Client {
     }
 
     pub fn proxy_heart_beat(&self, info: &mut Info) -> Result<()> {
-        let url = get_settings().server.url.clone()
+        let url = get_settings().common.conductor_url.clone()
             + "/vppn/api/v2/proxy/hearBeat";
         let data = Heartbeat::new_from_info(info).to_json();
         let cookie = info.proxy_info.cookie.clone();
@@ -444,8 +444,8 @@ struct User {
 impl User {
     fn new_from_settings(settings: &Settings) -> Self {
         User {
-            username: settings.proxy.username.clone(),
-            password: settings.proxy.password.clone(),
+            username: settings.common.username.clone(),
+            password: settings.common.password.clone(),
         }
     }
     fn to_json(&self) -> String {

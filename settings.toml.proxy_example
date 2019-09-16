@@ -1,0 +1,17 @@
+[common]
+home_path = "/opt/dnet"
+log_level = "debug"
+log_dir = "/var/log/dnet/"
+mode = "proxy"
+conductor_url = "https://api-qa.vlan.cn"
+username = "proxyovr"
+password = "password"
+
+[proxy]
+local_port = "10087"
+local_https_server_certificate_file = "/opt/dnet/cert.pem"
+local_https_server_privkey_file = "/opt/dnet/key.pem"
+proxy_type = "other"
+
+[client]
+auto_connect = true

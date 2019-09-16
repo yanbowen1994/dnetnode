@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures::{sync::oneshot, Future};
-use jsonrpc_client_core::{Error as ClientError, Transport};
+use jsonrpc_client_core::Transport;
 use jsonrpc_core::{Error, IoHandler};
 
 use jsonrpc_macros::build_rpc_trait;

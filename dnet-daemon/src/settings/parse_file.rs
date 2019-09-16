@@ -1,15 +1,8 @@
-extern crate config;
-use self::config::{ConfigError, Config, File};
 use std::path::Path;
 
-#[derive(err_derive::Error, Debug)]
-pub enum Error {
-    #[error(display = "Can find settings.toml, please use --config to specify configuration file.")]
-    NoSettingFile,
+use config::{Config, File};
 
-    #[error(display = "Can not parse settings")]
-    ConfigError(ConfigError)
-}
+use super::error::*;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Common {
@@ -43,7 +36,7 @@ pub(crate) struct FileSettings {
 }
 
 impl FileSettings {
-    pub(crate) fn load_config(config_dir: &str) -> Result<FileSettings, Error> {
+    pub(crate) fn load_config(config_dir: &str) -> Result<FileSettings> {
         let mut settings = Config::new();
 
         let config_file = config_dir.to_owned() + "/settings.toml";
@@ -60,14 +53,4 @@ impl FileSettings {
         let mut settings: FileSettings = settings.try_into().map_err(Error::ConfigError)?;
         Ok(settings)
     }
-}
-
-
-#[test]
-fn test_setting() {
-    Settings::load_config("/root/Rust/ovrouter_Rust")
-        .map_err(|e|{
-            eprintln!("{:?}\n{}", e, e);
-        })
-        .expect("Error: Can not parse settings.");
 }

@@ -7,4 +7,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(display = "Failed to connect to daemon")]
     DaemonNotRunning(#[error(cause)] io::Error),
+    #[error(display = "Failed to connect to daemon")]
+    ipc_connect_failed(#[error(cause)] ipc_client::Error),
 }

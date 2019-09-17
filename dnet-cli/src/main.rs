@@ -11,9 +11,9 @@ use serde::{Serialize, Deserialize};
 
 mod cmds;
 mod error;
-use cmds::rpc::Rpc;
 use error::{Error, Result};
 use std::path::Path;
+use dnet_types::states::State;
 
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
@@ -28,8 +28,8 @@ pub fn new_ipc_client() -> Result<DaemonRpcClient> {
 }
 
 fn main() {
-    let mut commands = HashMap::new();
-    commands.insert(Rpc{}.name(), Rpc{});
+    let commands = cmds::get_commands();
+
     let matches =  App::new("dnet")
         .version(&format!("\nCommit date: {}\nCommit id: {}", COMMIT_DATE, COMMIT_ID).to_string()[..])
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
@@ -39,5 +39,19 @@ fn main() {
     let (subcommand_name, subcommand_matches) = matches.subcommand();
     if let Some(cmd) = commands.get(subcommand_name) {
         cmd.run(subcommand_matches.expect("No command matched"))
+            .map_err(|e|{
+                println!("{:?}", e);
+                ()
+            })
+            .unwrap_or(());
     }
 }
+
+pub trait Command {
+    fn name(&self) -> &'static str;
+
+    fn clap_subcommand(&self) -> clap::App<'static, 'static>;
+
+    fn run(&self, matches: &clap::ArgMatches<'_>) -> Result<()>;
+}
+

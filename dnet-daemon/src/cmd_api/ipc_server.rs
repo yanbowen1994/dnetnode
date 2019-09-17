@@ -4,7 +4,7 @@ use jsonrpc_core::{
         sync::{self, oneshot::Sender as OneshotSender},
         Future,
     },
-    Error, ErrorCode, MetaIoHandler, Metadata,
+    Error, MetaIoHandler, Metadata,
 };
 use jsonrpc_ipc_server;
 use jsonrpc_macros::{build_rpc_trait, metadata, pubsub};
@@ -12,11 +12,11 @@ use jsonrpc_pubsub::{PubSubHandler, PubSubMetadata, Session, SubscriptionId};
 
 use parking_lot::{Mutex, RwLock};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::HashMap,
     sync::Arc,
 };
 use talpid_ipc;
-use dnet_types::states::TunnelState;
+use dnet_types::states::{TunnelState, State};
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 
 use crate::cmd_api::types::EventListener;
@@ -37,11 +37,8 @@ build_rpc_trait! {
         #[rpc(meta, name = "tunnel_disconnect")]
         fn tunnel_disconnect(&self, Self::Metadata) -> BoxFuture<(), Error>;
 
-        #[rpc(meta, name = "tunnel_status")]
-        fn tunnel_status(&self, Self::Metadata) -> BoxFuture<(), Error>;
-
-        #[rpc(meta, name = "rpc_status")]
-        fn rpc_status(&self, Self::Metadata) -> BoxFuture<(), Error>;
+        #[rpc(meta, name = "status")]
+        fn status(&self, Self::Metadata) -> BoxFuture<State, Error>;
 
         #[rpc(meta, name = "group_info")]
         fn group_info(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
@@ -58,13 +55,8 @@ pub enum ManagementCommand {
         OneshotSender<()>,
     ),
 
-    /// Change target state.
-    TunnelStatus(
-        OneshotSender<()>,
-    ),
-
     /// Request the current state.
-    RpcStatus(OneshotSender<()>),
+    State(OneshotSender<State>),
 
     /// Get the current geographical location.
     GroupInfo(OneshotSender<()>, String),
@@ -175,25 +167,6 @@ impl<T: From<ManagementCommand> + 'static + Send> ManagementInterface<T> {
     ) -> impl Future<Item = (), Error = Error> {
         future::result(self.tx.lock().send(command)).map_err(|_| Error::internal_error())
     }
-
-    /// Converts the given error to an error that can be given to the caller of the API.
-    /// Will let any actual RPC error through as is, any other error is changed to an internal
-    /// error.
-    fn map_rpc_error(error: &jsonrpc_core::Error) -> Error {
-//        match error.kind() {
-//            Error::JsonRpcError(ref rpc_error) => {
-//                // We have to manually copy the error since we have different
-//                // versions of the jsonrpc_core library at the moment.
-//                Error {
-//                    code: ErrorCode::from(rpc_error.code.code()),
-//                    message: rpc_error.message.clone(),
-//                    data: rpc_error.data.clone(),
-//                }
-//            }
-//            _ => Error::internal_error(),
-//        }
-        Error::internal_error()
-    }
 }
 
 impl<T: From<ManagementCommand> + 'static + Send> ManagementInterfaceApi
@@ -220,22 +193,11 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn tunnel_status(&self,
-                     _: Self::Metadata) -> BoxFuture<(), Error> {
-        log::debug!("create_account");
+    fn status(&self, _: Self::Metadata) -> BoxFuture<State, Error> {
+        log::debug!("management interface get status.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelStatus(tx))
-            .and_then(|_| rx.map_err(|_| Error::internal_error()));
-        Box::new(future)
-    }
-
-    fn rpc_status(&self,
-                  _: Self::Metadata) -> BoxFuture<(), Error> {
-        log::debug!("create_account");
-        let (tx, rx) = sync::oneshot::channel();
-        let future = self
-            .send_command_to_daemon(ManagementCommand::RpcStatus(tx))
+            .send_command_to_daemon(ManagementCommand::State(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

@@ -7,10 +7,12 @@ use std::{io, path::Path, thread};
 
 static NO_ARGS: [u8; 0] = [];
 
-pub type Result<T> = std::result::Result<T, jsonrpc_client_core::Error>;
 pub use jsonrpc_client_core::Error;
+pub type Result<T> = std::result::Result<T, Error>;
+
 pub use jsonrpc_client_pubsub::Error as PubSubError;
 use dnet_types::daemon_broadcast::DaemonBroadcast;
+use dnet_types::states::State;
 
 pub fn new_standalone_ipc_client(path: &impl AsRef<Path>) -> io::Result<DaemonRpcClient> {
     let path = path.as_ref().to_string_lossy().to_string();
@@ -81,8 +83,16 @@ pub struct DaemonRpcClient {
 
 
 impl DaemonRpcClient {
-    pub fn rpc_status(&mut self) -> Result<()> {
-        self.call("rpc_status", &NO_ARGS)
+    pub fn status(&mut self) -> Result<State> {
+        self.call("status", &NO_ARGS)
+    }
+
+    pub fn tunnel_connect(&mut self) -> Result<()> {
+        self.call("tunnel_connect", &NO_ARGS)
+    }
+
+    pub fn tunnel_disconnect(&mut self) -> Result<()> {
+        self.call("tunnel_disconnect", &NO_ARGS)
     }
 
     pub fn call<A, O>(&mut self, method: &'static str, args: &A) -> Result<O>

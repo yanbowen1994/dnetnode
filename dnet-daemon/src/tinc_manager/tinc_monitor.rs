@@ -5,18 +5,20 @@ use std::sync::{mpsc, Mutex, Arc};
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::info::Info;
 
 const TINC_FREQUENCY: u32 = 5;
 
 pub struct TincMonitor {
     tinc:                   TincOperator,
+    info_arc:               Arc<Mutex<Info>>,
     connect_cmd_mutex:      Arc<Mutex<bool>>,
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     tunnel_command_rx:      mpsc::Receiver<TunnelCommand>,
 }
 
 impl TunnelTrait for TincMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<TunnelCommand>) {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>, info_arc: Arc<Mutex<Info>>) -> (Self, mpsc::Sender<TunnelCommand>) {
         let tinc = TincOperator::new();
 
         // 初始化tinc操作
@@ -41,6 +43,7 @@ impl TunnelTrait for TincMonitor {
         let tinc_monitor = TincMonitor {
             tinc,
             connect_cmd_mutex: Arc::new(Mutex::new(false)),
+            info_arc,
             daemon_event_tx,
             tunnel_command_rx,
         };
@@ -74,6 +77,10 @@ impl TincMonitor {
     }
 
     fn connect(&mut self) {
+        {
+            let mut info = self.info_arc.lock().unwrap();
+            self.tinc.set_info_to_local(&mut info);
+        }
         let _ = self.tinc.start_tinc()
             .map_err(|e|
                 self.daemon_event_tx.send(DaemonEvent::TunnelInitFailed(e.to_string())));

@@ -131,7 +131,7 @@ impl Settings {
         })
     }
 
-    fn parse_file_settings(mut file_settings: FileSettings) -> Result<Self> {
+    fn parse_file_settings(file_settings: FileSettings) -> Result<Self> {
         let common = file_settings.common
             .ok_or(Error::NoneError)
             .and_then(|file_common| {

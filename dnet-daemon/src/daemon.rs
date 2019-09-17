@@ -1,10 +1,7 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
-use serde_json::to_value;
-use futures::{
-    sync::{mpsc::UnboundedSender, oneshot},
-};
+use futures::sync::oneshot;
 
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
@@ -77,14 +74,15 @@ impl Daemon {
 
         Self::start_management_interface(daemon_event_tx.clone());
 
-        let (tinc, tunnel_command_tx) = TincMonitor::new(daemon_event_tx.clone());
-        tinc.start_monitor();
-
         info!("Get local info.");
         let mut info = Info::new(daemon_event_tx.clone());
         info.create_uid();
 
         let info_arc = Arc::new(Mutex::new(info));
+
+        let (tinc, tunnel_command_tx) =
+            TincMonitor::new(daemon_event_tx.clone(), info_arc.clone());
+        tinc.start_monitor();
 
         let mut _rpc = RpcMonitor::new(info_arc.clone(), daemon_event_tx.clone());
         _rpc.start_monitor();
@@ -155,17 +153,11 @@ impl Daemon {
                 Self::oneshot_send(tx, (), "");
             }
 
-            ManagementCommand::TunnelStatus(tx) => {
-//                let mut response = CommandResponse::success();
-//                response.data = Some(to_value(&self.status.tunnel).unwrap());
-                Self::oneshot_send(tx, (), "");
-            }
-
-            ManagementCommand::RpcStatus(tx) => {
+            ManagementCommand::State(tx) => {
 //                let mut response = CommandResponse::success();
 //                response.data = Some(to_value(&self.status.rpc).unwrap());
-                println!("recv cli cmd.");
-                Self::oneshot_send(tx, (), "");
+                let state = self.status.clone();
+                Self::oneshot_send(tx, state, "");
             }
 
             ManagementCommand::GroupInfo(tx, id) => {

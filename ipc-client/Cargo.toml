@@ -1,5 +1,5 @@
 [package]
-name = "talpid-ipc"
+name = "ipc-client"
 version = "0.1.0"
 authors = ["Mullvad VPN <admin@mullvad.net>"]
 description = "IPC client and server for talpid"
@@ -12,14 +12,12 @@ serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
 log = "0.4"
-jsonrpc-core = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
-jsonrpc-pubsub = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
-jsonrpc-ipc-server = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 tokio = "0.1"
 futures = "0.1"
 
+dnet-daemon = { path = "../dnet-daemon" }
+
 jsonrpc-client-core = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
 jsonrpc-client-ipc = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
-jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 jsonrpc-client-pubsub = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
 

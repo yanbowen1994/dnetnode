@@ -16,7 +16,7 @@ use self::actix_web::{
 use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
 use self::bytes::BytesMut;
-use super::futures::{Future, Stream};
+use futures::{Future, Stream};
 
 use crate::info::Info;
 use crate::tinc_manager::TincOperator;

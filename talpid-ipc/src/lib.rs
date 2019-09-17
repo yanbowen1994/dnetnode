@@ -14,7 +14,6 @@ use std::{io, thread};
 use jsonrpc_core::{MetaIoHandler, Metadata};
 use jsonrpc_ipc_server::{MetaExtractor, NoopExtractor, SecurityAttributes, Server, ServerBuilder};
 
-
 use std::fmt;
 
 /// An Id created by the Ipc server that the client can use to connect to it

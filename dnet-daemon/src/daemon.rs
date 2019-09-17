@@ -1,50 +1,30 @@
 use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
 
 use serde_json::to_value;
+use futures::{
+    sync::{mpsc::UnboundedSender, oneshot},
+};
+
+use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
-use crate::cmd_api::types::{IpcCommand, CommandResponse};
 use crate::info::Info;
 use crate::http_server_client::RpcMonitor;
 use crate::tinc_manager::TincMonitor;
+use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
+use crate::mpsc::IntoSender;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-struct State {
-    rpc:        RpcState,
-    tunnel:     TunnelState,
-    daemon:     DaemonExecutionState,
-}
+pub type Result<T> = std::result::Result<T, Error>;
 
-impl State {
-    fn new() -> Self {
-        State {
-            rpc:    RpcState::Connecting,
-            tunnel: TunnelState::DisConnected,
-            daemon: DaemonExecutionState::Running,
-        }
-    }
-}
+#[derive(err_derive::Error, Debug)]
+pub enum Error {
+    #[error(display = "Tinc can't supported ipv6")]
+    UnsupportedTunnel,
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum RpcState {
-    Connecting,
-    Connected,
-    ReConnecting,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum TunnelState {
-    Connecting,
-    Connected,
-    DisConnecting,
-    DisConnected,
-    TunnelInitFailed(String),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum DaemonExecutionState {
-    Running,
-    Finished,
+    /// Error in the management interface
+    #[error(display = "Unable to start management interface server")]
+    StartManagementInterface(#[error(cause)] talpid_ipc::Error),
 }
 
 pub enum TunnelCommand {
@@ -52,7 +32,6 @@ pub enum TunnelCommand {
     Disconnect,
 }
 
-#[derive(Clone, Debug)]
 pub enum DaemonEvent {
     // -> self.Status.rpc.Connected
     RpcConnected,
@@ -70,10 +49,16 @@ pub enum DaemonEvent {
     // ->
     TunnelInitFailed(String),
 
-    IpcCommand(IpcCommand),
+    ManagementCommand(ManagementCommand),
 
     // Ctrl + c && kill
     ShutDown,
+}
+
+impl From<ManagementCommand> for DaemonEvent {
+    fn from(command: ManagementCommand) -> Self {
+        DaemonEvent::ManagementCommand(command)
+    }
 }
 
 pub struct Daemon {
@@ -89,6 +74,8 @@ impl Daemon {
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
+
+        Self::start_management_interface(daemon_event_tx.clone());
 
         let (tinc, tunnel_command_tx) = TincMonitor::new(daemon_event_tx.clone());
         tinc.start_monitor();
@@ -140,7 +127,7 @@ impl Daemon {
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
-            DaemonEvent::IpcCommand(cmd) => {
+            DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
             }
             // Ctrl + c && kill
@@ -154,29 +141,80 @@ impl Daemon {
         self.status.daemon = DaemonExecutionState::Finished;
     }
 
-    fn handle_ipc_command_event(&mut self, cmd: IpcCommand) {
+    fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
-            IpcCommand::TunnelConnect(tx) => {
+            ManagementCommand::TunnelConnect(tx) => {
                 self.tunnel_command_tx.send(TunnelCommand::Connect);
-                tx.send(CommandResponse::success());
+                // TODO CommandResponse
+//                Self::oneshot_send(tx, Box::new(CommandResponse::success()), "");
+                Self::oneshot_send(tx, (), "");
             }
-            IpcCommand::TunnelDisConnect(tx) => {
+
+            ManagementCommand::TunnelDisConnect(tx) => {
                 self.tunnel_command_tx.send(TunnelCommand::Disconnect);
-                tx.send(CommandResponse::success());
+                Self::oneshot_send(tx, (), "");
             }
-            IpcCommand::TunnelStatus(tx) => {
-                let mut response = CommandResponse::success();
-                response.data = Some(to_value(&self.status.tunnel).unwrap());
-                tx.send(response);
+
+            ManagementCommand::TunnelStatus(tx) => {
+//                let mut response = CommandResponse::success();
+//                response.data = Some(to_value(&self.status.tunnel).unwrap());
+                Self::oneshot_send(tx, (), "");
             }
-            IpcCommand::RpcStatus(tx) => {
-                let mut response = CommandResponse::success();
-                response.data = Some(to_value(&self.status.rpc).unwrap());
-                tx.send(response);
+
+            ManagementCommand::RpcStatus(tx) => {
+//                let mut response = CommandResponse::success();
+//                response.data = Some(to_value(&self.status.rpc).unwrap());
+                Self::oneshot_send(tx, (), "");
             }
-            IpcCommand::GroupInfo(tx, id) => {
-                tx.send(CommandResponse::success());
+
+            ManagementCommand::GroupInfo(tx, id) => {
+                Self::oneshot_send(tx, (), "");
+            }
+
+            ManagementCommand::Shutdown => {
+//                Self::oneshot_send(tx, (), "")
+                let _ = self.daemon_event_tx.send(DaemonEvent::ShutDown);
             }
         }
+    }
+
+    fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
+        if tx.send(t).is_err() {
+            warn!("Unable to send {} to management interface client", msg);
+        }
+    }
+
+    // Starts the management interface and spawns a thread that will process it.
+    // Returns a handle that allows notifying all subscribers on events.
+    fn start_management_interface(
+        event_tx: mpsc::Sender<DaemonEvent>,
+    ) -> Result<ManagementInterfaceEventBroadcaster> {
+        let multiplex_event_tx = IntoSender::from(event_tx.clone());
+        let server = Self::start_management_interface_server(multiplex_event_tx)?;
+        let event_broadcaster = server.event_broadcaster();
+        Self::spawn_management_interface_wait_thread(server, event_tx);
+        Ok(event_broadcaster)
+    }
+
+    fn start_management_interface_server(
+        event_tx: IntoSender<ManagementCommand, DaemonEvent>,
+    ) -> Result<ManagementInterfaceServer> {
+        // TODO ipc path
+        let server =
+            ManagementInterfaceServer::start("/opt/dnet/dnet.socket", event_tx).map_err(Error::StartManagementInterface)?;
+        info!("Management interface listening on {}", server.socket_path());
+
+        Ok(server)
+    }
+
+    fn spawn_management_interface_wait_thread(
+        server: ManagementInterfaceServer,
+        exit_tx: mpsc::Sender<DaemonEvent>,
+    ) {
+        thread::spawn(move || {
+            server.wait();
+            info!("Management interface shut down");
+//            let _ = exit_tx.send(DaemonEvent::ManagementInterfaceExited);
+        });
     }
 }

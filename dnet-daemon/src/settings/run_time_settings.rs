@@ -8,7 +8,7 @@ use super::error::*;
 
 static mut EL: *mut Settings = 0 as *mut _;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Common {
     pub conductor_url:   String,
     pub home_path:       PathBuf,
@@ -57,7 +57,7 @@ impl Common {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proxy {
     pub local_port:                             String,
     pub local_https_server_certificate_file:    String,
@@ -76,7 +76,7 @@ impl Proxy {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Client {
     pub auto_connect:                              bool,
 }
@@ -88,7 +88,7 @@ impl Client {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Settings {
     pub common:         Common,
     pub proxy:          Proxy,

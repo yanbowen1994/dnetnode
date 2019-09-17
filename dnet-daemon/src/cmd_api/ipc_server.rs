@@ -16,11 +16,12 @@ use std::{
     sync::Arc,
 };
 use talpid_ipc;
-use crate::settings::Settings;
-use crate::cmd_api::types::EventListener;
-use crate::mpsc::IntoSender;
 use dnet_types::states::TunnelState;
 use dnet_types::daemon_broadcast::DaemonBroadcast;
+
+use crate::cmd_api::types::EventListener;
+use crate::mpsc::IntoSender;
+use crate::settings::Settings;
 
 /// FIXME(linus): This is here just because the futures crate has deprecated it and jsonrpc_core
 /// did not introduce their own yet (https://github.com/paritytech/jsonrpc/pull/196).
@@ -73,7 +74,7 @@ pub enum ManagementCommand {
 
 pub struct ManagementInterfaceServer {
     server: talpid_ipc::IpcServer,
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast<Settings>>>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast>>>>,
 }
 
 impl ManagementInterfaceServer {
@@ -119,7 +120,7 @@ impl ManagementInterfaceServer {
 /// A handle that allows broadcasting messages to all subscribers of the management interface.
 #[derive(Clone)]
 pub struct ManagementInterfaceEventBroadcaster {
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast<Settings>>>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast>>>>,
     close_handle: Option<talpid_ipc::CloseHandle>,
 }
 
@@ -133,12 +134,12 @@ impl EventListener for ManagementInterfaceEventBroadcaster {
     /// Sends settings to all `settings` subscribers of the management interface.
     fn notify_settings(&self, settings: Settings) {
         log::debug!("Broadcasting new settings");
-        self.notify(DaemonBroadcast::Settings(settings));
+        self.notify(DaemonBroadcast::Settings(settings.into()));
     }
 }
 
 impl ManagementInterfaceEventBroadcaster {
-    fn notify(&self, value: DaemonBroadcast<Settings>) {
+    fn notify(&self, value: DaemonBroadcast) {
         let subscriptions = self.subscriptions.read();
         for sink in subscriptions.values() {
             let _ = sink.notify(Ok(value.clone())).wait();
@@ -155,7 +156,7 @@ impl Drop for ManagementInterfaceEventBroadcaster {
 }
 
 struct ManagementInterface<T: From<ManagementCommand> + 'static + Send> {
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast<Settings>>>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast>>>>,
     tx: Mutex<IntoSender<ManagementCommand, T>>,
 }
 

@@ -10,7 +10,7 @@ static NO_ARGS: [u8; 0] = [];
 pub type Result<T> = std::result::Result<T, jsonrpc_client_core::Error>;
 pub use jsonrpc_client_core::Error;
 pub use jsonrpc_client_pubsub::Error as PubSubError;
-use dnet_daemon::daemon::DaemonEvent;
+use dnet_types::daemon_broadcast::DaemonBroadcast;
 
 pub fn new_standalone_ipc_client(path: &impl AsRef<Path>) -> io::Result<DaemonRpcClient> {
     let path = path.as_ref().to_string_lossy().to_string();
@@ -82,7 +82,7 @@ pub struct DaemonRpcClient {
 
 impl DaemonRpcClient {
     pub fn rpc_status(&mut self) -> Result<()> {
-        self.call("connect", &NO_ARGS)
+        self.call("rpc_status", &NO_ARGS)
     }
 
     pub fn call<A, O>(&mut self, method: &'static str, args: &A) -> Result<O>
@@ -96,7 +96,7 @@ impl DaemonRpcClient {
     pub fn daemon_event_subscribe(
         &mut self,
     ) -> impl Future<
-        Item = jsonrpc_client_pubsub::Subscription<DaemonEvent>,
+        Item = jsonrpc_client_pubsub::Subscription<DaemonBroadcast>,
         Error = jsonrpc_client_pubsub::Error,
     > {
         self.subscriber.subscribe(

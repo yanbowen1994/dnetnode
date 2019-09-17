@@ -1,9 +1,15 @@
 use std::path::PathBuf;
 
-use super::parse_file::FileSettings;
-use tinc_plugin::TincRunMode;
-use crate::settings::default_settings::{DEFAULT_LINUX_DEFAULT_HOME_PATH, DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
+use dnet_types::settings::{
+    Settings as TypeSettings,
+    Common as TypeCommon,
+    Client as TypeClient,
+    Proxy as TypeProxy,
+    RunMode
+};
 
+use super::parse_file::FileSettings;
+use super::default_settings::{DEFAULT_LINUX_DEFAULT_HOME_PATH, DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
 use super::error::*;
 
 static mut EL: *mut Settings = 0 as *mut _;
@@ -14,7 +20,7 @@ pub struct Common {
     pub home_path:       PathBuf,
     pub log_level:       String,
     pub log_dir:         PathBuf,
-    pub mode:            TincRunMode,
+    pub mode:            RunMode,
     pub username:        String,
     pub password:        String,
 }
@@ -48,8 +54,8 @@ impl Common {
         Self::default_home_path().map(|home_dir|home_dir.join("log"))
     }
 
-    fn default_running_mode() -> TincRunMode {
-        TincRunMode::Client
+    fn default_running_mode() -> RunMode {
+        RunMode::Client
     }
 
     fn default_log_level() -> String {
@@ -145,12 +151,12 @@ impl Settings {
                 let mode = file_common.mode
                     .map(|mode_str| {
                         if mode_str.to_lowercase() == "proxy" {
-                            return TincRunMode::Proxy;
+                            return RunMode::Proxy;
                         }
                         else if mode_str.to_lowercase() != "client" {
                             warn!("Invailed running mode setting. Proxy or Client.")
                         }
-                        return TincRunMode::Client;
+                        return RunMode::Client;
                     })
                     .unwrap_or(Common::default_running_mode());
 
@@ -170,7 +176,7 @@ impl Settings {
             .unwrap_or(Common::default()?);
 
         let proxy = {
-            if common.mode == TincRunMode::Proxy {
+            if common.mode == RunMode::Proxy {
                 file_settings.proxy
                     .ok_or(Error::NoneError)
                     .and_then(|file_proxy| {
@@ -204,7 +210,7 @@ impl Settings {
         };
 
         let client = {
-            if common.mode == TincRunMode::Client {
+            if common.mode == RunMode::Client {
                 file_settings.client.map(|file_client| {
                     let auto_connect = file_client.auto_connect
                         .map(|file_auto_connect|{
@@ -234,6 +240,32 @@ impl Settings {
             client,
             last_runtime: String::new(),
         })
+    }
+}
+
+impl Into<TypeSettings> for Settings {
+    fn into(self) -> TypeSettings {
+        TypeSettings {
+            common: TypeCommon {
+                conductor_url: self.common.conductor_url,
+                home_path: self.common.home_path,
+                log_level: self.common.log_level,
+                log_dir: self.common.log_dir,
+                mode: self.common.mode,
+                username: self.common.username,
+                password: self.common.password,
+            },
+            client: TypeClient {
+                auto_connect: self.client.auto_connect,
+            },
+            proxy: TypeProxy {
+                local_port: self.proxy.local_port,
+                local_https_server_certificate_file: self.proxy.local_https_server_certificate_file,
+                local_https_server_privkey_file: self.proxy.local_https_server_privkey_file,
+                proxy_type: self.proxy.proxy_type,
+            },
+            last_runtime: self.last_runtime,
+        }
     }
 }
 

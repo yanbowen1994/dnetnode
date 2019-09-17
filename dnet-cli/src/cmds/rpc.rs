@@ -1,5 +1,5 @@
 use clap::App;
-use crate::ipc_client::new_ipc_client;
+use crate::new_ipc_client;
 
 pub struct Rpc;
 
@@ -29,8 +29,7 @@ impl Rpc {
     }
 
     fn rpc_status(&self) {
-        let mut ipc = new_ipc_client();
+        let mut ipc = new_ipc_client().unwrap();
+        let i = ipc.rpc_status();
     }
-
-
 }

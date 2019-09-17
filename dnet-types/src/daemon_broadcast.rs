@@ -1,10 +1,10 @@
 use crate::states::{TunnelState, RpcState};
-use serde::{Serialize, Deserialize};
+use crate::settings::Settings;
 
 /// An event sent out from the daemon to frontends.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum DaemonBroadcast<T: Serialize> {
+pub enum DaemonBroadcast {
     /// The daemon transitioned into a new state.
     TunnelState(TunnelState),
 
@@ -12,5 +12,5 @@ pub enum DaemonBroadcast<T: Serialize> {
     RpcState(RpcState),
 
     /// The daemon settings changed.
-    Settings(T),
+    Settings(Settings),
 }

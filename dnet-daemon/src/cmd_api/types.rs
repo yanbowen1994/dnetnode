@@ -7,8 +7,8 @@ use jsonrpc_core::{
     Error, ErrorCode, MetaIoHandler, Metadata,
 };
 pub use serde_json::Value;
-use crate::settings::Settings;
 use dnet_types::states::TunnelState;
+use crate::settings::Settings;
 
 /// Trait representing something that can broadcast daemon events.
 pub trait EventListener {

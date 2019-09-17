@@ -5,7 +5,7 @@ authors = ["bowen.yan <bowen.yan@siteview.com>"]
 edition = "2018"
 
 [[bin]]
-name = "dnet-daemon"
+name = "dnet"
 path = "src/main.rs"
 
 [dependencies]

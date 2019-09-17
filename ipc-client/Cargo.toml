@@ -15,7 +15,7 @@ log = "0.4"
 tokio = "0.1"
 futures = "0.1"
 
-dnet-daemon = { path = "../dnet-daemon" }
+dnet-types = { path = "../dnet-types" }
 
 jsonrpc-client-core = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
 jsonrpc-client-ipc = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }

@@ -1,23 +1,27 @@
 use std::collections::HashMap;
-use clap::App;
 
+
+extern crate talpid_ipc;
 #[macro_use]
 extern crate serde_derive;
-use talpid_ipc::client::{new_standalone_ipc_client, DaemonRpcClient};
+use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+use clap::App;
+
+use serde::{Serialize, Deserialize};
 
 mod cmds;
 mod error;
 use cmds::rpc::Rpc;
-use error::*;
-
-mod ipc_client;
+use error::{Error, Result};
+use std::path::Path;
 
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
 pub const COMMIT_DATE: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-date.txt"));
 
-pub fn new_rpc_client() -> Result<DaemonRpcClient> {
-    match new_standalone_ipc_client(&mullvad_paths::get_rpc_socket_path()) {
+pub fn new_ipc_client() -> Result<DaemonRpcClient> {
+    // TODO dnet path
+    match new_standalone_ipc_client(&Path::new(&"/opt/dnet/dnet.socket".to_string())) {
         Err(e) => Err(Error::DaemonNotRunning(e)),
         Ok(client) => Ok(client),
     }

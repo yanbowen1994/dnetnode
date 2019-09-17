@@ -164,6 +164,7 @@ impl Daemon {
             ManagementCommand::RpcStatus(tx) => {
 //                let mut response = CommandResponse::success();
 //                response.data = Some(to_value(&self.status.rpc).unwrap());
+                println!("recv cli cmd.");
                 Self::oneshot_send(tx, (), "");
             }
 

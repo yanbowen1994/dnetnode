@@ -23,6 +23,7 @@ pub enum Error {
 
     #[error(display = "Fail to DNS parse conductor cluster domain.")]
     ParseConductorDomain(String),
+
     #[error(display = "Login can not parse json str.")]
     LoginParseJsonStr(#[error(cause)] serde_json::Error),
 

@@ -1,19 +1,12 @@
-use std::collections::HashMap;
-
-
 extern crate talpid_ipc;
-#[macro_use]
-extern crate serde_derive;
+
 use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
 use clap::App;
-
-use serde::{Serialize, Deserialize};
 
 mod cmds;
 mod error;
 use error::{Error, Result};
 use std::path::Path;
-use dnet_types::states::State;
 
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 

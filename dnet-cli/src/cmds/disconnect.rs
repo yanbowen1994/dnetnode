@@ -1,31 +1,24 @@
 use clap::App;
-
 use crate::{new_ipc_client, Command};
-use crate::error::{Error, Result};
+use crate::error::Result;
 
-pub struct Status;
+pub struct DisConnect;
 
-impl Command for Status {
+impl Command for DisConnect {
     fn name(&self) -> &'static str {
-        "status"
+        "disconnect"
     }
 
     fn clap_subcommand(&self) -> App<'static, 'static> {
         clap::SubCommand::with_name(self.name())
-            .about("Daemon status.")
+            .about("Try to disconnect if connected, or do nothing if already disconnected.")
     }
 
     fn run(&self, _matches: &clap::ArgMatches<'_>) -> Result<()> {
-        self.status()
-    }
-}
-
-impl Status {
-    fn status(&self) -> Result<()> {
         let mut ipc = new_ipc_client()?;
-        let res = ipc.status()
-            .map_err(Error::ipc_connect_failed)?;
-        println!("{:#?}", res);
+        if let Err(e) = ipc.tunnel_disconnect() {
+            eprintln!("{:?}", e);
+        }
         Ok(())
     }
 }

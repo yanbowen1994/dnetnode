@@ -3,6 +3,12 @@ pub mod setting;
 use crate::Command;
 use std::collections::HashMap;
 
+mod connect;
+pub use self::connect::Connect;
+
+mod disconnect;
+pub use self::disconnect::DisConnect;
+
 mod status;
 pub use self::status::Status;
 
@@ -13,7 +19,8 @@ pub use self::tunnel::Tunnel;
 pub fn get_commands() -> HashMap<&'static str, Box<dyn Command>> {
     let commands: Vec<Box<dyn Command>> = vec![
         Box::new(Status),
-        Box::new(Tunnel),
+        Box::new(Connect),
+        Box::new(DisConnect),
     ];
     let mut map = HashMap::new();
     for cmd in commands {

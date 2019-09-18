@@ -64,16 +64,16 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub struct Client {
+pub(super) struct RpcClient {
     username:   String,
     password:   String,
 }
-impl Client {
+impl RpcClient {
     pub fn new() -> Self {
         let settings = get_settings();
         let username = settings.common.username.to_owned();
         let password = settings.common.password.to_owned();
-        Client {
+        RpcClient {
             username,
             password,
         }

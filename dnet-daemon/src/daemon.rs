@@ -7,10 +7,12 @@ use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
 use crate::info::Info;
-use crate::http_server_client::RpcMonitor;
+use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::TincMonitor;
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
+use crate::settings::get_settings;
+use dnet_types::settings::RunMode;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -84,8 +86,15 @@ impl Daemon {
             TincMonitor::new(daemon_event_tx.clone(), info_arc.clone());
         tinc.start_monitor();
 
-        let mut _rpc = RpcMonitor::new(info_arc.clone(), daemon_event_tx.clone());
-        _rpc.start_monitor();
+        let run_mode = &get_settings().common.mode;
+        if run_mode == &RunMode::Proxy {
+            let mut _rpc = RpcMonitor::<rpc::proxy::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
+            _rpc.start_monitor();
+        }
+        else {
+            let mut _rpc = RpcMonitor::<rpc::client::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
+            _rpc.start_monitor();
+        }
 
         Daemon {
             info_arc,

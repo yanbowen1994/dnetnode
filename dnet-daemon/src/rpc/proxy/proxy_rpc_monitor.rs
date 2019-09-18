@@ -5,9 +5,11 @@ use std::time::{Duration, Instant};
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
-use crate::http_server_client::{Client, web_server};
 use crate::info::Info;
 use crate::tinc_manager::TincOperator;
+
+use super::RpcClient;
+use crate::rpc::proxy::web_server;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -20,7 +22,7 @@ pub enum Error {
 }
 
 pub struct RpcMonitor {
-    client:                     Client,
+    client:                     RpcClient,
     info_arc:                   Arc<Mutex<Info>>,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 }
@@ -29,7 +31,7 @@ impl RpcTrait<Info> for RpcMonitor {
     fn new(info_arc: Arc<Mutex<Info>>,
            daemon_event_tx: mpsc::Sender<DaemonEvent>)
         -> Self {
-        let client = Client::new();
+        let client = RpcClient::new();
         return RpcMonitor {
             client,
             info_arc,
@@ -85,7 +87,7 @@ impl RpcMonitor {
 
         // 初始化上报操作
         loop {
-            // Client Login
+            // RpcClient Login
             info!("proxy_login");
             {
                 if let Err(e) = self.client.proxy_login(&settings, &mut info) {
@@ -140,7 +142,7 @@ impl RpcMonitor {
         }
     }
 
-    fn exec_online_proxy(&self) -> Result<()>{
+    fn exec_online_proxy(&self) -> Result<()> {
         info!("exec_online_proxy");
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();

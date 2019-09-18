@@ -5,10 +5,8 @@ extern crate actix;
 extern crate actix_web;
 extern crate bytes;
 
-mod client;
-mod server;
+pub mod client;
+pub mod proxy;
 mod rpc_monitor;
 
 pub use self::rpc_monitor::RpcMonitor;
-pub use self::client::Client;
-pub use self::server::web_server;

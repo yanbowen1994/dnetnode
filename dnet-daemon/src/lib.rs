@@ -7,13 +7,13 @@ extern crate serde;
 extern crate dnet_path;
 
 mod cmd_api;
-pub mod http_server_client;
 pub mod info;
 pub mod tinc_manager;
 pub mod daemon;
 mod logging;
-pub mod traits;
+pub mod rpc;
 pub mod settings;
+pub mod traits;
 mod shutdown;
 pub mod mpsc;
 pub mod net_tool;

@@ -385,7 +385,7 @@ fn runtime(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
         .responder()
 }
 
-pub fn web_server(info_arc:     Arc<Mutex<Info>>,
+pub(super) fn web_server(info_arc:     Arc<Mutex<Info>>,
                   tinc_arc:     Arc<Mutex<TincOperator>>,
                   daemon_tx:    std::sync::mpsc::Sender<DaemonEvent>,
 ) {

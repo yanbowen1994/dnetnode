@@ -1,9 +1,9 @@
+use std::{io, path::Path, thread};
+
 use futures::sync::oneshot;
 use jsonrpc_client_core::{Client, ClientHandle, Future};
 use jsonrpc_client_ipc::IpcTransport;
-
 use serde::{Deserialize, Serialize};
-use std::{io, path::Path, thread};
 
 static NO_ARGS: [u8; 0] = [];
 

@@ -82,10 +82,6 @@ impl Daemon {
 
         let info_arc = Arc::new(Mutex::new(info));
 
-        let (tinc, tunnel_command_tx) =
-            TincMonitor::new(daemon_event_tx.clone(), info_arc.clone());
-        tinc.start_monitor();
-
         let run_mode = &get_settings().common.mode;
         if run_mode == &RunMode::Proxy {
             let mut _rpc = RpcMonitor::<rpc::proxy::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
@@ -95,6 +91,10 @@ impl Daemon {
             let mut _rpc = RpcMonitor::<rpc::client::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
             _rpc.start_monitor();
         }
+
+        let (tinc, tunnel_command_tx) =
+            TincMonitor::new(daemon_event_tx.clone(), info_arc.clone());
+        tinc.start_monitor();
 
         Daemon {
             info_arc,
@@ -118,7 +118,7 @@ impl Daemon {
         match event {
             // status change
             DaemonEvent::RpcConnected => {
-                self.status.rpc = RpcState::Connected;
+                self.handle_rpc_connected();
             },
             DaemonEvent::RpcConnecting => {
                 if RpcState::Connecting != self.status.rpc {
@@ -176,6 +176,23 @@ impl Daemon {
             ManagementCommand::Shutdown => {
 //                Self::oneshot_send(tx, (), "")
                 let _ = self.daemon_event_tx.send(DaemonEvent::ShutDown);
+            }
+        }
+    }
+
+    fn handle_rpc_connected(&mut self) {
+        self.status.rpc = RpcState::Connected;
+        let run_mode = get_settings().common.mode.clone();
+        if run_mode == RunMode::Proxy {
+            self.tunnel_command_tx.send(TunnelCommand::Connect).unwrap();
+        }
+        else {
+            let auto_connect = get_settings().client.auto_connect;
+            if auto_connect == true {
+                if self.status.tunnel == TunnelState::DisConnected ||
+                    self.status.tunnel == TunnelState::DisConnecting {
+                    self.tunnel_command_tx.send(TunnelCommand::Connect).unwrap();
+                }
             }
         }
     }

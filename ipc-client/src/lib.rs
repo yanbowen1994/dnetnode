@@ -2,17 +2,18 @@ use std::{io, path::Path, thread};
 
 use futures::sync::oneshot;
 use jsonrpc_client_core::{Client, ClientHandle, Future};
+pub use jsonrpc_client_core::Error;
 use jsonrpc_client_ipc::IpcTransport;
 use serde::{Deserialize, Serialize};
-
-static NO_ARGS: [u8; 0] = [];
-
-pub use jsonrpc_client_core::Error;
-pub type Result<T> = std::result::Result<T, Error>;
-
 pub use jsonrpc_client_pubsub::Error as PubSubError;
+
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::states::State;
+use dnet_types::response::Response;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+static NO_ARGS: [u8; 0] = [];
 
 pub fn new_standalone_ipc_client(path: &impl AsRef<Path>) -> io::Result<DaemonRpcClient> {
     let path = path.as_ref().to_string_lossy().to_string();
@@ -93,6 +94,10 @@ impl DaemonRpcClient {
 
     pub fn tunnel_disconnect(&mut self) -> Result<()> {
         self.call("tunnel_disconnect", &NO_ARGS)
+    }
+
+    pub fn shutdown(&mut self) -> Result<Response> {
+        self.call("shutdown", &NO_ARGS)
     }
 
     pub fn call<A, O>(&mut self, method: &'static str, args: &A) -> Result<O>

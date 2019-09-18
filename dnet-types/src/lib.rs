@@ -2,5 +2,6 @@
 extern crate serde_derive;
 
 pub mod daemon_broadcast;
+pub mod response;
 pub mod states;
 pub mod settings;

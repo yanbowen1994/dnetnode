@@ -18,6 +18,7 @@ use std::{
 use talpid_ipc;
 use dnet_types::states::{TunnelState, State};
 use dnet_types::daemon_broadcast::DaemonBroadcast;
+use dnet_types::response::Response;
 
 use crate::cmd_api::types::EventListener;
 use crate::mpsc::IntoSender;
@@ -36,6 +37,9 @@ build_rpc_trait! {
 
         #[rpc(meta, name = "tunnel_disconnect")]
         fn tunnel_disconnect(&self, Self::Metadata) -> BoxFuture<(), Error>;
+
+        #[rpc(meta, name = "shutdown")]
+        fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "status")]
         fn status(&self, Self::Metadata) -> BoxFuture<State, Error>;
@@ -61,7 +65,7 @@ pub enum ManagementCommand {
     /// Get the current geographical location.
     GroupInfo(OneshotSender<()>, String),
 
-    Shutdown,
+    Shutdown(OneshotSender<Response>),
 }
 
 pub struct ManagementInterfaceServer {
@@ -189,6 +193,15 @@ for ManagementInterface<T>
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::TunnelDisConnect(tx))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn shutdown(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
+        log::debug!("management interface get status.");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::Shutdown(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

@@ -13,6 +13,7 @@ use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, M
 use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
+use dnet_types::response::Response;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -151,31 +152,36 @@ impl Daemon {
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
             ManagementCommand::TunnelConnect(tx) => {
-                self.tunnel_command_tx.send(TunnelCommand::Connect);
+                let _ = self.tunnel_command_tx.send(TunnelCommand::Connect);
                 // TODO CommandResponse
 //                Self::oneshot_send(tx, Box::new(CommandResponse::success()), "");
-                Self::oneshot_send(tx, (), "");
+                let _ = Self::oneshot_send(tx, (), "");
             }
 
             ManagementCommand::TunnelDisConnect(tx) => {
-                self.tunnel_command_tx.send(TunnelCommand::Disconnect);
-                Self::oneshot_send(tx, (), "");
+                let _ = self.tunnel_command_tx.send(TunnelCommand::Disconnect);
+                let _ = Self::oneshot_send(tx, (), "");
             }
 
             ManagementCommand::State(tx) => {
 //                let mut response = CommandResponse::success();
 //                response.data = Some(to_value(&self.status.rpc).unwrap());
                 let state = self.status.clone();
-                Self::oneshot_send(tx, state, "");
+                let _ = Self::oneshot_send(tx, state, "");
             }
 
             ManagementCommand::GroupInfo(tx, id) => {
-                Self::oneshot_send(tx, (), "");
+                let _ = Self::oneshot_send(tx, (), "");
             }
 
-            ManagementCommand::Shutdown => {
-//                Self::oneshot_send(tx, (), "")
+            ManagementCommand::Shutdown(tx) => {
                 let _ = self.daemon_event_tx.send(DaemonEvent::ShutDown);
+
+                let command_response = Response::success();
+
+                info!("Shutdown by cli command.");
+
+                let _ = Self::oneshot_send(tx, command_response, "");
             }
         }
     }

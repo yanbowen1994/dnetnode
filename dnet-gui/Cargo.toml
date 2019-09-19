@@ -1,7 +1,7 @@
 [package]
-name = "DNetApp"
-version = "0.0.0"
-authors = []
+name = "dnet-gui"
+version = "0.1.0"
+authors = ["yanbowen1994 <511838976@qq.com>"]
 edition = "2018"
 
 description = "DNet Node Client App"

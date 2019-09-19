@@ -22,6 +22,7 @@ err-derive = "0.1.5"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
 log = "0.4"
+mac_address = "1.0"
 openssl = "0.10"
 os_type = "2.2.0"
 regex = "1.1.0"
@@ -34,7 +35,7 @@ talpid-ipc = { path = "../talpid-ipc" }
 tinc-plugin = { path = "../tinc-plugin" }
 tokio = "0.1"
 trust-dns-resolver = "0.12.0"
-uuid = "0.7.1"
+uuid = "0.7"
 
 parking_lot = "0.8"
 jsonrpc-client-core = { git = "https://github.com/mullvad/jsonrpc-client-rs", rev = "68aac55b" }
@@ -43,3 +44,6 @@ jsonrpc-core = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-f
 jsonrpc-ipc-server = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 jsonrpc-pubsub = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
+
+[target.arm-unknown-linux-musleabihf.dependencies]
+router-plugin = { path = "../router-plugin" }

@@ -6,9 +6,9 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
-use crate::info::Info;
+use crate::info::{self, Info};
 use crate::rpc::{self, RpcMonitor};
-use crate::tinc_manager::TincMonitor;
+use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
@@ -25,6 +25,9 @@ pub enum Error {
     /// Error in the management interface
     #[error(display = "Unable to start management interface server")]
     StartManagementInterface(#[error(cause)] talpid_ipc::Error),
+
+    #[error(display = "Unable to start management interface server")]
+    InfoError(#[error(cause)] info::Error)
 }
 
 pub enum TunnelCommand {
@@ -43,8 +46,8 @@ pub enum DaemonEvent {
     // -> self.Status.tunnel.Connected
     TunnelConnected,
 
-    // -> self.Status.tunnel.DisConnected
-    TunnelDisConnected,
+    // -> self.Status.tunnel.Disconnected
+    TunnelDisconnected,
 
     // ->
     TunnelInitFailed(String),
@@ -62,7 +65,6 @@ impl From<ManagementCommand> for DaemonEvent {
 }
 
 pub struct Daemon {
-    info_arc:               Arc<Mutex<Info>>,
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
@@ -70,40 +72,38 @@ pub struct Daemon {
 }
 
 impl Daemon {
-    pub fn start() -> Self {
+    pub fn start() -> Result<Self> {
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
         Self::start_management_interface(daemon_event_tx.clone());
 
-        info!("Get local info.");
-        let mut info = Info::new(daemon_event_tx.clone());
-        info.create_uid();
+        TincOperator::new().init();
 
-        let info_arc = Arc::new(Mutex::new(info));
+        info!("Init local info.");
+        Info::new().map_err(Error::InfoError)?;
 
         let run_mode = &get_settings().common.mode;
         if run_mode == &RunMode::Proxy {
-            let mut _rpc = RpcMonitor::<rpc::proxy::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
+            let mut _rpc = RpcMonitor::<rpc::proxy::RpcMonitor>::new(daemon_event_tx.clone());
             _rpc.start_monitor();
         }
         else {
-            let mut _rpc = RpcMonitor::<rpc::client::RpcMonitor>::new(info_arc.clone(), daemon_event_tx.clone());
+            let mut _rpc = RpcMonitor::<rpc::client::RpcMonitor>::new(daemon_event_tx.clone());
             _rpc.start_monitor();
         }
 
         let (tinc, tunnel_command_tx) =
-            TincMonitor::new(daemon_event_tx.clone(), info_arc.clone());
+            TincMonitor::new(daemon_event_tx.clone());
         tinc.start_monitor();
 
-        Daemon {
-            info_arc,
+        Ok(Daemon {
             daemon_event_tx,
             daemon_event_rx,
             status: State::new(),
             tunnel_command_tx,
-        }
+        })
     }
 
     pub fn run(&mut self) {
@@ -129,8 +129,8 @@ impl Daemon {
             DaemonEvent::TunnelConnected => {
                 self.status.tunnel = TunnelState::Connected;
             },
-            DaemonEvent::TunnelDisConnected => {
-                self.status.tunnel = TunnelState::DisConnected;
+            DaemonEvent::TunnelDisconnected => {
+                self.status.tunnel = TunnelState::Disconnected;
             },
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
@@ -158,7 +158,7 @@ impl Daemon {
                 let _ = Self::oneshot_send(tx, (), "");
             }
 
-            ManagementCommand::TunnelDisConnect(tx) => {
+            ManagementCommand::TunnelDisconnect(tx) => {
                 let _ = self.tunnel_command_tx.send(TunnelCommand::Disconnect);
                 let _ = Self::oneshot_send(tx, (), "");
             }
@@ -195,8 +195,8 @@ impl Daemon {
         else {
             let auto_connect = get_settings().client.auto_connect;
             if auto_connect == true {
-                if self.status.tunnel == TunnelState::DisConnected ||
-                    self.status.tunnel == TunnelState::DisConnecting {
+                if self.status.tunnel == TunnelState::Disconnected ||
+                    self.status.tunnel == TunnelState::Disconnecting {
                     self.tunnel_command_tx.send(TunnelCommand::Connect).unwrap();
                 }
             }

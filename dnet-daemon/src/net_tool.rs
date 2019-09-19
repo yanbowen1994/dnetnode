@@ -17,6 +17,7 @@ pub type Result<T> = std::result::Result<T, reqwest::Error>;
 
 use std::io::{stdout, Write, Read};
 use std::process::Command;
+//use mac_address::get_mac_address;
 
 pub struct Device {
     pub if_name:    String,
@@ -107,15 +108,11 @@ pub fn get_local_ip() -> std::io::Result<IpAddr> {
 }
 
 //pub fn get_mac() -> Option<String> {
-//    let if_name = get_wan_name().unwrap();
-//    let (code, output) = cmd(
-//        "ifconfig|grep ".to_string() + &if_name + "| awk '{print $5}'");
-//
-//    if code != 0 {
-//        return None;
+//    match get_mac_address() {
+//        Ok(Some(ma)) => Some(ma.replace(":", "")),
+//        Ok(None) => None,
+//        Err(e) => None,
 //    }
-//    Some(output)
-//
 //}
 
 /// https post请求

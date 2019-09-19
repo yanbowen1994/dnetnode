@@ -6,13 +6,14 @@ use std::str::FromStr;
 use std::fs;
 use std::io::Write;
 
-use crate::info::{Info, AuthInfo};
+use crate::info::{Info, AuthInfo, get_info};
 use crate::settings::get_settings;
 use tinc_plugin::{TincRunMode,
                   ConnectTo,
                   TincOperator as PluginTincOperator,
                   TincInfo as PluginTincInfo,
                   TincOperatorError};
+use reqwest::get;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -30,6 +31,14 @@ impl TincOperator {
                                 TincRunMode::Proxy);
 
         Self {}
+    }
+
+    pub fn init(&self) -> Result<()> {
+        self.create_tinc_dirs()?;
+        if !self.check_pub_key() {
+            self.create_pub_key()?;
+        }
+        Ok(())
     }
 
     /// 启动tinc 返回duct::handle
@@ -93,9 +102,9 @@ impl TincOperator {
         PluginTincOperator::instance().get_local_vip()
     }
 
-    pub fn set_info_to_local(&self, info: &mut Info) -> Result<()> {
-        let ip = IpAddr::from_str(&info.proxy_info.proxy_ip)
-            .map_err(TincOperatorError::ParseLocalIpError)?;
+    pub fn set_info_to_local(&self) -> Result<()> {
+        let info = get_info().lock().unwrap();
+        let ip =  info.proxy_info.ip;
         let vip = info.tinc_info.vip.to_owned();
         let pub_key = info.tinc_info.pub_key.to_owned();
         let mode = TincRunMode::Proxy;
@@ -122,7 +131,6 @@ impl TincOperator {
     // TODO 去除C上报tinc上线信息流程,以及去掉auth/auth.txt.
     pub fn write_auth_file(&self,
                            server_url: &str,
-                           info: &Info,
     ) -> Result<()> {
         let settings = get_settings();
         let path = settings.common.home_path.clone()
@@ -155,7 +163,7 @@ impl TincOperator {
             let path = file_str.to_string();
             let mut file = fs::File::create(path.clone())
                 .map_err(|e| TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
-            let auth_info = AuthInfo::load(server_url, info);
+            let auth_info = AuthInfo::load(server_url);
             file.write(auth_info.to_json_str().as_bytes())
                 .map_err(|e| TincOperatorError::IoError(path.clone() + " " + &e.to_string()))?;
         }

@@ -9,7 +9,7 @@ impl State {
     pub fn new() -> Self {
         State {
             rpc:    RpcState::Connecting,
-            tunnel: TunnelState::DisConnected,
+            tunnel: TunnelState::Disconnected,
             daemon: DaemonExecutionState::Running,
         }
     }
@@ -26,8 +26,8 @@ pub enum RpcState {
 pub enum TunnelState {
     Connecting,
     Connected,
-    DisConnecting,
-    DisConnected,
+    Disconnecting,
+    Disconnected,
     TunnelInitFailed(String),
 }
 

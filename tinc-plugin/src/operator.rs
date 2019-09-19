@@ -60,6 +60,9 @@ const TINC_AUTH_FILENAME: &str = "auth.txt";
 /// Errors that can happen when using the Tinc tunnel.
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
+    #[error(display = "Get local ip before Rpc get_online_proxy")]
+    GetLocalIpBeforeRpcGetOnlineProxy,
+
     /// Unable to start
     #[error(display = "duct can not start tinc")]
     NeverInitOperator,
@@ -412,7 +415,10 @@ impl TincOperator {
         let _guard = self.mutex.lock().unwrap();
 
         let (is_proxy, name_ip) = match self.mode {
-            TincRunMode::Proxy => (true, tinc_info.ip.clone()),
+            TincRunMode::Proxy => {
+                let name_ip = tinc_info.ip.clone();
+                (true, name_ip)
+            },
             TincRunMode::Client => (false, tinc_info.vip.clone()),
         };
 
@@ -486,44 +492,44 @@ impl TincOperator {
 
     /// 检查info中的配置, 并与实际运行的tinc配置对比, 如果不同修改tinc配置,
     /// 如果自己的vip修改,重启tinc
-    pub fn check_info(&mut self, tinc_info: &TincInfo) -> Result<()> {
-        let mut need_restart = false;
-        {
-            let file_vip = self.get_local_vip()?;
-            if file_vip != tinc_info.vip {
-                log::debug!("tinc operator check_info local {}, remote {}",
-                       file_vip,
-                       tinc_info.vip.to_string());
-
-                self.set_tinc_up(&tinc_info)?;
-
-                self.set_hosts(true,
-                                   &tinc_info.ip.to_string(),
-                                   &tinc_info.pub_key)?;
-
-                need_restart = true;
-            }
-        }
-        {
-            for online_proxy in tinc_info.connect_to.clone() {
-                self.set_hosts(true,
-                                   &online_proxy.ip.to_string(),
-                                   &online_proxy.pubkey)?;
-            }
-        }
-
-        self.check_self_hosts_file(&self.tinc_home, &tinc_info)?;
-        self.set_hosts(
-            true,
-            &tinc_info.ip.to_string(),
-            &tinc_info.pub_key)?;
-
-        if need_restart {
-            self.set_tinc_conf_file(&tinc_info)?;
-            self.stop_tinc()?;
-        }
-        return Ok(());
-    }
+//    pub fn check_info(&mut self, tinc_info: &TincInfo) -> Result<()> {
+//        let mut need_restart = false;
+//        {
+//            let file_vip = self.get_local_vip()?;
+//            if file_vip != tinc_info.vip {
+//                log::debug!("tinc operator check_info local {}, remote {}",
+//                       file_vip,
+//                       tinc_info.vip.to_string());
+//
+//                self.set_tinc_up(&tinc_info)?;
+//
+//                self.set_hosts(true,
+//                                   &tinc_info.ip.to_string(),
+//                                   &tinc_info.pub_key)?;
+//
+//                need_restart = true;
+//            }
+//        }
+//        {
+//            for online_proxy in tinc_info.connect_to.clone() {
+//                self.set_hosts(true,
+//                                   &online_proxy.ip.to_string(),
+//                                   &online_proxy.pubkey)?;
+//            }
+//        }
+//
+//        self.check_self_hosts_file(&self.tinc_home, &tinc_info)?;
+//        self.set_hosts(
+//            true,
+//            &tinc_info.ip.to_string(),
+//            &tinc_info.pub_key)?;
+//
+//        if need_restart {
+//            self.set_tinc_conf_file(&tinc_info)?;
+//            self.stop_tinc()?;
+//        }
+//        return Ok(());
+//    }
 
     /// 添加hosts文件
     /// if is_proxy{ 文件名=proxy_10_253_x_x }
@@ -557,24 +563,24 @@ impl TincOperator {
     }
 
     /// 检测自身hosts文件,是否正确
-    pub fn check_self_hosts_file(&self, tinc_home: &str, tinc_info: &TincInfo) -> Result<()> {
-        let _guard = self.mutex.lock().unwrap();
-        let ip = tinc_info.ip.to_string();
-
-        let is_proxy = match self.mode {
-            TincRunMode::Proxy => true,
-            TincRunMode::Client => false,
-        };
-        let filename = Self::get_filename_by_ip(is_proxy, &ip);
-
-        let path = tinc_home.to_string()
-            + "/hosts/"
-            + "proxy_"
-            + &filename;
-        fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        Ok(())
-    }
+//    pub fn check_self_hosts_file(&self, tinc_home: &str, tinc_info: &TincInfo) -> Result<()> {
+//        let _guard = self.mutex.lock().unwrap();
+//        let ip = tinc_info.ip.to_string();
+//
+//        let is_proxy = match self.mode {
+//            TincRunMode::Proxy => true,
+//            TincRunMode::Client => false,
+//        };
+//        let filename = Self::get_filename_by_ip(is_proxy, &ip);
+//
+//        let path = tinc_home.to_string()
+//            + "/hosts/"
+//            + "proxy_"
+//            + &filename;
+//        fs::File::create(path.clone())
+//            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+//        Ok(())
+//    }
 
     /// Load local tinc config file vpnserver for tinc vip and pub_key.
     /// Success return true.
@@ -595,8 +601,6 @@ impl TincOperator {
 //    }
 
     pub fn set_info_to_local(&mut self, info: &TincInfo) -> Result<()> {
-        self.create_tinc_dirs()?;
-
         self.set_tinc_conf_file(info)?;
         let is_proxy = match self.mode {
             TincRunMode::Proxy => true,

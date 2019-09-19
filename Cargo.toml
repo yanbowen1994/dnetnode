@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "dnet-cli",
+    "dnet-gui",
     "dnet-daemon",
     "dnet-path",
     "dnet-types",

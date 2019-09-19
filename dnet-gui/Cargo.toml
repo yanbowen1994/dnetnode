@@ -1,0 +1,22 @@
+[package]
+name = "DNetApp"
+version = "0.0.0"
+authors = []
+edition = "2018"
+
+description = "DNet Node Client App"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+qt_core = "0.3.0"
+qt_gui = "0.3.0"
+qt_widgets = "0.3.0"
+qt_ui_tools = "0.3.0"
+qt_3d_core = "0.3.0"
+qt_3d_render = "0.3.0"
+qt_3d_input = "0.3.0"
+qt_3d_logic = "0.3.0"
+qt_3d_extras = "0.3.0"
+qt_charts = "0.3.0"
+qt_qml = "0.3.0"
+ipc-client = { path = "../ipc-client" }

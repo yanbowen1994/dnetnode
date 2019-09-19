@@ -26,14 +26,15 @@ pub enum Error {
     ParseSetting(#[error(cause)] SettingsError),
     #[error(display = "Can not create log dir.")]
     CreateLogDir(#[error(cause)] ::std::io::Error),
+    #[error(display = "Can not create log dir.")]
+    DaemonError(#[error(cause)] dnet_daemon::daemon::Error)
 }
 
 use dnet_daemon::daemon::Daemon;
 
 fn main() {
-    let exit_code = match init() {
+    let mut exit_code = match init() {
         Ok(_) => {
-            start_daemon();
             0
         },
         Err(error) => {
@@ -41,6 +42,18 @@ fn main() {
             1
         }
     };
+
+    if exit_code == 0 {
+        exit_code = match start_daemon() {
+            Ok(_) => {
+                0
+            },
+            Err(error) => {
+                println!("{:?}\n{}", error, error);
+                1
+            }
+        }
+    }
 
     debug!("Process exiting with code {}", exit_code);
     std::process::exit(exit_code);
@@ -133,7 +146,9 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn start_daemon() {
-    let mut daemon = Daemon::start();
+fn start_daemon() -> Result<()> {
+    let mut daemon = Daemon::start()
+        .map_err(Error::DaemonError)?;
     daemon.run();
+    Ok(())
 }

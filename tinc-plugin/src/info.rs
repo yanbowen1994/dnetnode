@@ -14,7 +14,15 @@ pub struct ConnectTo {
     pub pubkey:             String,
 }
 impl ConnectTo {
-    pub fn new(ip:IpAddr, vip:IpAddr, pubkey:String) -> Self {
+    pub fn new() -> Self {
+        Self {
+            ip:     IpAddr::from_str("255.255.255.255").unwrap(),
+            vip:    IpAddr::from_str("255.255.255.255").unwrap(),
+            pubkey: String::new(),
+        }
+    }
+
+    pub fn from(ip:IpAddr, vip:IpAddr, pubkey:String) -> Self {
         Self {
             ip,
             vip,
@@ -34,8 +42,8 @@ pub struct TincInfo {
 
 impl TincInfo {
     pub fn new() -> Self {
-        let ip = IpAddr::from_str("0.0.0.0").unwrap();
-        let vip = IpAddr::from_str("0.0.0.0").unwrap();
+        let ip = IpAddr::from_str("255.255.255.255").unwrap();
+        let vip = IpAddr::from_str("255.255.255.255").unwrap();
         let pub_key = "".to_string();
         TincInfo {
             ip,

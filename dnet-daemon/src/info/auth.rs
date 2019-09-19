@@ -1,4 +1,5 @@
 use super::Info;
+use crate::info::get_info;
 
 const BACKGROUND_STATUSNOTIFY: &str = "/vppn/api/v2/client/statusNotify";
 
@@ -7,23 +8,21 @@ const BACKGROUND_STATUSNOTIFY: &str = "/vppn/api/v2/client/statusNotify";
 pub struct AuthInfo {
     url:            String,
     Apikey:         String,
-    proxyIp:        String,
     cookie:         String,
     Authorization:  String,
 }
 impl AuthInfo {
     #[allow(non_snake_case)]
-    pub fn load(server_url: &str, info: &Info) -> Self {
+    pub fn load(server_url: &str) -> Self {
+        let info = get_info().lock().unwrap();
         let url = server_url.to_string() + BACKGROUND_STATUSNOTIFY;
-        let Apikey = info.proxy_info.uid.clone();
-        let proxyIp = info.proxy_info.proxy_ip.clone();
-        let cookie = info.proxy_info.cookie.clone().replace("\r\n", "");
+        let Apikey = &info.proxy_info.uid;
+        let cookie = &info.proxy_info.cookie;
         let Authorization = "test".to_string();
         AuthInfo {
             url,
-            Apikey,
-            proxyIp,
-            cookie,
+            Apikey: Apikey.to_owned(),
+            cookie: cookie.to_owned().replace("\r\n", ""),
             Authorization,
         }
     }

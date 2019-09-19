@@ -7,26 +7,8 @@ use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
-//use crate::tinc_manager::tinc_connections;
 
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(err_derive::Error, Debug)]
-pub enum Error {
-    #[error(display = "Can read pubkey file.")]
-    PubkeyFile(#[error(cause)] ::std::io::Error),
-
-    #[error(display = "Can not get tinc dump info.")]
-    TincDump(#[error(cause)] ::std::io::Error),
-
-    #[error(display = "Can read tinc-up file.")]
-    GetVip(#[error(cause)] TincOperatorError),
-
-    #[error(display = "tinc-up vip setting error.")]
-    ParseVip(#[error(cause)] ::std::net::AddrParseError),
-    #[error(display = "tinc-up vip setting error.")]
-    FileNotExit(#[error(cause)] ::std::io::Error),
-}
+use super::error::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {

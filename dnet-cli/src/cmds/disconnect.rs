@@ -2,9 +2,9 @@ use clap::App;
 use crate::{new_ipc_client, Command};
 use crate::error::Result;
 
-pub struct DisConnect;
+pub struct Disconnect;
 
-impl Command for DisConnect {
+impl Command for Disconnect {
     fn name(&self) -> &'static str {
         "disconnect"
     }

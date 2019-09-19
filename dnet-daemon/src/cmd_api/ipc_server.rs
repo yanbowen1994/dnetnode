@@ -55,7 +55,7 @@ pub enum ManagementCommand {
         OneshotSender<()>,
     ),
 
-    TunnelDisConnect(
+    TunnelDisconnect(
         OneshotSender<()>,
     ),
 
@@ -192,7 +192,7 @@ for ManagementInterface<T>
         log::debug!("create_account");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelDisConnect(tx))
+            .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

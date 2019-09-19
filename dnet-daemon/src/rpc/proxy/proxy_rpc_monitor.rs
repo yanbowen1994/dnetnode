@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
-use crate::info::Info;
+use crate::info::{Info, get_info};
 use crate::tinc_manager::TincOperator;
 
 use super::RpcClient;
@@ -23,28 +23,24 @@ pub enum Error {
 
 pub struct RpcMonitor {
     client:                     RpcClient,
-    info_arc:                   Arc<Mutex<Info>>,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 }
 
-impl RpcTrait<Info> for RpcMonitor {
-    fn new(info_arc: Arc<Mutex<Info>>,
-           daemon_event_tx: mpsc::Sender<DaemonEvent>)
-        -> Self {
+impl RpcTrait for RpcMonitor {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>)-> Self {
         let client = RpcClient::new();
         return RpcMonitor {
             client,
-            info_arc,
             daemon_event_tx,
         };
     }
 
     fn start_monitor(self) {
-        let info_arc_clone = self.info_arc.clone();
         let web_server_tx = self.daemon_event_tx.clone();
+
+        let info_arc_clone = get_info();
         thread::spawn(move ||
-            web_server(info_arc_clone,
-                       Arc::new(Mutex::new(
+            web_server(Arc::new(Mutex::new(
                            TincOperator::new())),
                        web_server_tx,
             )
@@ -83,14 +79,12 @@ impl RpcMonitor {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);
         let settings = get_settings();
 
-        let mut info = self.info_arc.lock().unwrap();
-
         // 初始化上报操作
         loop {
             // RpcClient Login
             info!("proxy_login");
             {
-                if let Err(e) = self.client.proxy_login(&settings, &mut info) {
+                if let Err(e) = self.client.proxy_login(&settings) {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
@@ -100,7 +94,7 @@ impl RpcMonitor {
             // 注册proxy
             info!("proxy_register");
             {
-                if let Err(e) = self.client.proxy_register(&mut info) {
+                if let Err(e) = self.client.proxy_register() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
@@ -110,7 +104,7 @@ impl RpcMonitor {
             // 初次上传heartbeat
             info!("proxy_heart_beat");
             {
-                if let Err(e) = self.client.proxy_heart_beat(&mut info) {
+                if let Err(e) = self.client.proxy_heart_beat() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
@@ -126,14 +120,11 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(mut info) = self.info_arc.try_lock() {
-                if let Ok(_) = self.client.proxy_heart_beat(&mut info) {
-                    return Ok(());
-                } else {
-                    error!("Heart beat send failed.");
-                }
+            if let Ok(_) = self.client.proxy_heart_beat() {
+                return Ok(());
+            } else {
+                error!("Heart beat send failed.");
             }
-
 
             if Instant::now().duration_since(start) > timeout_secs {
                 return Err(Error::RpcTimeout);
@@ -147,12 +138,10 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(mut info) = self.info_arc.try_lock() {
-                if let Ok(_) = self.client.proxy_get_online_proxy(&mut info) {
-                    return Ok(());
-                } else {
-                    error!("proxy_get_online_proxy failed.");
-                }
+            if let Ok(_) = self.client.proxy_get_online_proxy() {
+                return Ok(());
+            } else {
+                error!("proxy_get_online_proxy failed.");
             }
 
             if Instant::now().duration_since(start) > timeout_secs {

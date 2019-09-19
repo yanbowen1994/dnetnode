@@ -22,18 +22,15 @@ pub enum Error {
 
 pub struct RpcMonitor {
     client:                     RpcClient,
-    info_arc:                   Arc<Mutex<Info>>,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
 }
 
-impl RpcTrait<Info> for RpcMonitor {
-    fn new(info_arc: Arc<Mutex<Info>>,
-           daemon_event_tx: mpsc::Sender<DaemonEvent>)
+impl RpcTrait for RpcMonitor {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>)
         -> Self {
         let client = RpcClient::new();
         return RpcMonitor {
             client,
-            info_arc,
             daemon_event_tx,
         };
     }
@@ -55,10 +52,6 @@ impl RpcMonitor {
                     break
                 }
 
-                if let Err(_) = self.exec_online_proxy() {
-                    break
-                }
-
                 if let Some(remaining) = Duration::from_secs(
                     timeout_secs.into())
                     .checked_sub(start.elapsed()) {
@@ -71,42 +64,48 @@ impl RpcMonitor {
 
     fn init(&self) {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);
-        let settings = get_settings();
-
-        let mut info = self.info_arc.lock().unwrap();
 
         // 初始化上报操作
         loop {
             // RpcClient Login
-            info!("proxy_login");
+            info!("client_login");
             {
-                if let Err(e) = self.client.proxy_login(&settings, &mut info) {
+                if let Err(e) = self.client.client_login() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
 
-            // 注册proxy
-            info!("proxy_register");
+            // binding device
+            info!("binding device");
             {
-                if let Err(e) = self.client.proxy_register(&mut info) {
+                if let Err(e) = self.client.binding_device() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
 
-            // 初次上传heartbeat
-            info!("proxy_heart_beat");
+            info!("search_team_by_mac");
             {
-                if let Err(e) = self.client.proxy_heart_beat(&mut info) {
+                if let Err(e) = self.client.search_team_by_mac() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
-            break
+
+//            // 初次上传heartbeat
+//            info!("proxy_heart_beat");
+//            {
+//                if let Err(e) = self.client.proxy_heart_beat(&mut info) {
+//                    error!("{:?}\n{}", e, e);
+//                    thread::sleep(std::time::Duration::from_secs(1));
+//                    continue
+//                }
+//            }
+//            break
         }
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
     }
@@ -116,34 +115,13 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(mut info) = self.info_arc.try_lock() {
-                if let Ok(_) = self.client.proxy_heart_beat(&mut info) {
-                    return Ok(());
-                } else {
-                    error!("Heart beat send failed.");
-                }
+            if let Ok(_) = self.client.client_heartbeat() {
+                return Ok(());
+            } else {
+                error!("Heart beat send failed.");
             }
 
 
-            if Instant::now().duration_since(start) > timeout_secs {
-                return Err(Error::RpcTimeout);
-            }
-            thread::sleep(Duration::from_millis(100));
-        }
-    }
-
-    fn exec_online_proxy(&self) -> Result<()> {
-        info!("exec_online_proxy");
-        let timeout_secs = Duration::from_secs(3);
-        let start = Instant::now();
-        loop {
-            if let Ok(mut info) = self.info_arc.try_lock() {
-                if let Ok(_) = self.client.proxy_get_online_proxy(&mut info) {
-                    return Ok(());
-                } else {
-                    error!("proxy_get_online_proxy failed.");
-                }
-            }
 
             if Instant::now().duration_since(start) > timeout_secs {
                 return Err(Error::RpcTimeout);
@@ -151,4 +129,24 @@ impl RpcMonitor {
             thread::sleep(Duration::from_millis(100));
         }
     }
+
+//    fn exec_online_proxy(&self) -> Result<()> {
+//        info!("exec_online_proxy");
+//        let timeout_secs = Duration::from_secs(3);
+//        let start = Instant::now();
+//        loop {
+//            if let Ok(mut info) = self.info_arc.try_lock() {
+//                if let Ok(_) = self.client.proxy_get_online_proxy(&mut info) {
+//                    return Ok(());
+//                } else {
+//                    error!("proxy_get_online_proxy failed.");
+//                }
+//            }
+//
+//            if Instant::now().duration_since(start) > timeout_secs {
+//                return Err(Error::RpcTimeout);
+//            }
+//            thread::sleep(Duration::from_millis(100));
+//        }
+//    }
 }

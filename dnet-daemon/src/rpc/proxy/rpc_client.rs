@@ -5,11 +5,11 @@ use std::time::{Instant, Duration};
 use std::thread::sleep;
 
 use reqwest::Response;
-use tinc_plugin::TincOperatorError;
+use tinc_plugin::{TincOperatorError, ConnectTo};
 
 use crate::net_tool::url_post;
 use crate::settings::{Settings, get_settings};
-use crate::info::{Info, OnlineProxy};
+use crate::info::{Info, get_info, get_mut_info};
 use crate::tinc_manager;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
@@ -102,7 +102,6 @@ impl RpcClient {
 
     pub fn proxy_login(&self,
                        settings:    &Settings,
-                       info:        &mut Info,
     ) -> Result<()> {
         let url = get_settings().common.conductor_url.clone() + "/login";
         let data = User::new_from_settings(settings).to_json();
@@ -126,7 +125,7 @@ impl RpcClient {
                 let cookie_str = cookie.value();
                 let cookie_str = &("Set-Cookie=".to_string() + cookie_str);
                 debug!("proxy_login - response cookie: {}", cookie_str);
-                info.proxy_info.cookie = cookie_str.to_string();
+                get_mut_info().lock().unwrap().proxy_info.cookie = cookie_str.to_string();
             }
 
             let res_data = res.text().map_err(Error::Reqwest)?;
@@ -149,16 +148,16 @@ impl RpcClient {
         }
     }
 
-    pub fn proxy_register(&self,
-                          info: &mut Info)
-                          -> Result<()> {
+    pub fn proxy_register(&self) -> Result<()> {
         let url = get_settings().common.conductor_url.clone() + "/vppn/api/v2/proxy/register";
-        let data = Register::new_from_info(info).to_json();
-        let cookie = info.proxy_info.cookie.clone();
-        debug!("proxy_register - request info: {:?}", info);
+        let data = Register::new_from_info().to_json();
+        let cookie;
+        {
+            cookie = get_info().lock().unwrap().proxy_info.cookie.clone();
+        }
         debug!("proxy_register - request url: {}", url);
         debug!("proxy_register - request data: {}", data);
-	let mut res = self.post(&url, &data, &cookie)?;
+	    let mut res = self.post(&url, &data, &cookie)?;
 
         debug!("proxy_register - response code: {}", res.status().as_u16());
 
@@ -173,7 +172,7 @@ impl RpcClient {
             debug!("proxy_register - response data: {:?}", recv);
 
             if recv.code == 200 {
-                info.proxy_info.isregister = true;
+                get_mut_info().lock().unwrap().proxy_info.isregister = true;
                 return Ok(());
             }
             else {
@@ -193,14 +192,16 @@ impl RpcClient {
         Err(Error::RegisterFailed("Unknown reason.".to_string()))
     }
 
-    pub fn proxy_get_online_proxy(&self, info: &mut Info) -> Result<()> {
+    pub fn proxy_get_online_proxy(&self) -> Result<()> {
         let settings = get_settings();
         let url = settings.common.conductor_url.clone()
             + "/vppn/api/v2/proxy/getonlineproxy";
 
-        let data = Register::new_from_info(info).to_json();
-        let cookie = info.proxy_info.cookie.clone();
-        trace!("proxy_get_online_proxy - request info: {:?}",info);
+        let data = Register::new_from_info().to_json();
+        let cookie;
+        {
+            cookie = get_info().lock().unwrap().proxy_info.cookie.clone();
+        }
         debug!("proxy_get_online_proxy - request url: {}",url);
         trace!("proxy_get_online_proxy - request data: {}",data);
 
@@ -230,10 +231,14 @@ impl RpcClient {
             })?;
 
             if recv.code == 200 {
+                let mut info = get_mut_info().lock().unwrap();
                 let _ = info.tinc_info.load_local();
 
                 let proxy_vec: Vec<Proxy> = recv.data;
-                let local_pub_key = info.tinc_info.pub_key.clone();
+                let local_pub_key;
+                {
+                    local_pub_key = info.tinc_info.pub_key.clone();
+                }
                 let mut other_proxy = vec![];
 
                 let tinc = tinc_manager::TincOperator::new();
@@ -243,7 +248,7 @@ impl RpcClient {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
                             if info.tinc_info.vip != vip {
                                 info.tinc_info.vip = vip;
-                                tinc.set_info_to_local(info)
+                                tinc.set_info_to_local()
                                     .map_err(Error::TincOperator)?;
                             }
                         }
@@ -255,7 +260,7 @@ impl RpcClient {
                     else {
                         if let Ok(other_ip) = IpAddr::from_str(&proxy.ip) {
                             if let Ok(other_vip) = IpAddr::from_str(&proxy.vip) {
-                                let other = OnlineProxy::from(other_ip, other_vip, proxy.pubkey);
+                                let other = ConnectTo::from(other_ip, other_vip, proxy.pubkey);
                                 tinc.set_hosts(
                                     true,
                                     &other.ip.to_string(),
@@ -273,7 +278,7 @@ impl RpcClient {
                         error!("proxy_get_online_proxy - One proxy data invalid");
                     }
                 }
-                info.proxy_info.online_porxy = other_proxy;
+                get_mut_info().lock().unwrap().proxy_info.online_porxy = other_proxy;
 
                 return Ok(());
             }
@@ -294,11 +299,14 @@ impl RpcClient {
         return Err(Error::GetOnlineProxy("Unknown reason.".to_string()));
     }
 
-    pub fn proxy_heart_beat(&self, info: &mut Info) -> Result<()> {
+    pub fn proxy_heart_beat(&self) -> Result<()> {
         let url = get_settings().common.conductor_url.clone()
             + "/vppn/api/v2/proxy/hearBeat";
-        let data = Heartbeat::new_from_info(info).to_json();
-        let cookie = info.proxy_info.cookie.clone();
+        let data = Heartbeat::new_from_info().to_json();
+        let cookie;
+        {
+            cookie = get_info().lock().unwrap().proxy_info.cookie.clone();
+        }
 
         debug!("proxy_heart_beat - request url: {}",url);
         debug!("proxy_heart_beat - request data: {}",data);
@@ -370,11 +378,12 @@ struct Register {
     ssh_port: String,
 }
 impl Register {
-    fn new_from_info(info :&Info) -> Self {
+    fn new_from_info() -> Self {
+        let info = get_info().lock().unwrap();
         Register {
             auth_id: info.proxy_info.uid.to_string(),
             auth_type: info.proxy_info.auth_type.to_string(),
-            proxyIp: info.proxy_info.proxy_ip.to_string(),
+            proxyIp: info.proxy_info.ip.to_string(),
             pubKey: info.tinc_info.pub_key.to_string(),
             os: info.proxy_info.os.to_string(),
             server_type: info.proxy_info.server_type.to_string(),
@@ -420,14 +429,15 @@ struct Heartbeat {
     pubKey:         String,
 }
 impl Heartbeat {
-    fn new_from_info(info :&mut Info) -> Self {
+    fn new_from_info() -> Self {
+        let mut info = get_mut_info().lock().unwrap();
         let _ = info.tinc_info.flush_connections();
         Heartbeat {
             authID:         info.proxy_info.uid.to_string(),
             connections:    info.tinc_info.connections,
             edges:          info.tinc_info.edges,
             nodes:          info.tinc_info.nodes,
-            proxyIp:        info.proxy_info.proxy_ip.to_string(),
+            proxyIp:        info.proxy_info.ip.to_string(),
             pubKey:         info.tinc_info.pub_key.to_string(),
         }
     }

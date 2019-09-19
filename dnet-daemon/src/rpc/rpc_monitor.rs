@@ -11,15 +11,12 @@ pub struct RpcMonitor<RpcInner> {
     inner: RpcInner,
 }
 
-impl<RpcInner> RpcTrait<Info> for RpcMonitor<RpcInner>
-    where RpcInner: RpcTrait<Info>,
+impl<RpcInner> RpcTrait for RpcMonitor<RpcInner>
+    where RpcInner: RpcTrait,
 {
-    fn new(info_arc: Arc<Mutex<Info>>,
-           daemon_event_tx: mpsc::Sender<DaemonEvent>)
-        -> Self
-    {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self {
         return RpcMonitor {
-            inner: RpcInner::new(info_arc, daemon_event_tx)
+            inner: RpcInner::new(daemon_event_tx)
         };
     }
 

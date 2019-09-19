@@ -18,7 +18,7 @@ use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use self::bytes::BytesMut;
 use futures::{Future, Stream};
 
-use crate::info::Info;
+use crate::info::{Info, get_info};
 use crate::tinc_manager::TincOperator;
 use crate::daemon::DaemonEvent;
 use crate::settings::get_settings;
@@ -26,7 +26,6 @@ use reqwest::header::HeaderValue;
 
 #[derive(Clone)]
 struct AppState {
-    info: Arc<Mutex<Info>>,
     tinc: Arc<Mutex<TincOperator>>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -47,12 +46,13 @@ impl KeyReport {
         }
     }
 
-    fn new_from_info(info :&Info) -> Self {
+    fn new_from_info() -> Self {
+        let info = get_info().lock().unwrap();
         KeyReport{
             mac:                     "".to_string(),
             vip:                     info.tinc_info.vip.to_string(),
-            pubKey:                 info.tinc_info.pub_key.clone(),
-            proxypubKey:           "".to_string(),
+            pubKey:                  info.tinc_info.pub_key.clone(),
+            proxypubKey:             "".to_string(),
         }
     }
     fn to_json(&self) -> String {
@@ -129,11 +129,10 @@ struct VirtualIp{
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 
 // if check ok return null else return Response of error.
-fn check_apikey(info_arc: Arc<Mutex<Info>>, apikey: Option<&HeaderValue>)
-                -> Option<Response> {
+fn check_apikey(apikey: Option<&HeaderValue>) -> Option<Response> {
     let uid;
     {
-        let info = info_arc.lock().unwrap();
+        let info = get_info().lock().unwrap();
         uid = info.proxy_info.uid.clone();
     }
 
@@ -170,14 +169,7 @@ fn check_apikey(info_arc: Arc<Mutex<Info>>, apikey: Option<&HeaderValue>)
 ///         add_then()中，为body解析方法，可以为闭包或函数
 ///             HttpResponse::Ok().json(response) 以json格式返回struct Response
 fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
-    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
-
-    let response = check_apikey(
-        info_arc.clone(),
-        req.headers().get("Apikey"));
-
-    let info = info_arc.lock().unwrap().clone();
-
+    let response = check_apikey(req.headers().get("Apikey"));
     debug!("http_report_key - response url : {:?}",req.uri());
 
     req.payload()
@@ -223,14 +215,10 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
 }
 
 fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
-    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
-
     let response = check_apikey(
-        info_arc.clone(),
         req.headers().get("Apikey"));
 
-    let info = info_arc.lock().unwrap();
-    let key_report = KeyReport::new_from_info(&info);
+    let key_report = KeyReport::new_from_info();
 
     debug!("http_report_key - response url : {:?}",req.uri());
 
@@ -280,10 +268,7 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
 }
 
 fn get_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
-    let info_arc: Arc<Mutex<Info>> = req.state().info.clone();
-
     let response = check_apikey(
-        info_arc.clone(),
         req.headers().get("Apikey"));
 
     debug!("http_report_key - response url : {:?}", req.query());
@@ -385,9 +370,9 @@ fn runtime(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Er
         .responder()
 }
 
-pub(super) fn web_server(info_arc:     Arc<Mutex<Info>>,
-                  tinc_arc:     Arc<Mutex<TincOperator>>,
-                  daemon_tx:    std::sync::mpsc::Sender<DaemonEvent>,
+pub(super) fn web_server(
+                  tinc_arc:            Arc<Mutex<TincOperator>>,
+                  daemon_tx:           std::sync::mpsc::Sender<DaemonEvent>,
 ) {
     let settings = get_settings();
     let local_port = &settings.proxy.local_port;
@@ -422,7 +407,7 @@ pub(super) fn web_server(info_arc:     Arc<Mutex<Info>>,
         // 启动debug模块
         // 设置路径对应模式， 及 对应操作方法句柄
         // 启动https 服务， 设置绑定ip:端口
-        App::with_state(AppState {info: info_arc.clone(), tinc: tinc_arc.clone()})
+        App::with_state(AppState {tinc: tinc_arc.clone()})
             .middleware(middleware::Logger::default())
             .resource("/vppn/tinc/api/v2/proxy/keyreport", |r|
                 r.method(http::Method::POST).with(report_key)

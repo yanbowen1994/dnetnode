@@ -43,7 +43,6 @@ impl TunnelTrait for TincMonitor {
 impl TincMonitor {
     fn run(mut self) {
         while let Ok(event) = self.tunnel_command_rx.recv() {
-            println!("recv");
             match event {
                 TunnelCommand::Connect => {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
@@ -56,7 +55,6 @@ impl TincMonitor {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
                         *connect_cmd_mutex = false;
                     }
-                    println!("dis");
                     let mut inner = get_monitor_inner();
                     inner.disconnect();
                 }
@@ -68,6 +66,7 @@ impl TincMonitor {
 struct MonitorInner {
     tinc:               Mutex<TincOperator>,
     daemon_event_tx:    Mutex<Sender<DaemonEvent>>,
+    stop_sign:          Mutex<u32>,
 }
 
 impl MonitorInner {
@@ -85,6 +84,7 @@ impl MonitorInner {
         let inner = Self {
             tinc:               Mutex::new(tinc),
             daemon_event_tx:    Mutex::new(daemon_event_tx),
+            stop_sign:          Mutex::new(0),
         };
 
         unsafe {
@@ -94,6 +94,7 @@ impl MonitorInner {
     }
 
     fn connect(&mut self) {
+        *self.stop_sign.lock().unwrap() == 0;
         {
             self.tinc.lock().unwrap().set_info_to_local();
         }
@@ -104,6 +105,9 @@ impl MonitorInner {
                         .send(DaemonEvent::TunnelInitFailed(e.to_string())));
         }
         loop {
+            if *self.stop_sign.lock().unwrap() == 1 {
+                break
+            }
             let start = Instant::now();
             self.exec_tinc_check();
 
@@ -115,6 +119,7 @@ impl MonitorInner {
     }
 
     fn disconnect(&mut self) {
+        *self.stop_sign.lock().unwrap() = 1;
         self.tinc.lock().unwrap().stop_tinc();
     }
 

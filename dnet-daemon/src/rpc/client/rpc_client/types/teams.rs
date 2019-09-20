@@ -1,4 +1,4 @@
-use crate::info::team::{Team, TeamMember, DeviceProxy};
+use dnet_types::team::{Team, TeamMember, DeviceProxy};
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -7,9 +7,10 @@ use crate::traits::RpcTrait;
 use crate::settings::get_settings;
 use crate::info::{Info, get_info};
 use crate::tinc_manager::TincOperator;
+use crate::rpc::rpc_cmd::RpcCmd;
 
+use super::web_server;
 use super::RpcClient;
-use crate::rpc::proxy::web_server;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -27,29 +28,32 @@ pub struct RpcMonitor {
 }
 
 impl RpcTrait for RpcMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>)-> Self {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd> {
+        let (rpc_cmd_tx, rpc_cmd_rx) = mpsc::channel();
         let client = RpcClient::new();
-        return RpcMonitor {
+        RpcMonitor {
             client,
             daemon_event_tx,
-        };
-    }
+        }.start_monitor();
 
+        return rpc_cmd_tx;
+    }
+}
+
+impl RpcMonitor {
     fn start_monitor(self) {
         let web_server_tx = self.daemon_event_tx.clone();
 
         let info_arc_clone = get_info();
         thread::spawn(move ||
             web_server(Arc::new(Mutex::new(
-                           TincOperator::new())),
+                TincOperator::new())),
                        web_server_tx,
             )
         );
         thread::spawn(||self.run());
     }
-}
 
-impl RpcMonitor {
     fn run(self) {
         let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
         loop {

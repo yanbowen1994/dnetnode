@@ -5,3 +5,4 @@ pub mod daemon_broadcast;
 pub mod response;
 pub mod states;
 pub mod settings;
+pub mod team;

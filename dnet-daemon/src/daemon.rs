@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
-use crate::info::{self, Info};
+use crate::info::{self, Info, get_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -14,6 +14,8 @@ use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
+use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
+use dnet_types::team::Team;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -72,6 +74,7 @@ pub struct Daemon {
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
     tunnel_command_tx:      mpsc::Sender<TunnelCommand>,
+    rpc_command_tx:         mpsc::Sender<RpcCmd>,
 }
 
 impl Daemon {
@@ -89,13 +92,12 @@ impl Daemon {
         Info::new().map_err(Error::InfoError)?;
 
         let run_mode = &get_settings().common.mode;
+        let rpc_command_tx;
         if run_mode == &RunMode::Proxy {
-            let mut _rpc = RpcMonitor::<rpc::proxy::RpcMonitor>::new(daemon_event_tx.clone());
-            _rpc.start_monitor();
+            rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone());
         }
         else {
-            let mut _rpc = RpcMonitor::<rpc::client::RpcMonitor>::new(daemon_event_tx.clone());
-            _rpc.start_monitor();
+            rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
         }
 
         let (tinc, tunnel_command_tx) =
@@ -107,6 +109,7 @@ impl Daemon {
             daemon_event_rx,
             status: State::new(),
             tunnel_command_tx,
+            rpc_command_tx,
         })
     }
 
@@ -131,7 +134,7 @@ impl Daemon {
                 }
             },
             DaemonEvent::TunnelConnected => {
-                self.status.tunnel = TunnelState::Connected;
+                self.handle_tunnel_connected();
             },
             DaemonEvent::TunnelDisconnected => {
                 self.status.tunnel = TunnelState::Disconnected;
@@ -151,6 +154,13 @@ impl Daemon {
 
     fn handle_shutdown(&mut self) {
         self.status.daemon = DaemonExecutionState::Finished;
+    }
+
+    fn handle_tunnel_connected(&mut self) {
+        self.status.tunnel = TunnelState::Connected;
+        if get_settings().common.mode == RunMode::Client {
+            let _ =self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::StartHeartbeat));
+        }
     }
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
@@ -174,7 +184,23 @@ impl Daemon {
                 let _ = Self::oneshot_send(tx, state, "");
             }
 
-            ManagementCommand::GroupInfo(tx, id) => {
+            ManagementCommand::GroupInfo(tx, team_id) => {
+                let mut team = None;
+                for group_info in &get_info().lock().unwrap().teams {
+                    if group_info.team_id == team_id {
+                        team = Some(group_info.clone());
+                    }
+                }
+                let _ = Self::oneshot_send(tx, team, "");
+            }
+
+            ManagementCommand::GroupList(tx) => {
+                let mut team =  get_info().lock().unwrap().teams.clone();
+                let _ = Self::oneshot_send(tx, team, "");
+            }
+
+            ManagementCommand::GroupJoin(tx, team_id) => {
+                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::JoinTeam(team_id)));
                 let _ = Self::oneshot_send(tx, (), "");
             }
 

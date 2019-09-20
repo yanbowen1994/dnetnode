@@ -9,12 +9,12 @@ use mac_address::get_mac_address;
 use super::post;
 use super::types::DeviceId;
 use std::net::IpAddr;
-use crate::info::team::{Team, TeamMember, DeviceProxy};
+use dnet_types::team::{Team, TeamMember, DeviceProxy};
 use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
 
 pub(super) fn search_user_team() -> Result<()> {
-    let url    = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/searchuserteam";;
+    let url = get_settings().common.conductor_url.clone()
+        + "/vppn/api/v2/client/searchuserteam";
     let cookie;
     {
         let info = get_info().lock().unwrap();
@@ -31,7 +31,7 @@ pub(super) fn search_user_team() -> Result<()> {
         let res_data = &res.text().map_err(Error::Reqwest)?;
         let recv: JavaResponseTeamSearch = serde_json::from_str(res_data)
             .map_err(|e|{
-                error!("search_team_by_mac - response data: {}", res_data);
+                error!("search_user_team - response data: {}", res_data);
                 Error::ParseJsonStr(e)
             })?;
 
@@ -52,7 +52,7 @@ pub(super) fn search_user_team() -> Result<()> {
                             if let Some(vip) = &member.ip {
                                 let vip = IpAddr::from_str(vip)
                                     .map_err(|e| {
-                                        error!("search_team_by_mac can't parse self vip.");
+                                        error!("search_user_team can't parse self vip.");
                                         Error::ParseIp(e)
                                     })?;
                                 info.tinc_info.vip = vip;

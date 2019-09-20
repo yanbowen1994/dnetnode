@@ -1,5 +1,6 @@
 mod binding_device;
 mod error;
+mod join_team;
 mod login;
 mod key_report;
 mod rpc_client;

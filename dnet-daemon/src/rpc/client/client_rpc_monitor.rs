@@ -9,6 +9,8 @@ use crate::info::Info;
 use crate::tinc_manager::TincOperator;
 
 use super::RpcClient;
+use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
+use std::sync::mpsc::Receiver;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -20,42 +22,80 @@ pub enum Error {
     RpcTimeout,
 }
 
+#[derive(Eq, PartialEq)]
+enum RunStatus {
+    NotSendHearbeat,
+    SendHearbeat,
+    Restart,
+}
+
 pub struct RpcMonitor {
     client:                     RpcClient,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
+    rpc_cmd_rx:                 mpsc::Receiver<RpcCmd>,
+    run_status:                 RunStatus,
 }
 
 impl RpcTrait for RpcMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>)
-        -> Self {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd> {
+        let (rpc_cmd_tx, rpc_cmd_rx) = mpsc::channel();
+
         let client = RpcClient::new();
-        return RpcMonitor {
+        RpcMonitor {
             client,
             daemon_event_tx,
-        };
-    }
-
-    fn start_monitor(self) {
-        thread::spawn(||self.run());
+            rpc_cmd_rx,
+            run_status: RunStatus::NotSendHearbeat,
+        }.start_monitor();
+        return rpc_cmd_tx;
     }
 }
 
 impl RpcMonitor {
-    fn run(self) {
-        let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
+    fn start_monitor(self) {
+        // TODO async
+        thread::spawn(||self.run());
+    }
+
+    fn run(mut self) {
+        let timeout_secs: u32 = 500;
         loop {
+            self.run_status = RunStatus::NotSendHearbeat;
             self.init();
             loop {
-                let start = Instant::now();
+                if let Ok(cmd) = self.rpc_cmd_rx.try_recv() {
+                    match cmd {
+                        RpcCmd::Client(cmd) => {
+                            match cmd {
+                                RpcClientCmd::StartHeartbeat => {
+                                    self.run_status = RunStatus::SendHearbeat;
+                                },
 
-                if let Err(_) = self.exec_heartbeat() {
-                    break
+                                RpcClientCmd::RestartRpcConnect => {
+                                    break
+                                }
+
+                                RpcClientCmd::JoinTeam(team_id) => {
+                                    self.client.join_team(team_id);
+                                }
+                            }
+                        }
+                        _ => ()
+                    }
                 }
 
-                if let Some(remaining) = Duration::from_secs(
-                    timeout_secs.into())
-                    .checked_sub(start.elapsed()) {
-                    thread::sleep(remaining);
+                if self.run_status == RunStatus::SendHearbeat {
+                    let start = Instant::now();
+
+                    if let Err(_) = self.exec_heartbeat() {
+                        break
+                    }
+
+                    if let Some(remaining) = Duration::from_millis(
+                        timeout_secs.into())
+                        .checked_sub(start.elapsed()) {
+                        thread::sleep(remaining);
+                    }
                 }
             }
             // break -> init()
@@ -94,7 +134,7 @@ impl RpcMonitor {
                 }
             }
 
-            info!("search_team_by_mac");
+            info!("search_user_team");
             {
                 if let Err(e) = self.client.search_user_team() {
                     error!("{:?}\n{}", e, e);
@@ -108,20 +148,29 @@ impl RpcMonitor {
     }
 
     fn exec_heartbeat(&self) -> Result<()> {
+        let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
         info!("proxy_heart_beat");
-        let timeout_secs = Duration::from_secs(3);
-        let start = Instant::now();
         loop {
-            if let Ok(_) = self.client.client_heartbeat() {
-                return Ok(());
-            } else {
-                error!("Heart beat send failed.");
+            let start = Instant::now();
+
+            loop {
+                if let Ok(_) = self.client.client_heartbeat() {
+                    return Ok(());
+                } else {
+                    error!("Heart beat send failed.");
+                }
+
+                if Instant::now().duration_since(start) > Duration::from_secs(3) {
+                    return Err(Error::RpcTimeout);
+                }
+                thread::sleep(Duration::from_millis(100));
             }
 
-            if Instant::now().duration_since(start) > timeout_secs {
-                return Err(Error::RpcTimeout);
+            if let Some(remaining) = Duration::from_secs(
+                timeout_secs.into())
+                .checked_sub(start.elapsed()) {
+                thread::sleep(remaining);
             }
-            thread::sleep(Duration::from_millis(100));
         }
     }
 

@@ -1,13 +1,13 @@
 use std::sync::{Arc, Mutex, mpsc};
 use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::rpc::rpc_cmd::RpcCmd;
 
 pub enum RpcRequest {
     Status,
 }
 
 pub trait RpcTrait {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self;
-    fn start_monitor(self);
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd>;
 }
 
 pub trait InfoTrait {

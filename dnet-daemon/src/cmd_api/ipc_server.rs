@@ -23,6 +23,7 @@ use dnet_types::response::Response;
 use crate::cmd_api::types::EventListener;
 use crate::mpsc::IntoSender;
 use crate::settings::Settings;
+use dnet_types::team::Team;
 
 /// FIXME(linus): This is here just because the futures crate has deprecated it and jsonrpc_core
 /// did not introduce their own yet (https://github.com/paritytech/jsonrpc/pull/196).
@@ -45,7 +46,13 @@ build_rpc_trait! {
         fn status(&self, Self::Metadata) -> BoxFuture<State, Error>;
 
         #[rpc(meta, name = "group_info")]
-        fn group_info(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
+        fn group_info(&self, Self::Metadata, String) -> BoxFuture<Option<Team>, Error>;
+
+        #[rpc(meta, name = "group_join")]
+        fn group_join(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
+
+        #[rpc(meta, name = "group_list")]
+        fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
     }
 }
 
@@ -63,7 +70,13 @@ pub enum ManagementCommand {
     State(OneshotSender<State>),
 
     /// Get the current geographical location.
-    GroupInfo(OneshotSender<()>, String),
+    GroupList(OneshotSender<Vec<Team>>),
+
+    /// Get the current geographical location.
+    GroupInfo(OneshotSender<Option<Team>>, String),
+
+    /// Get the current geographical location.
+    GroupJoin(OneshotSender<()>, String),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -215,11 +228,30 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn group_info(&self, _: Self::Metadata, id: String) -> BoxFuture<(), Error> {
+    fn group_list(&self, _: Self::Metadata) -> BoxFuture<Vec<Team>, Error> {
         log::debug!("create_account");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::GroupInfo(tx, id))
+            .send_command_to_daemon(ManagementCommand::GroupList(tx))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+
+    fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Option<Team>, Error> {
+        log::debug!("create_account");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::GroupInfo(tx, team_id))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn group_join(&self, _: Self::Metadata, team_id: String) -> BoxFuture<(), Error> {
+        log::debug!("management interface get status.");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::GroupJoin(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

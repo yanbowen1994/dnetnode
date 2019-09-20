@@ -45,7 +45,6 @@ pub(super) fn search_team_by_mac() -> Result<()> {
                     .iter_mut()
                     .map(|jteam| jteam.clone().into())
                     .collect();
-
                 for team in teams {
                     let members = team.members;
                     for member in members {

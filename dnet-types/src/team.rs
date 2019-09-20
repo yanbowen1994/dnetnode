@@ -40,7 +40,7 @@ pub struct TeamMember {
 pub struct DeviceProxy {
     pub city:               String,
     pub country:            String,
-    pub proxy_ip:            String,
+    pub proxy_ip:           String,
     pub proxygw:            String,
     pub proxypubkey:        String,
 }

@@ -10,6 +10,7 @@ pub use jsonrpc_client_pubsub::Error as PubSubError;
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::states::State;
 use dnet_types::response::Response;
+use dnet_types::team::Team;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -98,6 +99,18 @@ impl DaemonRpcClient {
 
     pub fn shutdown(&mut self) -> Result<Response> {
         self.call("shutdown", &NO_ARGS)
+    }
+
+    pub fn group_list(&mut self, ) -> Result<Vec<Team>> {
+        self.call("group_list", &NO_ARGS)
+    }
+
+    pub fn group_info(&mut self, team_id: String) -> Result<Option<Team>> {
+        self.call("group_info", &team_id)
+    }
+
+    pub fn group_join(&mut self, team_id: String) -> Result<Team> {
+        self.call("group_join", &team_id)
     }
 
     pub fn call<A, O>(&mut self, method: &'static str, args: &A) -> Result<O>

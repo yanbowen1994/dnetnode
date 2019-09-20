@@ -1,7 +1,6 @@
 mod auth;
 mod client_info;
 mod error;
-pub mod team;
 mod info;
 mod proxy_info;
 mod tinc;

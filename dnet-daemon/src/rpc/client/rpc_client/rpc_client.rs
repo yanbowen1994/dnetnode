@@ -23,6 +23,7 @@ use super::binding_device::binding_device;
 use super::heartbeat::client_heartbeat;
 use super::key_report::client_key_report;
 use crate::rpc::client::rpc_client::search_user_team::search_user_team;
+use crate::rpc::client::rpc_client::join_team::join_team;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
@@ -58,6 +59,10 @@ impl RpcClient {
     }
 
     pub fn client_key_report(&self) -> Result<()> {client_key_report()}
+
+    pub fn join_team(&self, team_id: String) -> Result<()> {
+        join_team(team_id)
+    }
 
     pub fn binding_device(&self) -> Result<()> {
         binding_device()

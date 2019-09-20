@@ -8,5 +8,6 @@ extern crate bytes;
 pub mod client;
 pub mod proxy;
 mod rpc_monitor;
+pub mod rpc_cmd;
 
 pub use self::rpc_monitor::RpcMonitor;

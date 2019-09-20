@@ -2,25 +2,18 @@ use std::sync::{Arc, Mutex, mpsc};
 
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
-use crate::info::Info;
 
 use super::client;
 use super::proxy;
+use super::rpc_cmd::RpcCmd;
 
-pub struct RpcMonitor<RpcInner> {
-    inner: RpcInner,
-}
+pub struct RpcMonitor;
 
-impl<RpcInner> RpcTrait for RpcMonitor<RpcInner>
-    where RpcInner: RpcTrait,
-{
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self {
-        return RpcMonitor {
-            inner: RpcInner::new(daemon_event_tx)
-        };
-    }
-
-    fn start_monitor(self) {
-        self.inner.start_monitor()
+impl RpcMonitor {
+    pub fn new<RpcInner>(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd>
+        where RpcInner: RpcTrait,
+    {
+        let rpc_cmd_tx = RpcInner::new(daemon_event_tx);
+        return rpc_cmd_tx;
     }
 }

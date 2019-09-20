@@ -11,7 +11,7 @@ use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 
 use super::error::{Error, Result};
-use crate::info::team::Team;
+use dnet_types::team::Team;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 

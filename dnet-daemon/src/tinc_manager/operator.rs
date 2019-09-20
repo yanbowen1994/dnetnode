@@ -43,6 +43,7 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
+        self.set_info_to_local()?;
         PluginTincOperator::mut_instance().start_tinc()?;
         return Ok(());
     }

@@ -1,3 +1,5 @@
+pub mod teams;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Recv {
     pub code:        i32,

@@ -41,9 +41,8 @@ impl TincInfo {
         if let Ok(vip) = self.load_local_vip() {
             self.vip = vip;
         }
-        if let Ok(pub_key) = self.load_local_pubkey() {
-            self.pub_key = pub_key;
-        }
+        self.pub_key = self.load_local_pubkey()
+            .expect("Must create tinc key pair before Info init.");
     }
 
     fn load_local_vip(&self) -> Result<IpAddr> {
@@ -65,9 +64,9 @@ impl TincInfo {
     fn load_local_pubkey(&self) -> Result<String> {
         let settings = get_settings();
         let tinc_home = settings.common.home_path.clone()
-            .join("tinc").to_str().unwrap().to_string();
+            .join("tinc").join(PUB_KEY_FILENAME).to_str().unwrap().to_string();
         let mut res = String::new();
-        let mut _file = File::open(tinc_home + PUB_KEY_FILENAME)
+        let mut _file = File::open(tinc_home)
             .map_err(Error::FileNotExit)?;
         _file.read_to_string(&mut res)
             .map_err(Error::FileNotExit)?;

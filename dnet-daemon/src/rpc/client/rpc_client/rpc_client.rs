@@ -17,13 +17,16 @@ use mac_address::get_mac_address;
 use std::sync::{Mutex, Arc};
 
 use super::{Error, Result};
-use super::login;
-use super::search_team_by_mac;
-use super::binding_device;
-use super::client_heartbeat;
+use super::login::login;
+use super::search_team_by_mac::search_team_by_mac;
+use super::binding_device::binding_device;
+use super::heartbeat::client_heartbeat;
+use super::key_report::client_key_report;
+use crate::rpc::client::rpc_client::search_user_team::search_user_team;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
+    //ApiKey
     loop {
         let _res = match url_post(&url, &data, uid) {
             Ok(x) => return Ok(x),
@@ -54,12 +57,18 @@ impl RpcClient {
         login()
     }
 
+    pub fn client_key_report(&self) -> Result<()> {client_key_report()}
+
     pub fn binding_device(&self) -> Result<()> {
         binding_device()
     }
 
     pub fn search_team_by_mac(&self) -> Result<()> {
         search_team_by_mac()
+    }
+
+    pub fn search_user_team(&self) -> Result<()> {
+        search_user_team()
     }
 
     pub fn client_heartbeat(&self) -> Result<()> {

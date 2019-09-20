@@ -27,7 +27,10 @@ pub enum Error {
     StartManagementInterface(#[error(cause)] talpid_ipc::Error),
 
     #[error(display = "Unable to start management interface server")]
-    InfoError(#[error(cause)] info::Error)
+    InfoError(#[error(cause)] info::Error),
+
+    #[error(display = "Tunnel init failed.")]
+    TunnelInit(#[error(cause)] tinc_plugin::TincOperatorError),
 }
 
 pub enum TunnelCommand {
@@ -77,9 +80,10 @@ impl Daemon {
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
-        Self::start_management_interface(daemon_event_tx.clone());
+        Self::start_management_interface(daemon_event_tx.clone())?;
 
-        TincOperator::new().init();
+        TincOperator::new().init()
+            .map_err(Error::TunnelInit)?;
 
         info!("Init local info.");
         Info::new().map_err(Error::InfoError)?;

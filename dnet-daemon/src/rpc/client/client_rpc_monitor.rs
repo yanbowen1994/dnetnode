@@ -67,7 +67,6 @@ impl RpcMonitor {
 
         // 初始化上报操作
         loop {
-            // RpcClient Login
             info!("client_login");
             {
                 if let Err(e) = self.client.client_login() {
@@ -77,7 +76,15 @@ impl RpcMonitor {
                 }
             }
 
-            // binding device
+            info!("client_key_report");
+            {
+                if let Err(e) = self.client.client_key_report() {
+                    error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    continue
+                }
+            }
+
             info!("binding device");
             {
                 if let Err(e) = self.client.binding_device() {
@@ -89,23 +96,13 @@ impl RpcMonitor {
 
             info!("search_team_by_mac");
             {
-                if let Err(e) = self.client.search_team_by_mac() {
+                if let Err(e) = self.client.search_user_team() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
-
-//            // 初次上传heartbeat
-//            info!("proxy_heart_beat");
-//            {
-//                if let Err(e) = self.client.proxy_heart_beat(&mut info) {
-//                    error!("{:?}\n{}", e, e);
-//                    thread::sleep(std::time::Duration::from_secs(1));
-//                    continue
-//                }
-//            }
-//            break
+            break
         }
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
     }
@@ -120,8 +117,6 @@ impl RpcMonitor {
             } else {
                 error!("Heart beat send failed.");
             }
-
-
 
             if Instant::now().duration_since(start) > timeout_secs {
                 return Err(Error::RpcTimeout);

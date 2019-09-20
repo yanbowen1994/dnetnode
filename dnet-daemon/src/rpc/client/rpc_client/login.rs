@@ -2,6 +2,7 @@ use crate::settings::{get_settings, Settings};
 
 use super::{Error, Result};
 use super::post;
+use crate::info::get_mut_info;
 
 pub(super) fn login() -> Result<()> {
     let settings = get_settings();
@@ -19,11 +20,27 @@ pub(super) fn login() -> Result<()> {
     if res.status().as_u16() == 200 {
         let res_data = res.text().map_err(Error::Reqwest)?;
         debug!("client_login - response data: {:?}", res_data);
-        let _login: Login = serde_json::from_str(&res_data)
+        let login: JavaLoginResponse = serde_json::from_str(&res_data)
             .map_err(|e|{
                 error!("client_login - response data: {:?}", res_data);
                 Error::LoginParseJsonStr(e)
             })?;
+        if login.code != 200 {
+            error!("client_login - response data: {:?}", login.msg);
+            return Err(Error::LoginFailed(format!("{:?}", login.msg)));
+        }
+        else {
+            let cookie = match res.cookies().next() {
+                Some(cookie) => cookie,
+                None => {
+                    return Err(Error::LoginResNoCookie);
+                }
+            };
+            let cookie_str = cookie.value();
+            let cookie_str = &("Set-Cookie=".to_string() + cookie_str);
+            debug!("proxy_login - response cookie: {}", cookie_str);
+            get_mut_info().lock().unwrap().client_info.cookie = cookie_str.to_string();
+        }
 
         return Ok(());
     }
@@ -55,9 +72,10 @@ impl User {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Login {
+struct JavaLoginResponse {
     code:    i32,
-    data:    LoginUser,
+    data:    Option<LoginUser>,
+    msg:     Option<String>,
 }
 
 #[allow(non_snake_case)]

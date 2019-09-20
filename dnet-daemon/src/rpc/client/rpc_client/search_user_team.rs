@@ -9,21 +9,20 @@ use mac_address::get_mac_address;
 use super::post;
 use super::types::DeviceId;
 use std::net::IpAddr;
+use crate::info::team::{Team, TeamMember, DeviceProxy};
 use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
 
-pub(super) fn search_team_by_mac() -> Result<()> {
+pub(super) fn search_user_team() -> Result<()> {
     let url    = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/searchteambymac";;
-    let device_id;
+        + "/vppn/api/v2/client/searchuserteam";;
     let cookie;
     {
         let info = get_info().lock().unwrap();
-        device_id = info.client_info.uid.clone();
         cookie = info.client_info.cookie.clone();
     }
 
-    let data = DeviceId {
-        deviceid: device_id,
+    let data = RequestStatus {
+        status: 0,
     }.to_json();
 
     let mut res = post(&url, &data, &cookie)?;
@@ -66,7 +65,7 @@ pub(super) fn search_team_by_mac() -> Result<()> {
         }
         else {
             if let Some(msg) = recv.msg {
-                return Err(Error::SearchTeamByMac(msg));
+                return Err(Error::SearchUserTeam(msg));
             }
         }
     }
@@ -75,11 +74,18 @@ pub(super) fn search_team_by_mac() -> Result<()> {
         if let Ok(msg) = res.text() {
             err_msg = msg;
         }
-        return Err(Error::SearchTeamByMac(
+        return Err(Error::SearchUserTeam(
             format!("Code:{} Msg:{}", res.status().as_u16(), err_msg).to_string()));
     }
-    return Err(Error::SearchTeamByMac("Unknown reason.".to_string()));
+    return Err(Error::SearchUserTeam("Unknown reason.".to_string()));
 }
 
-
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct RequestStatus {
+    status: u32,
+}
+impl RequestStatus {
+    fn to_json(&self) -> String {
+        return serde_json::to_string(self).unwrap();
+    }
+}

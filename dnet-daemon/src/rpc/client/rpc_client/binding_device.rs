@@ -9,15 +9,18 @@ pub(super) fn binding_device() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vppn/api/v2/client/bindingdevice";
 
-    let deviceid;
+    let device_id;
+    let cookie;
     {
-        deviceid = get_info().lock().unwrap().client_info.uid.clone();
+        let info = get_info().lock().unwrap();
+        device_id = info.client_info.uid.clone();
+        cookie = info.client_info.cookie.clone();
     }
     let data = DeviceId {
-        deviceid,
+        deviceid: device_id,
     }.to_json();
 
-    post(&url, &data, "")
+    post(&url, &data, &cookie)
         .and_then(|mut res| {
             if res.status().as_u16() == 200 {
                 if let Ok(res_data) = &res.text() {
@@ -26,13 +29,25 @@ pub(super) fn binding_device() -> Result<()> {
                         if recv.code == 200 {
                             return Ok(());
                         }
+                        else {
+                            if recv.msg == Some("The device has been bound by other users.".to_owned()) {
+                                return Ok(());
+                            }
+                            error!("binding_device response msg: {:?}", recv.msg);
+                        }
                     }
                     else {
-                        debug!("binding_device - response can't parse: {:?}", res_data);
+                        error!("binding_device - response can't parse: {:?}", res_data);
                     }
                 }
+                else {
+                    error!("{:?}", res);
+                }
             }
-            error!("{:?}", res);
+            else {
+                error!("{:?}", res);
+            }
+
             return Err(Error::search_team_by_mac);
         })
 }

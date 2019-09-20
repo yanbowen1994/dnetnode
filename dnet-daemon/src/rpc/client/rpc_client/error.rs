@@ -27,14 +27,11 @@ pub enum Error {
     #[error(display = "Login failed.")]
     LoginFailed(String),
 
-    #[error(display = "Proxy register failed.")]
-    RegisterFailed(String),
+    #[error(display = "SearchUserTeam.")]
+    SearchUserTeam(String),
 
-    #[error(display = "Login can not parse json str.")]
-    RegisterParseJsonStr(#[error(cause)] serde_json::Error),
-
-    #[error(display = "Get online client failed.")]
-    GetOnlineProxy(String),
+    #[error(display = "Search Team By Mac failed.")]
+    SearchTeamByMac(String),
 
     #[error(display = "Login can not parse json str.")]
     GetOnlineProxyParseJsonStr(#[error(cause)] serde_json::Error),

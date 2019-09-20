@@ -9,6 +9,9 @@ pub use self::connect::Connect;
 mod disconnect;
 pub use self::disconnect::Disconnect;
 
+mod group;
+pub use self::group::Group;
+
 mod shutdown;
 pub use self::shutdown::Shutdown;
 
@@ -24,6 +27,7 @@ pub fn get_commands() -> HashMap<&'static str, Box<dyn Command>> {
     let commands: Vec<Box<dyn Command>> = vec![
         Box::new(Connect),
         Box::new(Disconnect),
+        Box::new(Group),
         Box::new(Shutdown),
         Box::new(Status),
     ];

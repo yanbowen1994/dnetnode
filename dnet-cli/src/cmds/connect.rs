@@ -12,7 +12,6 @@ impl Command for Connect {
     fn clap_subcommand(&self) -> App<'static, 'static> {
         clap::SubCommand::with_name(self.name())
             .about("Try to connect if disconnected, or do nothing if already connecting/connected.")
-            .setting(clap::AppSettings::SubcommandRequiredElseHelp)
     }
 
     fn run(&self, _matches: &clap::ArgMatches<'_>) -> Result<()> {

@@ -31,7 +31,7 @@ serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
 simple-signal = "1.1"
-talpid-ipc = { path = "../talpid-ipc" }
+ipc-server = { path = "../ipc-server" }
 tinc-plugin = { path = "../tinc-plugin" }
 tokio = "0.1"
 trust-dns-resolver = "0.12.0"

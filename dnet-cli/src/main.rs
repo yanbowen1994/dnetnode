@@ -1,4 +1,4 @@
-extern crate talpid_ipc;
+extern crate ipc_server;
 
 use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
 use clap::App;

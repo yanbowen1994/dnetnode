@@ -26,7 +26,7 @@ pub enum Error {
 
     /// Error in the management interface
     #[error(display = "Unable to start management interface server")]
-    StartManagementInterface(#[error(cause)] talpid_ipc::Error),
+    StartManagementInterface(#[error(cause)] ipc_server::Error),
 
     #[error(display = "Unable to start management interface server")]
     InfoError(#[error(cause)] info::Error),

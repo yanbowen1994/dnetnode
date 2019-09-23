@@ -6,8 +6,8 @@ members = [
     "dnet-path",
     "dnet-types",
     "ipc-client",
+    "ipc-server",
     "router-plugin",
-    "talpid-ipc",
     "tinc-plugin",
 ]
 

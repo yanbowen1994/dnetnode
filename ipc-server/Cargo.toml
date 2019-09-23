@@ -1,5 +1,5 @@
 [package]
-name = "talpid-ipc"
+name = "ipc-server"
 version = "0.1.0"
 authors = ["Mullvad VPN <admin@mullvad.net>"]
 description = "IPC client and server for talpid"

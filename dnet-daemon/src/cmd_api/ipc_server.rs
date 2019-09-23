@@ -15,7 +15,7 @@ use std::{
     collections::HashMap,
     sync::Arc,
 };
-use talpid_ipc;
+use ipc_server;
 use dnet_types::states::{TunnelState, State};
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::response::Response;
@@ -82,12 +82,12 @@ pub enum ManagementCommand {
 }
 
 pub struct ManagementInterfaceServer {
-    server: talpid_ipc::IpcServer,
+    server: ipc_server::IpcServer,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast>>>>,
 }
 
 impl ManagementInterfaceServer {
-    pub fn start<T>(path: &str, tunnel_tx: IntoSender<ManagementCommand, T>) -> Result<Self, talpid_ipc::Error>
+    pub fn start<T>(path: &str, tunnel_tx: IntoSender<ManagementCommand, T>) -> Result<Self, ipc_server::Error>
         where
             T: From<ManagementCommand> + 'static + Send,
     {
@@ -97,7 +97,7 @@ impl ManagementInterfaceServer {
         let mut io = PubSubHandler::default();
         io.extend_with(rpc.to_delegate());
         let meta_io: MetaIoHandler<Meta> = io.into();
-        let server = talpid_ipc::IpcServer::start_with_metadata(
+        let server = ipc_server::IpcServer::start_with_metadata(
             meta_io,
             meta_extractor,
             &path,
@@ -130,7 +130,7 @@ impl ManagementInterfaceServer {
 #[derive(Clone)]
 pub struct ManagementInterfaceEventBroadcaster {
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, pubsub::Sink<DaemonBroadcast>>>>,
-    close_handle: Option<talpid_ipc::CloseHandle>,
+    close_handle: Option<ipc_server::CloseHandle>,
 }
 
 impl EventListener for ManagementInterfaceEventBroadcaster {

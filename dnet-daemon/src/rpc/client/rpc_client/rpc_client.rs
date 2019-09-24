@@ -24,6 +24,8 @@ use super::heartbeat::client_heartbeat;
 use super::key_report::client_key_report;
 use crate::rpc::client::rpc_client::search_user_team::search_user_team;
 use crate::rpc::client::rpc_client::join_team::join_team;
+use super::get_online_proxy::client_get_online_proxy;
+use super::device_select_proxy::device_select_proxy;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
@@ -58,7 +60,17 @@ impl RpcClient {
         login()
     }
 
-    pub fn client_key_report(&self) -> Result<()> {client_key_report()}
+    pub fn client_key_report(&self) -> Result<()> {
+        client_key_report()
+    }
+
+    pub fn client_get_online_proxy(&self) -> Result<()> {
+        client_get_online_proxy()
+    }
+
+    pub fn device_select_proxy(&self) -> Result<()> {
+        device_select_proxy()
+    }
 
     pub fn join_team(&self, team_id: String) -> Result<()> {
         join_team(team_id)

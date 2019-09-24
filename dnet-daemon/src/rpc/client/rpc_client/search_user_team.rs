@@ -36,26 +36,30 @@ pub(super) fn search_user_team() -> Result<()> {
             })?;
 
         if recv.code == Some(200) {
-            let local_pubkey = get_info().lock().unwrap().tinc_info.pub_key.clone();
-
-            let mut info = get_mut_info().lock().unwrap();
             if let Some(mut teams) = recv.data {
-                info.teams = teams
-                    .iter_mut()
-                    .map(|jteam| jteam.clone().into())
-                    .collect();
-
+                let mac;
+                {
+                    let mut info = get_mut_info().lock().unwrap();
+                    mac = info.client_info.uid.clone();
+                    info.teams = teams
+                        .iter_mut()
+                        .map(|jteam| jteam.clone().into())
+                        .collect();
+                }
                 for team in teams {
                     let members = team.members;
                     for member in members {
-                        if member.pubkey == Some(local_pubkey.clone()) {
+                        if member.mac.as_ref() == Some(&mac) {
                             if let Some(vip) = &member.ip {
                                 let vip = IpAddr::from_str(vip)
                                     .map_err(|e| {
                                         error!("search_user_team can't parse self vip.");
                                         Error::ParseIp(e)
                                     })?;
-                                info.tinc_info.vip = vip;
+                                {
+                                    let mut info = get_mut_info().lock().unwrap();
+                                    info.tinc_info.vip = vip;
+                                }
                             }
                         }
                     }

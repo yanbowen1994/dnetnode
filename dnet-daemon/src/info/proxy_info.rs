@@ -3,8 +3,6 @@ use std::str::FromStr;
 
 extern crate uuid;
 
-use tinc_plugin::ConnectTo;
-
 #[derive(Debug, Clone)]
 pub struct ProxyInfo {
     pub uid:            String,
@@ -16,7 +14,6 @@ pub struct ProxyInfo {
     pub os:             String,
     pub server_type:    String,
     pub ssh_port:       String,
-    pub online_porxy:   Vec<ConnectTo>,
 }
 impl ProxyInfo {
     pub fn new() -> Self {
@@ -39,7 +36,6 @@ impl ProxyInfo {
             os:             os.to_owned(),
             server_type:    "vppn1".to_owned(),
             ssh_port:       String::new(),
-            online_porxy:   Vec::new(),
         }
     }
 }

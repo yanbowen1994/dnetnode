@@ -5,7 +5,7 @@ use std::sync::{mpsc, Mutex, Arc};
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
-use crate::info::Info;
+use crate::info::{Info, get_info};
 use std::sync::mpsc::{Receiver, Sender};
 use std::borrow::BorrowMut;
 
@@ -64,7 +64,6 @@ impl TincMonitor {
 }
 
 struct MonitorInner {
-    tinc:               Mutex<TincOperator>,
     daemon_event_tx:    Mutex<Sender<DaemonEvent>>,
     stop_sign:          Mutex<u32>,
 }
@@ -82,7 +81,6 @@ impl MonitorInner {
             )
             .unwrap_or(());
         let inner = Self {
-            tinc:               Mutex::new(tinc),
             daemon_event_tx:    Mutex::new(daemon_event_tx),
             stop_sign:          Mutex::new(0),
         };
@@ -95,11 +93,9 @@ impl MonitorInner {
 
     fn connect(&mut self) {
         *self.stop_sign.lock().unwrap() == 0;
+        let mut tinc = TincOperator::new();
         {
-            self.tinc.lock().unwrap().set_info_to_local();
-        }
-        {
-            let _ = self.tinc.lock().unwrap().start_tinc()
+            let _ = tinc.start_tinc()
                 .map_err(|e|
                     self.daemon_event_tx.lock().unwrap()
                         .send(DaemonEvent::TunnelInitFailed(e.to_string())));
@@ -120,12 +116,14 @@ impl MonitorInner {
 
     fn disconnect(&mut self) {
         *self.stop_sign.lock().unwrap() = 1;
-        self.tinc.lock().unwrap().stop_tinc();
+        let mut tinc = TincOperator::new();
+        tinc.stop_tinc();
     }
 
     fn exec_tinc_check(&mut self) {
+        let mut tinc = TincOperator::new();
         {
-            if let Ok(_) = self.tinc.lock().unwrap().check_tinc_status() {
+            if let Ok(_) = tinc.check_tinc_status() {
                 trace!("check tinc process: tinc exist.");
                 return;
             }
@@ -135,7 +133,7 @@ impl MonitorInner {
         loop {
             let result;
             {
-                result = self.tinc.lock().unwrap().restart_tinc();
+                result = tinc.restart_tinc();
             }
             match result {
                 Ok(_) => {

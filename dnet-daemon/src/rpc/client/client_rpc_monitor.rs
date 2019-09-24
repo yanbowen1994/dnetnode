@@ -11,6 +11,7 @@ use crate::tinc_manager::TincOperator;
 use super::RpcClient;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
 use std::sync::mpsc::Receiver;
+use dnet_types::response::Response;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -78,6 +79,15 @@ impl RpcMonitor {
                                 RpcClientCmd::JoinTeam(team_id) => {
                                     self.client.join_team(team_id);
                                 }
+
+                                RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
+                                    let response;
+                                    match self.client.device_select_proxy() {
+                                        Ok(_) => response = Response::success(),
+                                        Err(e) => response = Response::internal_error().set_msg(e.to_string())
+                                    }
+                                    let _ = response_tx.send(response);
+                                }
                             }
                         }
                         _ => ()
@@ -137,6 +147,15 @@ impl RpcMonitor {
             info!("search_user_team");
             {
                 if let Err(e) = self.client.search_user_team() {
+                    error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    continue
+                }
+            }
+
+            info!("get_online_proxy");
+            {
+                if let Err(e) = self.client.client_get_online_proxy() {
                     error!("{:?}\n{}", e, e);
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue

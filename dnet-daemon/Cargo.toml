@@ -34,6 +34,8 @@ simple-signal = "1.1"
 ipc-server = { path = "../ipc-server" }
 tinc-plugin = { path = "../tinc-plugin" }
 tokio = "0.1"
+tokio-core = "0.1"
+tokio-ping = "0.3.0"
 trust-dns-resolver = "0.12.0"
 uuid = "0.7"
 

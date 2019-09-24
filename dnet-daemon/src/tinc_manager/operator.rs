@@ -6,14 +6,17 @@ use std::str::FromStr;
 use std::fs;
 use std::io::Write;
 
-use crate::info::{Info, AuthInfo, get_info};
-use crate::settings::get_settings;
+use reqwest::get;
 use tinc_plugin::{TincRunMode,
                   ConnectTo,
                   TincOperator as PluginTincOperator,
                   TincInfo as PluginTincInfo,
                   TincOperatorError};
-use reqwest::get;
+use dnet_types::settings::RunMode;
+
+use crate::info::{Info, AuthInfo, get_info};
+use crate::settings::get_settings;
+
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -25,10 +28,21 @@ pub struct TincOperator {}
 impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
-        let settings = get_settings();
-        PluginTincOperator::new(&(settings.common.home_path.clone()
+        let tinc_home;
+        let tinc_run_model;
+        {
+            let settings = get_settings();
+            tinc_home = settings.common.home_path.clone();
+            tinc_run_model = match &settings.common.mode {
+                RunMode::Proxy => TincRunMode::Proxy,
+                RunMode::Client => TincRunMode::Client,
+            }
+
+        }
+
+        PluginTincOperator::new(&(tinc_home
             .join("tinc").to_str().unwrap().to_string() + "/"),
-                                TincRunMode::Proxy);
+                                tinc_run_model);
 
         Self {}
     }
@@ -104,19 +118,34 @@ impl TincOperator {
     }
 
     pub fn set_info_to_local(&self) -> Result<()> {
-        let info = get_info().lock().unwrap();
-        let ip =  info.proxy_info.ip;
-        let vip = info.tinc_info.vip.to_owned();
-        let pub_key = info.tinc_info.pub_key.to_owned();
-        let mode = TincRunMode::Proxy;
-        let connect_to: Vec<ConnectTo> = vec![];
-        let tinc_info = PluginTincInfo {
-            ip,
-            vip,
-            pub_key,
-            mode,
-            connect_to,
-        };
+        let tinc_info;
+        {
+            let settings = get_settings();
+            let tinc_run_model = match &settings.common.mode {
+                RunMode::Proxy => TincRunMode::Proxy,
+                RunMode::Client => TincRunMode::Client,
+            };
+            let ip;
+            let vip;
+            let pub_key;
+            let connect_to;
+            {
+                let info = get_info().lock().unwrap();
+                ip = info.proxy_info.ip;
+                vip = info.tinc_info.vip.to_owned();
+                pub_key = info.tinc_info.pub_key.to_owned();
+                connect_to = info.tinc_info.connect_to.clone();
+            }
+            let mode = tinc_run_model;
+            println!("{:?}", vip);
+            tinc_info = PluginTincInfo {
+                ip,
+                vip,
+                pub_key,
+                mode,
+                connect_to,
+            };
+        }
         PluginTincOperator::mut_instance().set_info_to_local(&tinc_info)
     }
 

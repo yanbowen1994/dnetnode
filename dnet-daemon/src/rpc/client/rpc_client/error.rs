@@ -6,11 +6,17 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[allow(non_camel_case_types)]
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
+    #[error(display = "device_select_proxy.")]
+    device_select_proxy,
+
     #[error(display = "Parse Ip failed.")]
     ParseIp(#[error(cause)] AddrParseError),
 
     #[error(display = "search_team_by_mac failed.")]
     search_team_by_mac,
+
+    #[error(display = "get online proxy no usable proxy.")]
+    NoUsableProxy,
 
     #[error(display = "Login can not parse json str.")]
     ParseJsonStr(#[error(cause)] serde_json::Error),
@@ -26,6 +32,9 @@ pub enum Error {
 
     #[error(display = "Login failed.")]
     LoginFailed(String),
+
+    #[error(display = "Get online proxy failed.")]
+    GetOnlineProxy(String),
 
     #[error(display = "SearchUserTeam.")]
     SearchUserTeam(String),

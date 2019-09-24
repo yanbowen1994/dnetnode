@@ -278,7 +278,7 @@ impl RpcClient {
                         error!("proxy_get_online_proxy - One proxy data invalid");
                     }
                 }
-                get_mut_info().lock().unwrap().proxy_info.online_porxy = other_proxy;
+                info.tinc_info.connect_to = other_proxy;
 
                 return Ok(());
             }

@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{TincOperatorError, PUB_KEY_FILENAME};
+use tinc_plugin::{ConnectTo, TincOperatorError, PUB_KEY_FILENAME};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
@@ -17,6 +17,7 @@ pub struct TincInfo {
     pub connections:    u32,
     pub edges:          u32,
     pub nodes:          u32,
+    pub connect_to:     Vec<ConnectTo>,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -32,6 +33,7 @@ impl TincInfo {
             edges:          0,
             nodes:          0,
             tinc_home:      tinc_home.to_owned(),
+            connect_to:     vec![],
         }
     }
 

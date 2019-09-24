@@ -1,5 +1,7 @@
 mod binding_device;
+mod device_select_proxy;
 mod error;
+mod get_online_proxy;
 mod join_team;
 mod login;
 mod key_report;

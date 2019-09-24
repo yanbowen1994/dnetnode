@@ -16,10 +16,12 @@ pub(super) fn search_team_by_mac() -> Result<()> {
         + "/vppn/api/v2/client/searchteambymac";;
     let device_id;
     let cookie;
+    let local_pubkey;
     {
         let info = get_info().lock().unwrap();
         device_id = info.client_info.uid.clone();
         cookie = info.client_info.cookie.clone();
+        local_pubkey = info.tinc_info.pub_key.clone()
     }
 
     let data = DeviceId {
@@ -37,8 +39,6 @@ pub(super) fn search_team_by_mac() -> Result<()> {
             })?;
 
         if recv.code == Some(200) {
-            let local_pubkey = get_info().lock().unwrap().tinc_info.pub_key.clone();
-
             let mut info = get_mut_info().lock().unwrap();
             if let Some(mut teams) = recv.data {
                 info.teams = teams

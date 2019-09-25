@@ -37,12 +37,12 @@ pub struct KeyReport {
     proxypubKey:    String,
 }
 impl KeyReport {
-    pub fn new() -> Self {
+    fn new() -> Self {
         KeyReport{
-            mac:                     "".to_string(),
-            vip:                     "".to_string(),
+            mac:                    "".to_string(),
+            vip:                    "".to_string(),
             pubKey:                 "".to_string(),
-            proxypubKey:           "".to_string(),
+            proxypubKey:            "".to_string(),
         }
     }
 
@@ -55,6 +55,25 @@ impl KeyReport {
             proxypubKey:             "".to_string(),
         }
     }
+
+    fn to_json(&self) -> String {
+        return serde_json::to_string(self).unwrap();
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct HostUp {
+    vip:            String,
+    pubKey:         String,
+}
+impl HostUp {
+    fn new() -> Self {
+        HostUp {
+            vip:    "".to_string(),
+            pubKey: "".to_string(),
+        }
+    }
+
     fn to_json(&self) -> String {
         return serde_json::to_string(self).unwrap();
     }
@@ -107,6 +126,23 @@ impl Response {
             };
         }
     }
+
+    fn failed(msg: &str) -> Self {
+        if msg == "" {
+            return Response {
+                code: 500,
+                data: None,
+                msg: Some("Internal Server Error.".to_string()),
+            };
+        }
+        else {
+            return Response {
+                code: 500,
+                data: None,
+                msg: Some(msg.to_string()),
+            };
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -122,7 +158,7 @@ impl Request {
 }
 
 #[derive(Debug,Serialize, Deserialize)]
-struct VirtualIp{
+struct VirtualIp {
     vip: String,
 }
 
@@ -194,9 +230,55 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
 
             let response;
             match serde_json::from_str(req_str.as_ref()) {
+                Ok(host_up) => {
+                    let host_up: HostUp = host_up;
+                    debug!("http_report_key - host_up: {:?}",host_up);
+                    let operator = TincOperator::new();
+                    let _ = operator.set_hosts(false,
+                                               host_up.vip.as_str(),
+                                               host_up.pubKey.as_str());
+                    response = Response::succeed(host_up.to_json())
+                },
+                Err(e) => {
+                    error!("http_report_key - response HostUp {}", req_str.as_ref());
+                    response = Response::not_found(&("HostUp ".to_owned() + &e.to_string()));
+                },
+            }
+
+            Ok(HttpResponse::Ok().json(response)) // <- send response
+        })
+        .responder()
+}
+
+fn host_up(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, Error = Error>>  {
+    let response = check_apikey(req.headers().get("Apikey"));
+    debug!("host_up - response url : {:?}",req.uri());
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(move |body| {
+            if let Some(response) = response {
+                return Ok(HttpResponse::Ok().json(response));
+            }
+
+            let by = &body.to_vec()[..];
+            let req_str = String::from_utf8_lossy(by);
+
+            debug!("host_up - response data : {:?}",req_str);
+
+            let response;
+            match serde_json::from_str(req_str.as_ref()) {
                 Ok(key_report) => {
                     let key_report: KeyReport = key_report;
-                    debug!("http_report_key - key_report: {:?}",key_report);
+                    debug!("host_up - key_report: {:?}",key_report);
                     let operator = TincOperator::new();
                     let _ = operator.set_hosts(false,
                                                key_report.vip.as_str(),
@@ -204,8 +286,8 @@ fn report_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse,
                     response = Response::succeed(key_report.to_json())
                 },
                 Err(e) => {
-                    error!("http_report_key - response KeyReport {}", req_str.as_ref());
-                    response = Response::not_found(&("KeyReport ".to_owned() + &e.to_string()));
+                    error!("host_up - response KeyReport {}", req_str.as_ref());
+                    response = Response::not_found(&("HostUp ".to_owned() + &e.to_string()));
                 },
             }
 
@@ -261,7 +343,7 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
                 }
             }
 
-            let response = Response::not_found("");
+            let response = Response::failed("Host file not found.");
             Ok(HttpResponse::Ok().json(response)) // <- send response
         })
         .responder()
@@ -412,6 +494,10 @@ pub(super) fn web_server(
             .resource("/vppn/tinc/api/v2/proxy/keyreport", |r|
                 r.method(http::Method::POST).with(report_key)
             )
+
+            .resource("/vppn/tinc/api/v2/proxy/host_up", |r| {
+                r.method(http::Method::POST).with(host_up)
+            })
 
             .resource("/vppn/tinc/api/v2/proxy/checkpublickey", |r| {
                 r.method(http::Method::POST).with(check_key)

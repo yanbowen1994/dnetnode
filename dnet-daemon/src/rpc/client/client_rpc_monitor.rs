@@ -153,15 +153,6 @@ impl RpcMonitor {
                     continue
                 }
             }
-
-            info!("get_online_proxy");
-            {
-                if let Err(e) = self.client.client_get_online_proxy() {
-                    error!("{:?}\n{}", e, e);
-                    thread::sleep(std::time::Duration::from_secs(1));
-                    continue
-                }
-            }
             break
         }
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);

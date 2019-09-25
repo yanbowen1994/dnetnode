@@ -233,12 +233,12 @@ impl RpcClient {
             if recv.code == 200 {
                 let mut info = get_mut_info().lock().unwrap();
                 let _ = info.tinc_info.load_local();
+                let local_pub_key = info.tinc_info.pub_key.clone();
+                let local_vip = info.tinc_info.vip.clone();
+                std::mem::drop(info);
 
                 let proxy_vec: Vec<Proxy> = recv.data;
-                let local_pub_key;
-                {
-                    local_pub_key = info.tinc_info.pub_key.clone();
-                }
+
                 let mut other_proxy = vec![];
 
                 let tinc = tinc_manager::TincOperator::new();
@@ -246,8 +246,10 @@ impl RpcClient {
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
-                            if info.tinc_info.vip != vip {
+                            if local_vip != vip {
+                                let mut info = get_mut_info().lock().unwrap();
                                 info.tinc_info.vip = vip;
+                                std::mem::drop(info);
                                 tinc.set_info_to_local()
                                     .map_err(Error::TincOperator)?;
                             }
@@ -278,7 +280,9 @@ impl RpcClient {
                         error!("proxy_get_online_proxy - One proxy data invalid");
                     }
                 }
+                let mut info = get_mut_info().lock().unwrap();
                 info.tinc_info.connect_to = other_proxy;
+                std::mem::drop(info);
 
                 return Ok(());
             }
@@ -383,7 +387,7 @@ impl Register {
         Register {
             auth_id: info.proxy_info.uid.to_string(),
             auth_type: info.proxy_info.auth_type.to_string(),
-            proxyIp: info.proxy_info.ip.to_string(),
+            proxyIp: "".to_owned(),
             pubKey: info.tinc_info.pub_key.to_string(),
             os: info.proxy_info.os.to_string(),
             server_type: info.proxy_info.server_type.to_string(),

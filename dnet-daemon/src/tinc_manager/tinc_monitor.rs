@@ -39,7 +39,6 @@ impl TunnelTrait for TincMonitor {
     }
 }
 
-
 impl TincMonitor {
     fn run(mut self) {
         while let Ok(event) = self.tunnel_command_rx.recv() {
@@ -57,6 +56,10 @@ impl TincMonitor {
                     }
                     let mut inner = get_monitor_inner();
                     inner.disconnect();
+                }
+                TunnelCommand::Reconnect => {
+                    let mut inner = get_monitor_inner();
+                    inner.reconnect();
                 }
             }
         }
@@ -92,7 +95,7 @@ impl MonitorInner {
     }
 
     fn connect(&mut self) {
-        *self.stop_sign.lock().unwrap() == 0;
+        *self.stop_sign.lock().unwrap() = 0;
         let mut tinc = TincOperator::new();
         {
             let _ = tinc.start_tinc()
@@ -118,6 +121,11 @@ impl MonitorInner {
         *self.stop_sign.lock().unwrap() = 1;
         let mut tinc = TincOperator::new();
         tinc.stop_tinc();
+    }
+
+    fn reconnect(&mut self) {
+        let mut tinc = TincOperator::new();
+        tinc.restart_tinc();
     }
 
     fn exec_tinc_check(&mut self) {

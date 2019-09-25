@@ -17,7 +17,6 @@ use dnet_types::settings::RunMode;
 use crate::info::{Info, AuthInfo, get_info};
 use crate::settings::get_settings;
 
-
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
 const TINC_AUTH_PATH: &str = "auth/";
@@ -131,7 +130,8 @@ impl TincOperator {
             let connect_to;
             {
                 let info = get_info().lock().unwrap();
-                ip = info.proxy_info.ip;
+                ip = info.proxy_info.ip
+                    .ok_or(TincOperatorError::TincInfoError)?;
                 vip = info.tinc_info.vip.to_owned();
                 pub_key = info.tinc_info.pub_key.to_owned();
                 connect_to = info.tinc_info.connect_to.clone();

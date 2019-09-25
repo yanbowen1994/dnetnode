@@ -38,6 +38,7 @@ pub enum Error {
 pub enum TunnelCommand {
     Connect,
     Disconnect,
+    Reconnect,
 }
 
 pub enum DaemonEvent {
@@ -56,6 +57,8 @@ pub enum DaemonEvent {
 
     // ->
     TunnelInitFailed(String),
+
+    DaemonInnerCmd(TunnelCommand),
 
     ManagementCommand(ManagementCommand),
 
@@ -142,6 +145,9 @@ impl Daemon {
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
+            DaemonEvent::DaemonInnerCmd(cmd) =>  {
+                let _ = self.tunnel_command_tx.send(cmd);
+            }
             DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
             }

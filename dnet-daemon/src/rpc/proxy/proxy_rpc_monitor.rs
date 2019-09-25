@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::daemon::DaemonEvent;
+use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
 use crate::info::{Info, get_info};
@@ -114,6 +114,15 @@ impl RpcMonitor {
                     continue
                 }
             }
+
+            info!("proxy_get_online_proxy");
+            {
+                if let Err(e) = self.client.proxy_get_online_proxy() {
+                    error!("{:?}\n{}", e, e);
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    continue
+                }
+            }
             break
         }
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
@@ -142,7 +151,10 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(_) = self.client.proxy_get_online_proxy() {
+            if let Ok(need_restart_tunnel) = self.client.proxy_get_online_proxy() {
+                if need_restart_tunnel {
+                    let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
+                }
                 return Ok(());
             } else {
                 error!("proxy_get_online_proxy failed.");

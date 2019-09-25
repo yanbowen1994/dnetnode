@@ -192,7 +192,10 @@ impl RpcClient {
         Err(Error::RegisterFailed("Unknown reason.".to_string()))
     }
 
-    pub fn proxy_get_online_proxy(&self) -> Result<()> {
+    pub fn proxy_get_online_proxy(&self) -> Result<bool> {
+        // config change need restart tinc
+        let mut config_change = false;
+
         let settings = get_settings();
         let url = settings.common.conductor_url.clone()
             + "/vppn/api/v2/proxy/getonlineproxy";
@@ -234,29 +237,36 @@ impl RpcClient {
                 let mut info = get_mut_info().lock().unwrap();
                 let _ = info.tinc_info.load_local();
                 let local_pub_key = info.tinc_info.pub_key.clone();
-                let local_vip = info.tinc_info.vip.clone();
+                let mut local_vip = info.tinc_info.vip.clone();
+                let mut local_ip = info.proxy_info.ip.clone();
                 std::mem::drop(info);
 
                 let proxy_vec: Vec<Proxy> = recv.data;
 
                 let mut other_proxy = vec![];
 
-                let tinc = tinc_manager::TincOperator::new();
+                let mut tinc = tinc_manager::TincOperator::new();
 
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
                             if local_vip != vip {
-                                let mut info = get_mut_info().lock().unwrap();
-                                info.tinc_info.vip = vip;
-                                std::mem::drop(info);
-                                tinc.set_info_to_local()
-                                    .map_err(Error::TincOperator)?;
+                                config_change = true;
+                                local_vip = vip;
                             }
                         }
                         else {
-                            error!("proxy_get_online_proxy - response data: {}", res_data);
-                            return Err(Error::GetOnlineProxyInvalidData);
+                            return Err(Error::GetOnlineProxy("Response not include proxy_vip or proxy_vip can't be parse.".to_owned()));
+                        }
+
+                        if let Ok(ip) = IpAddr::from_str(&proxy.ip) {
+                            if local_ip != Some(ip) {
+                                config_change = true;
+                                local_ip = Some(ip);
+                            }
+                        }
+                        else {
+                            return Err(Error::GetOnlineProxy("Response not include proxy_ip or proxy_ip can't be parse.".to_owned()));
                         }
                     }
                     else {
@@ -280,11 +290,19 @@ impl RpcClient {
                         error!("proxy_get_online_proxy - One proxy data invalid");
                     }
                 }
+
                 let mut info = get_mut_info().lock().unwrap();
                 info.tinc_info.connect_to = other_proxy;
+                info.proxy_info.ip = local_ip;
+                info.tinc_info.vip = local_vip;
                 std::mem::drop(info);
 
-                return Ok(());
+                if config_change {
+                    tinc.set_info_to_local()
+                        .map_err(Error::TincOperator)?;
+                    tinc.restart_tinc();
+                }
+                return Ok(config_change);
             }
             else {
                 if let Some(msg) = recv.msg {
@@ -429,7 +447,6 @@ struct Heartbeat {
     connections:    u32,
     edges:          u32,
     nodes:          u32,
-    proxyIp:        String,
     pubKey:         String,
 }
 impl Heartbeat {
@@ -441,7 +458,6 @@ impl Heartbeat {
             connections:    info.tinc_info.connections,
             edges:          info.tinc_info.edges,
             nodes:          info.tinc_info.nodes,
-            proxyIp:        info.proxy_info.ip.to_string(),
             pubKey:         info.tinc_info.pub_key.to_string(),
         }
     }

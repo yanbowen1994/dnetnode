@@ -6,7 +6,7 @@ extern crate uuid;
 #[derive(Debug, Clone)]
 pub struct ProxyInfo {
     pub uid:            String,
-    pub ip:             IpAddr,
+    pub ip:             Option<IpAddr>,
     pub proxy_pub_key:  String,
     pub isregister:     bool,
     pub cookie:         String,
@@ -28,7 +28,7 @@ impl ProxyInfo {
 
         ProxyInfo {
             uid:            uuid::Uuid::new_v4().to_string(),
-            ip:             IpAddr::from([255, 255, 255, 255]),
+            ip:             None,
             proxy_pub_key:  String::new(),
             isregister:     false,
             cookie:         String::new(),

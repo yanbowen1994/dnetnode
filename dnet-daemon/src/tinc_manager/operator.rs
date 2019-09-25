@@ -137,7 +137,6 @@ impl TincOperator {
                 connect_to = info.tinc_info.connect_to.clone();
             }
             let mode = tinc_run_model;
-            println!("{:?}", vip);
             tinc_info = PluginTincInfo {
                 ip,
                 vip,

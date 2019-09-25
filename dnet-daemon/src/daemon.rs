@@ -153,6 +153,7 @@ impl Daemon {
     }
 
     fn handle_shutdown(&mut self) {
+        let _ = self.tunnel_command_tx.send(TunnelCommand::Disconnect);
         self.status.daemon = DaemonExecutionState::Finished;
     }
 

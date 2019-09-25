@@ -81,6 +81,7 @@ impl RpcMonitor {
                                 }
 
                                 RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
+                                    info!("device_select_proxy");
                                     let response;
                                     match self.client.device_select_proxy() {
                                         Ok(_) => response = Response::success(),

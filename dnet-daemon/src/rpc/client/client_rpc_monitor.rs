@@ -166,6 +166,7 @@ impl RpcMonitor {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
     }
 
+    // get_online_proxy with heartbeat (The client must get the proxy offline info in this way.)
     fn exec_heartbeat(&self) -> Result<()> {
         let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
         info!("proxy_heart_beat");
@@ -174,10 +175,17 @@ impl RpcMonitor {
 
             loop {
                 if let Ok(_) = self.client.client_heartbeat() {
+                    // get_online_proxy is not most important. If failed still return Ok.
+                    if let Ok(_) = self.client.client_get_online_proxy() {
+                        return Ok(());
+                    } else {
+                        error!("Get online proxy failed.");
+                    }
                     return Ok(());
                 } else {
                     error!("Heart beat send failed.");
                 }
+
 
                 if Instant::now().duration_since(start) > Duration::from_secs(3) {
                     return Err(Error::RpcTimeout);

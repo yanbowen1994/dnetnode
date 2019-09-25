@@ -166,16 +166,27 @@ impl Daemon {
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
             ManagementCommand::TunnelConnect(tx) => {
-//              TODO async
-                let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+                let run_mode = get_settings().common.mode.clone();
+                if run_mode == RunMode::Proxy {
+                    let _ = Self::oneshot_send(tx, (), "");
+                }
+                else if self.status.tunnel == TunnelState::Connecting
+                    || self.status.tunnel == TunnelState::Connected {
+                    let _ = Self::oneshot_send(tx, (), "");
+                }
+                else {
 
-                if let Ok(res) = rpc_response_rx.recv() {
-                    if res.code == 200 {
-                        let _ = self.tunnel_command_tx.send(TunnelCommand::Connect);
+//              TODO async
+                    let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
+                    let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+
+                    if let Ok(res) = rpc_response_rx.recv() {
+                        if res.code == 200 {
+                            let _ = self.tunnel_command_tx.send(TunnelCommand::Connect);
 //                     TODO CommandResponse
 //                Self::oneshot_send(tx, Box::new(CommandResponse::success()), "");
-                        let _ = Self::oneshot_send(tx, (), "");
+                            let _ = Self::oneshot_send(tx, (), "");
+                        }
                     }
                 }
             }

@@ -41,8 +41,6 @@ pub(super) fn client_get_online_proxy() -> Result<()> {
             })?;
 
         if recv.code == 200 {
-            let mut info = get_mut_info().lock().unwrap();
-            let _ = info.tinc_info.load_local();
             let proxy_vec: Vec<Proxy> = recv.data;
 
             let mut connect_to_vec = vec![];
@@ -88,9 +86,10 @@ pub(super) fn client_get_online_proxy() -> Result<()> {
             if connect_to.len() == 0 {
                 return Err(Error::NoUsableProxy);
             }
-
-            info.tinc_info.connect_to = connect_to;
-
+            {
+                let mut info = get_mut_info().lock().unwrap();
+                info.tinc_info.connect_to = connect_to;
+            }
             return Ok(());
         }
         else {

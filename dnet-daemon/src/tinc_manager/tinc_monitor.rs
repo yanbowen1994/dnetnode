@@ -48,7 +48,12 @@ impl TincMonitor {
                         *connect_cmd_mutex = true;
                     }
                     let inner = get_monitor_inner();
-                    thread::spawn(move || inner.connect());
+                    let res = match inner.connect() {
+                        Ok(_) => Response::success(),
+                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                    };
+                    let _ = res_tx.send(res);
+                    thread::spawn(move || inner.run());
                 }
                 TunnelCommand::Disconnect => {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
@@ -75,13 +80,11 @@ impl TincMonitor {
 }
 
 struct MonitorInner {
-    daemon_event_tx:    Mutex<mpsc::Sender<DaemonEvent>>,
     stop_sign:          Mutex<u32>,
 }
 
 impl MonitorInner {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) {
-
         let tinc = TincOperator::new();
         // 初始化tinc操作
         // 监测tinc pub key 不存在或生成时间超过一个月，将生成tinc pub key
@@ -92,7 +95,6 @@ impl MonitorInner {
             )
             .unwrap_or(());
         let inner = Self {
-            daemon_event_tx:    Mutex::new(daemon_event_tx),
             stop_sign:          Mutex::new(0),
         };
 
@@ -102,15 +104,13 @@ impl MonitorInner {
 
     }
 
-    fn connect(&mut self) {
+    fn connect(&mut self) -> Result<()> {
         *self.stop_sign.lock().unwrap() = 0;
-        let mut tinc = TincOperator::new();
-        {
-            let _ = tinc.start_tinc()
-                .map_err(|e|
-                    self.daemon_event_tx.lock().unwrap()
-                        .send(DaemonEvent::TunnelInitFailed(e.to_string())));
-        }
+        TincOperator::new().start_tinc()?;
+        Ok(())
+    }
+
+    fn run(&mut self) {
         loop {
             if *self.stop_sign.lock().unwrap() == 1 {
                 break

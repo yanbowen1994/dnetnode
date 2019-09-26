@@ -1,11 +1,11 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc;
 use std::thread;
 
 use futures::sync::oneshot;
 
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
-use crate::traits::{InfoTrait, RpcTrait, TunnelTrait};
+use crate::traits::TunnelTrait;
 use crate::info::{self, Info, get_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
@@ -15,7 +15,7 @@ use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
-use dnet_types::team::Team;
+use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -35,6 +35,7 @@ pub enum Error {
     TunnelInit(#[error(cause)] tinc_plugin::TincOperatorError),
 }
 
+#[derive(Clone, Debug)]
 pub enum TunnelCommand {
     Connect,
     Disconnect,
@@ -76,7 +77,7 @@ pub struct Daemon {
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
-    tunnel_command_tx:      mpsc::Sender<TunnelCommand>,
+    tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
     rpc_command_tx:         mpsc::Sender<RpcCmd>,
 }
 
@@ -146,7 +147,18 @@ impl Daemon {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
             DaemonEvent::DaemonInnerCmd(cmd) =>  {
-                let _ = self.tunnel_command_tx.send(cmd);
+                let (res_tx, res_rx) = mpsc::channel::<Response>();
+                let _ = self.tunnel_command_tx.send((cmd.clone(), res_tx));
+                let _ = res_rx.recv_timeout(Duration::from_secs(3))
+                    .map(|res|{
+                        if res.code != 200 {
+                            error!("cmd {:?} exec failed. error: {:?}", cmd.clone(), res.msg);
+                        }
+                    })
+                    .map_err(|_| {
+                        error!("cmd {:?} exec failed. error: Respones recv timeout.", cmd.clone())
+                    });
+
             }
             DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
@@ -159,7 +171,9 @@ impl Daemon {
     }
 
     fn handle_shutdown(&mut self) {
-        let _ = self.tunnel_command_tx.send(TunnelCommand::Disconnect);
+        let (res_tx, res_rx) = mpsc::channel::<Response>();
+        let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
+        let _ = res_rx.recv_timeout(Duration::from_secs(3));
         self.status.daemon = DaemonExecutionState::Finished;
     }
 
@@ -175,11 +189,11 @@ impl Daemon {
             ManagementCommand::TunnelConnect(tx) => {
                 let run_mode = get_settings().common.mode.clone();
                 if run_mode == RunMode::Proxy {
-                    let _ = Self::oneshot_send(tx, (), "");
+//                    let _ = Self::oneshot_send(tx, (), "");
                 }
                 else if self.status.tunnel == TunnelState::Connecting
                     || self.status.tunnel == TunnelState::Connected {
-                    let _ = Self::oneshot_send(tx, (), "");
+//                    let _ = Self::oneshot_send(tx, (), "");
                 }
                 else {
 
@@ -189,18 +203,31 @@ impl Daemon {
 
                     if let Ok(res) = rpc_response_rx.recv() {
                         if res.code == 200 {
-                            let _ = self.tunnel_command_tx.send(TunnelCommand::Connect);
+                            let (res_tx, res_rx) = mpsc::channel::<Response>();
+                            let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
+                            let res = match res_rx.recv_timeout(Duration::from_secs(3)) {
+                                Ok(res) => res,
+                                Err(_) => Response::internal_error(),
+                            };
+                            self.status.daemon = DaemonExecutionState::Finished;
+
 //                     TODO CommandResponse
 //                Self::oneshot_send(tx, Box::new(CommandResponse::success()), "");
-                            let _ = Self::oneshot_send(tx, (), "");
+                            let _ = Self::oneshot_send(tx, res, "");
                         }
                     }
                 }
             }
 
             ManagementCommand::TunnelDisconnect(tx) => {
-                let _ = self.tunnel_command_tx.send(TunnelCommand::Disconnect);
-                let _ = Self::oneshot_send(tx, (), "");
+                let (res_tx, res_rx) = mpsc::channel::<Response>();
+                let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
+                let res = match res_rx.recv_timeout(Duration::from_secs(3)) {
+                    Ok(res) => res,
+                    Err(_) => Response::internal_error(),
+                };
+
+                let _ = Self::oneshot_send(tx, res, "");
             }
 
             ManagementCommand::State(tx) => {
@@ -221,13 +248,20 @@ impl Daemon {
             }
 
             ManagementCommand::GroupList(tx) => {
-                let mut team =  get_info().lock().unwrap().teams.clone();
+                let team =  get_info().lock().unwrap().teams.clone();
                 let _ = Self::oneshot_send(tx, team, "");
             }
 
             ManagementCommand::GroupJoin(tx, team_id) => {
-                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::JoinTeam(team_id)));
-                let _ = Self::oneshot_send(tx, (), "");
+                let (res_tx, res_rx) = mpsc::channel();
+                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
+                thread::spawn(move || {
+                    let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
+                        Ok(res) => res,
+                        Err(_) => Response::exec_timeout(),
+                    };
+                    let _ = Self::oneshot_send(tx, response, "");
+                });
             }
 
             ManagementCommand::Shutdown(tx) => {
@@ -243,19 +277,33 @@ impl Daemon {
     }
 
     fn handle_rpc_connected(&mut self) {
+        let mut tunnel_auto_connect = false;
         self.status.rpc = RpcState::Connected;
         let run_mode = get_settings().common.mode.clone();
         if run_mode == RunMode::Proxy {
-            self.tunnel_command_tx.send(TunnelCommand::Connect).unwrap();
+            tunnel_auto_connect = true;
         }
         else {
             let auto_connect = get_settings().client.auto_connect;
             if auto_connect == true {
                 if self.status.tunnel == TunnelState::Disconnected ||
                     self.status.tunnel == TunnelState::Disconnecting {
-                    self.tunnel_command_tx.send(TunnelCommand::Connect).unwrap();
+                    tunnel_auto_connect = true;
                 }
             }
+        }
+        if tunnel_auto_connect {
+            let (res_tx, res_rx) = mpsc::channel::<Response>();
+            let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
+            let _ = res_rx.recv_timeout(Duration::from_secs(3))
+                .map(|res|{
+                    if res.code != 200 {
+                        error!("Tunnel connect failed. error: {:?}", res.msg);
+                    }
+                })
+                .map_err(|_| {
+                    error!("Tunnel connect failed. error: Respones recv timeout.")
+                });
         }
     }
 
@@ -290,7 +338,7 @@ impl Daemon {
 
     fn spawn_management_interface_wait_thread(
         server: ManagementInterfaceServer,
-        exit_tx: mpsc::Sender<DaemonEvent>,
+        _exit_tx: mpsc::Sender<DaemonEvent>,
     ) {
         thread::spawn(move || {
             server.wait();

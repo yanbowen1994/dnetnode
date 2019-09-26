@@ -1,19 +1,13 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::daemon::DaemonEvent;
-use crate::traits::RpcTrait;
-use crate::settings::get_settings;
-use crate::info::Info;
-use crate::tinc_manager::TincOperator;
-
-use super::RpcClient;
-use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
-use std::sync::mpsc::Receiver;
 use dnet_types::response::Response;
 
-const HEARTBEAT_FREQUENCY: u32 = 20;
+use crate::daemon::DaemonEvent;
+use crate::traits::RpcTrait;
+use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
+use super::RpcClient;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -27,7 +21,7 @@ pub enum Error {
 enum RunStatus {
     NotSendHearbeat,
     SendHearbeat,
-    Restart,
+//    Restart,
 }
 
 pub struct RpcMonitor {
@@ -76,8 +70,15 @@ impl RpcMonitor {
                                     break
                                 }
 
-                                RpcClientCmd::JoinTeam(team_id) => {
-                                    self.client.join_team(team_id);
+                                RpcClientCmd::JoinTeam(team_id, res_tx) => {
+                                    let response;
+                                    if let Err(error) = self.client.join_team(team_id) {
+                                        response = Response::internal_error().set_msg(error.to_string())
+                                    }
+                                    else {
+                                        response = Response::success();
+                                    }
+                                    let _ = res_tx.send(response);
                                 }
 
                                 RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
@@ -160,36 +161,24 @@ impl RpcMonitor {
 
     // get_online_proxy with heartbeat (The client must get the proxy offline info in this way.)
     fn exec_heartbeat(&self) -> Result<()> {
-        let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
         info!("proxy_heart_beat");
         loop {
             let start = Instant::now();
-
-            loop {
-                if let Ok(_) = self.client.client_heartbeat() {
-                    // get_online_proxy is not most important. If failed still return Ok.
-                    if let Ok(_) = self.client.client_get_online_proxy() {
-                        return Ok(());
-                    } else {
-                        error!("Get online proxy failed.");
-                    }
+            if let Ok(_) = self.client.client_heartbeat() {
+                // get_online_proxy is not most important. If failed still return Ok.
+                if let Ok(_) = self.client.client_get_online_proxy() {
                     return Ok(());
                 } else {
-                    error!("Heart beat send failed.");
+                    error!("Get online proxy failed.");
                 }
-
-
-                if Instant::now().duration_since(start) > Duration::from_secs(3) {
-                    return Err(Error::RpcTimeout);
-                }
-                thread::sleep(Duration::from_millis(100));
+                return Ok(());
+            } else {
+                error!("Heart beat send failed.");
             }
-
-            if let Some(remaining) = Duration::from_secs(
-                timeout_secs.into())
-                .checked_sub(start.elapsed()) {
-                thread::sleep(remaining);
+            if Instant::now().duration_since(start) > Duration::from_secs(3) {
+                return Err(Error::RpcTimeout);
             }
+            thread::sleep(Duration::from_millis(100));
         }
     }
 

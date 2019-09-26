@@ -1,11 +1,9 @@
-use std::sync::{Arc, Mutex};
 use std::str::FromStr;
 
-use crate::info::{Info, get_info, get_mut_info};
+use crate::info::{get_info, get_mut_info};
 
 use super::error::{Error, Result};
 use crate::settings::get_settings;
-use mac_address::get_mac_address;
 use super::post;
 use super::types::DeviceId;
 use std::net::IpAddr;

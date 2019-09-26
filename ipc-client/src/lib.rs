@@ -109,7 +109,7 @@ impl DaemonRpcClient {
         self.call("group_info", &team_id)
     }
 
-    pub fn group_join(&mut self, team_id: String) -> Result<Team> {
+    pub fn group_join(&mut self, team_id: String) -> Result<Response> {
         self.call("group_join", &team_id)
     }
 

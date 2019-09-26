@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{ConnectTo, TincOperatorError, PUB_KEY_FILENAME};
+use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};

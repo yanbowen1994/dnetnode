@@ -9,7 +9,7 @@ use tinc_plugin::{TincOperatorError, ConnectTo};
 
 use crate::net_tool::url_post;
 use crate::settings::{Settings, get_settings};
-use crate::info::{Info, get_info, get_mut_info};
+use crate::info::{get_info, get_mut_info};
 use crate::tinc_manager;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
@@ -18,12 +18,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
-    #[error(display = "Login can not parse json str.")]
-    ParseJsonStr(#[error(cause)] serde_json::Error),
-
-    #[error(display = "Fail to DNS parse conductor cluster domain.")]
-    ParseConductorDomain(String),
-
     #[error(display = "Login can not parse json str.")]
     LoginParseJsonStr(#[error(cause)] serde_json::Error),
 
@@ -44,9 +38,6 @@ pub enum Error {
 
     #[error(display = "Login can not parse json str.")]
     GetOnlineProxyParseJsonStr(#[error(cause)] serde_json::Error),
-
-    #[error(display = "proxy_get_online_proxy - get online proxy data invalid.")]
-    GetOnlineProxyInvalidData,
 
     #[error(display = "Heartbeat can not parse json str.")]
     HeartbeatJsonStr(#[error(cause)] serde_json::Error),
@@ -245,7 +236,7 @@ impl RpcClient {
 
                 let mut other_proxy = vec![];
 
-                let mut tinc = tinc_manager::TincOperator::new();
+                let tinc = tinc_manager::TincOperator::new();
 
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
@@ -300,7 +291,6 @@ impl RpcClient {
                 if config_change {
                     tinc.set_info_to_local()
                         .map_err(Error::TincOperator)?;
-                    tinc.restart_tinc();
                 }
                 return Ok(config_change);
             }

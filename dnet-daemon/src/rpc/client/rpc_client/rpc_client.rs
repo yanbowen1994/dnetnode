@@ -1,20 +1,11 @@
 //! upload client status
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Instant, Duration};
 use std::thread::sleep;
 
 use reqwest::Response;
-use tinc_plugin::TincOperatorError;
 #[cfg(target_arch = "arm")]
 extern crate router_plugin;
 
 use crate::net_tool::url_post;
-use crate::settings::{Settings, get_settings};
-use crate::info::{Info, get_info, get_mut_info};
-use crate::tinc_manager;
-use mac_address::get_mac_address;
-use std::sync::{Mutex, Arc};
 
 use super::{Error, Result};
 use super::login::login;
@@ -92,43 +83,3 @@ impl RpcClient {
         client_heartbeat()
     }
 }
-
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct DeviceId {
-    deviceid: String,
-}
-
-impl DeviceId {
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct User {
-    username: String,
-    password: String,
-}
-impl User {
-    fn new_from_settings(settings: &Settings) -> Self {
-        User {
-            username: settings.common.username.clone(),
-            password: settings.common.password.clone(),
-        }
-    }
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
-}
-
-//#[derive(Clone, Debug, Serialize, Deserialize)]
-//pub struct Device {
-//    deviceid:    Option<String>,
-//    devicename:  Option<String>,
-//    devicetype:  Option<i32>,
-//    lan:         Option<String>,
-//    wan:         Option<String>,
-//    ip:          Option<String>,
-//}
-

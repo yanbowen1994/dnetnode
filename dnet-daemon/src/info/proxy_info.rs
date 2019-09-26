@@ -1,6 +1,4 @@
 use std::net::IpAddr;
-use std::str::FromStr;
-
 extern crate uuid;
 
 #[derive(Debug, Clone)]

@@ -5,7 +5,7 @@ pub struct Response {
     pub code:   u32,
     pub msg:    String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Value>
+    pub data:   Option<Value>
 }
 
 impl Response {
@@ -38,7 +38,7 @@ impl Response {
     pub fn exec_timeout() -> Self {
         Self {
             code: 500,
-            msg:  "Internal Server Error".to_string(),
+            msg:  "Timeout".to_string(),
             data: None,
         }
     }

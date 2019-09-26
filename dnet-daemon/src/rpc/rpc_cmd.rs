@@ -9,7 +9,7 @@ pub enum RpcCmd {
 pub enum RpcClientCmd {
     StartHeartbeat,
     RestartRpcConnect,
-    JoinTeam(String),
+    JoinTeam(String, Sender<Response>),
     ReportDeviceSelectProxy(Sender<Response>),
 }
 

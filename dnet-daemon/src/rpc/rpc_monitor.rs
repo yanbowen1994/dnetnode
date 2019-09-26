@@ -1,10 +1,8 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc;
 
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 
-use super::client;
-use super::proxy;
 use super::rpc_cmd::RpcCmd;
 
 pub struct RpcMonitor;

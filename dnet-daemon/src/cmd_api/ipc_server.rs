@@ -34,10 +34,10 @@ build_rpc_trait! {
     pub trait ManagementInterfaceApi {
         type Metadata;
         #[rpc(meta, name = "tunnel_connect")]
-        fn tunnel_connect(&self, Self::Metadata) -> BoxFuture<(), Error>;
+        fn tunnel_connect(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "tunnel_disconnect")]
-        fn tunnel_disconnect(&self, Self::Metadata) -> BoxFuture<(), Error>;
+        fn tunnel_disconnect(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "shutdown")]
         fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
@@ -49,7 +49,7 @@ build_rpc_trait! {
         fn group_info(&self, Self::Metadata, String) -> BoxFuture<Option<Team>, Error>;
 
         #[rpc(meta, name = "group_join")]
-        fn group_join(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
+        fn group_join(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
@@ -59,11 +59,11 @@ build_rpc_trait! {
 /// Enum representing commands coming in on the management interface.
 pub enum ManagementCommand {
     TunnelConnect(
-        OneshotSender<()>,
+        OneshotSender<Response>,
     ),
 
     TunnelDisconnect(
-        OneshotSender<()>,
+        OneshotSender<Response>,
     ),
 
     /// Request the current state.
@@ -76,7 +76,7 @@ pub enum ManagementCommand {
     GroupInfo(OneshotSender<Option<Team>>, String),
 
     /// Get the current geographical location.
-    GroupJoin(OneshotSender<()>, String),
+    GroupJoin(OneshotSender<Response>, String),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -191,7 +191,7 @@ for ManagementInterface<T>
 {
     type Metadata = Meta;
 
-    fn tunnel_connect(&self, _: Self::Metadata) -> BoxFuture<(), Error> {
+    fn tunnel_connect(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
         log::debug!("create_account");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
@@ -201,7 +201,7 @@ for ManagementInterface<T>
     }
 
     fn tunnel_disconnect(&self,
-                         _: Self::Metadata) -> BoxFuture<(), Error> {
+                         _: Self::Metadata) -> BoxFuture<Response, Error> {
         log::debug!("create_account");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
@@ -247,7 +247,7 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn group_join(&self, _: Self::Metadata, team_id: String) -> BoxFuture<(), Error> {
+    fn group_join(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
         log::debug!("management interface get status.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self

@@ -1,17 +1,11 @@
-use std::sync::{mpsc, Mutex};
+use std::sync::Mutex;
 
-use crate::traits::InfoTrait;
-
-use crate::daemon::DaemonEvent;
-
-use super::TincInfo;
-use crate::info::client_info::ClientInfo;
-use crate::info::proxy_info::ProxyInfo;
-use crate::settings::get_settings;
-use dnet_types::settings::RunMode;
-
-use super::error::{Error, Result};
 use dnet_types::team::Team;
+
+use super::ClientInfo;
+use super::ProxyInfo;
+use super::TincInfo;
+use super::error::Result;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -25,8 +19,6 @@ pub struct Info {
 
 impl Info {
     pub fn new() -> Result<()> {
-        let mode = get_settings().common.mode.clone();
-
         let client_info = ClientInfo::new()?;
         let proxy_info = ProxyInfo::new();
 

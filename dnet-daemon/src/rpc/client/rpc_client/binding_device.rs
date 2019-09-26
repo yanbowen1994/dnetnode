@@ -1,5 +1,4 @@
-use std::sync::{Arc, Mutex};
-use crate::info::{Info, get_info};
+use crate::info::get_info;
 use super::types::DeviceId;
 use super::post;
 use super::{Error, Result};

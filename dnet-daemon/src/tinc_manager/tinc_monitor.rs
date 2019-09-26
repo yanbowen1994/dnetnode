@@ -2,12 +2,14 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::sync::{mpsc, Mutex, Arc};
 
+use dnet_types::response::Response;
+use tinc_plugin::TincOperatorError;
+
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
-use crate::info::{Info, get_info};
-use std::sync::mpsc::{Receiver, Sender};
-use std::borrow::BorrowMut;
+
+pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
 const TINC_FREQUENCY: u32 = 5;
 
@@ -15,19 +17,17 @@ static mut EL: *mut MonitorInner = 0 as *mut _;
 
 pub struct TincMonitor {
     connect_cmd_mutex:      Arc<Mutex<bool>>,
-    daemon_event_tx:        mpsc::Sender<DaemonEvent>,
-    tunnel_command_rx:      mpsc::Receiver<TunnelCommand>,
+    tunnel_command_rx:      mpsc::Receiver<(TunnelCommand, mpsc::Sender<Response>)>,
 }
 
 impl TunnelTrait for TincMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<TunnelCommand>) {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>) {
         let (tunnel_command_tx, tunnel_command_rx) = mpsc::channel();
 
         Arc::new(MonitorInner::new(daemon_event_tx.clone()));
 
         let tinc_monitor = TincMonitor {
             connect_cmd_mutex: Arc::new(Mutex::new(false)),
-            daemon_event_tx,
             tunnel_command_rx,
         };
 
@@ -40,26 +40,34 @@ impl TunnelTrait for TincMonitor {
 }
 
 impl TincMonitor {
-    fn run(mut self) {
-        while let Ok(event) = self.tunnel_command_rx.recv() {
+    fn run(self) {
+        while let Ok((event, res_tx)) = self.tunnel_command_rx.recv() {
             match event {
                 TunnelCommand::Connect => {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
                         *connect_cmd_mutex = true;
                     }
-                    let mut inner = get_monitor_inner();
+                    let inner = get_monitor_inner();
                     thread::spawn(move || inner.connect());
                 }
                 TunnelCommand::Disconnect => {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
                         *connect_cmd_mutex = false;
                     }
-                    let mut inner = get_monitor_inner();
-                    inner.disconnect();
+                    let inner = get_monitor_inner();
+                    let res = match inner.disconnect() {
+                        Ok(_) => Response::success(),
+                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                    };
+                    let _ = res_tx.send(res);
                 }
                 TunnelCommand::Reconnect => {
-                    let mut inner = get_monitor_inner();
-                    inner.reconnect();
+                    let inner = get_monitor_inner();
+                    let res = match inner.reconnect() {
+                        Ok(_) => Response::success(),
+                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                    };
+                    let _ = res_tx.send(res);
                 }
             }
         }
@@ -67,12 +75,12 @@ impl TincMonitor {
 }
 
 struct MonitorInner {
-    daemon_event_tx:    Mutex<Sender<DaemonEvent>>,
+    daemon_event_tx:    Mutex<mpsc::Sender<DaemonEvent>>,
     stop_sign:          Mutex<u32>,
 }
 
 impl MonitorInner {
-    fn new(daemon_event_tx: Sender<DaemonEvent>) {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) {
 
         let tinc = TincOperator::new();
         // 初始化tinc操作
@@ -117,15 +125,15 @@ impl MonitorInner {
         }
     }
 
-    fn disconnect(&mut self) {
+    fn disconnect(&mut self) -> Result<()> {
         *self.stop_sign.lock().unwrap() = 1;
         let mut tinc = TincOperator::new();
-        tinc.stop_tinc();
+        tinc.stop_tinc()
     }
 
-    fn reconnect(&mut self) {
+    fn reconnect(&mut self) -> Result<()> {
         let mut tinc = TincOperator::new();
-        tinc.restart_tinc();
+        tinc.restart_tinc()
     }
 
     fn exec_tinc_check(&mut self) {

@@ -1,9 +1,7 @@
-use std::sync::{Arc, Mutex};
-use crate::info::{Info, get_info};
-use super::types::DeviceId;
+use crate::info::get_info;
+use crate::settings::get_settings;
 use super::post;
 use super::{Error, Result};
-use crate::settings::get_settings;
 
 pub(super) fn client_key_report() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
@@ -58,7 +56,7 @@ struct KeyReport {
 
 impl KeyReport {
     fn new_from_info() -> Self {
-        let mut info = get_info().lock().unwrap();
+        let info = get_info().lock().unwrap();
         KeyReport {
             deviceid: info.client_info.uid.clone(),
             pubkey: info.tinc_info.pub_key.clone(),

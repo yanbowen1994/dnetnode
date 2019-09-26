@@ -1,9 +1,7 @@
-use std::sync::{Arc, Mutex};
-use crate::info::{Info, get_info};
-use super::types::DeviceId;
+use crate::info::get_info;
+use crate::settings::get_settings;
 use super::post;
 use super::{Error, Result};
-use crate::settings::get_settings;
 
 pub(super) fn device_select_proxy() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()

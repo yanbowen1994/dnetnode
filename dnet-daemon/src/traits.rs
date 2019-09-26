@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc;
+
+use dnet_types::response::Response;
+
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::rpc::rpc_cmd::RpcCmd;
 
@@ -18,6 +21,6 @@ pub trait InfoTrait {
 pub trait TunnelTrait
     where Self: std::marker::Sized
 {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<TunnelCommand>);
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>);
     fn start_monitor(self);
 }

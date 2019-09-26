@@ -18,7 +18,7 @@ use self::openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use self::bytes::BytesMut;
 use futures::{Future, Stream};
 
-use crate::info::{Info, get_info};
+use crate::info::get_info;
 use crate::tinc_manager::TincOperator;
 use crate::daemon::DaemonEvent;
 use crate::settings::get_settings;

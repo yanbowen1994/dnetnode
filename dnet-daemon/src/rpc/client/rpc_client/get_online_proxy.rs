@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use std::str::FromStr;
 use std::net::IpAddr;
 
@@ -9,10 +8,9 @@ use self::tokio_core::reactor::Core;
 
 use tinc_plugin::ConnectTo;
 
-use crate::info::{Info, get_info, get_mut_info};
+use crate::info::{get_info, get_mut_info};
 use crate::tinc_manager::TincOperator;
 use crate::settings::get_settings;
-use super::types::DeviceId;
 use super::post;
 use super::{Error, Result};
 use std::time::Duration;
@@ -123,7 +121,7 @@ fn pinger(addr: IpAddr) -> Option<u32> {
             })
     });
 
-    if let Ok(mut rtts) = reactor.run(future) {
+    if let Ok(rtts) = reactor.run(future) {
         let mut num = 0;
         let mut sum = 0;
         for rtt in rtts {

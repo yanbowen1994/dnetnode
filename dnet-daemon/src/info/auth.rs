@@ -1,4 +1,3 @@
-use super::Info;
 use crate::info::get_info;
 
 const BACKGROUND_STATUSNOTIFY: &str = "/vppn/api/v2/client/statusNotify";

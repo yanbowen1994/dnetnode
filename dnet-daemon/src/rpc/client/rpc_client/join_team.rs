@@ -1,11 +1,8 @@
-use std::sync::{Arc, Mutex};
-use crate::info::{Info, get_info};
-use super::types::DeviceId;
+use crate::info::get_info;
+use crate::settings::get_settings;
+use crate::rpc::client::rpc_client::types::teams::{JavaResponseTeamMember, JavaResponseDeviceProxy};
 use super::post;
 use super::{Error, Result};
-use crate::settings::get_settings;
-use crate::rpc::client::rpc_client::types::teams::{JavaResponseTeam, JavaResponseTeamMember, JavaResponseDeviceProxy};
-use dnet_types::team::DeviceProxy;
 
 pub(super) fn join_team(team_id: String) -> Result<()> {
     let url = get_settings().common.conductor_url.clone()

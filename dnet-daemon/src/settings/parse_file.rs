@@ -50,7 +50,7 @@ impl FileSettings {
             .merge(File::with_name(&(config_dir.to_owned() + "/settings.toml")))
             .expect("Error: Can not parse settings.");
 
-        let mut settings: FileSettings = settings.try_into().map_err(Error::ConfigError)?;
+        let settings: FileSettings = settings.try_into().map_err(Error::ConfigError)?;
         Ok(settings)
     }
 }

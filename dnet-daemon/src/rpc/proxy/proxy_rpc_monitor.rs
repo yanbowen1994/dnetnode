@@ -5,7 +5,6 @@ use std::time::{Duration, Instant};
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
-use crate::info::{Info, get_info};
 use crate::tinc_manager::TincOperator;
 use crate::rpc::rpc_cmd::RpcCmd;
 
@@ -29,13 +28,12 @@ pub struct RpcMonitor {
 
 impl RpcTrait for RpcMonitor {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd> {
-        let (rpc_cmd_tx, rpc_cmd_rx) = mpsc::channel();
+        let (rpc_cmd_tx, _rpc_cmd_rx) = mpsc::channel();
         let client = RpcClient::new();
         RpcMonitor {
             client,
             daemon_event_tx,
         }.start_monitor();
-
         return rpc_cmd_tx;
     }
 }
@@ -43,8 +41,6 @@ impl RpcTrait for RpcMonitor {
 impl RpcMonitor {
     fn start_monitor(self) {
         let web_server_tx = self.daemon_event_tx.clone();
-
-        let info_arc_clone = get_info();
         thread::spawn(move ||
             web_server(Arc::new(Mutex::new(
                 TincOperator::new())),

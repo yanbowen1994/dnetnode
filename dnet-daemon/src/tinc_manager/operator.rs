@@ -2,19 +2,16 @@
 
 #[cfg(unix)]
 use std::net::IpAddr;
-use std::str::FromStr;
 use std::fs;
 use std::io::Write;
 
-use reqwest::get;
 use tinc_plugin::{TincRunMode,
-                  ConnectTo,
                   TincOperator as PluginTincOperator,
                   TincInfo as PluginTincInfo,
                   TincOperatorError};
 use dnet_types::settings::RunMode;
 
-use crate::info::{Info, AuthInfo, get_info};
+use crate::info::{AuthInfo, get_info};
 use crate::settings::get_settings;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
@@ -36,7 +33,6 @@ impl TincOperator {
                 RunMode::Proxy => TincRunMode::Proxy,
                 RunMode::Client => TincRunMode::Client,
             }
-
         }
 
         PluginTincOperator::new(&(tinc_home

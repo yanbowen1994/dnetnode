@@ -126,8 +126,12 @@ impl TincOperator {
             let connect_to;
             {
                 let info = get_info().lock().unwrap();
-                ip = info.proxy_info.ip
-                    .ok_or(TincOperatorError::TincInfoError)?;
+                if tinc_run_model == TincRunMode::Proxy {
+                    ip = info.proxy_info.ip;
+                }
+                else {
+                    ip = None;
+                }
                 vip = info.tinc_info.vip.to_owned();
                 pub_key = info.tinc_info.pub_key.to_owned();
                 connect_to = info.tinc_info.connect_to.clone();

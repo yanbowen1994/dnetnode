@@ -50,7 +50,7 @@ impl TincMonitor {
                     let inner = get_monitor_inner();
                     let res = match inner.connect() {
                         Ok(_) => Response::success(),
-                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
                     let _ = res_tx.send(res);
                     thread::spawn(move || inner.run());
@@ -62,7 +62,7 @@ impl TincMonitor {
                     let inner = get_monitor_inner();
                     let res = match inner.disconnect() {
                         Ok(_) => Response::success(),
-                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
                     let _ = res_tx.send(res);
                 }
@@ -70,7 +70,7 @@ impl TincMonitor {
                     let inner = get_monitor_inner();
                     let res = match inner.reconnect() {
                         Ok(_) => Response::success(),
-                        Err(err) => Response::internal_error().set_msg(err.to_string()),
+                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
                     let _ = res_tx.send(res);
                 }

@@ -59,7 +59,14 @@ const TINC_AUTH_FILENAME: &str = "auth.txt";
 
 /// Errors that can happen when using the Tinc tunnel.
 #[derive(err_derive::Error, Debug)]
+#[allow(non_camel_case_types)]
 pub enum Error {
+    #[error(display = "Tinc Info Proxy Ip Not Found")]
+    TincInfo_connect_to_is_empty,
+
+    #[error(display = "Tinc Info Proxy Ip Not Found")]
+    TincInfoProxyIpNotFound,
+
     #[error(display = "Get local ip before Rpc get_online_proxy")]
     GetLocalIpBeforeRpcGetOnlineProxy,
 
@@ -416,7 +423,8 @@ impl TincOperator {
 
         let (is_proxy, name_ip) = match self.mode {
             TincRunMode::Proxy => {
-                let name_ip = tinc_info.ip.clone();
+                let name_ip = tinc_info.ip.clone()
+                    .ok_or(Error::TincInfoProxyIpNotFound)?;
                 (true, name_ip)
             },
             TincRunMode::Client => (false, tinc_info.vip.clone()),
@@ -620,7 +628,9 @@ impl TincOperator {
 
         let ip;
         if is_proxy {
-            ip = info.ip.to_string();
+            ip = info.ip
+                .ok_or(Error::TincInfoProxyIpNotFound)?
+                .to_string();
         }
         else {
             ip = info.vip.to_string();
@@ -646,6 +656,10 @@ impl TincOperator {
             "ifconfig ${dev} ${vpngw} netmask " + netmask;
 
             if TincRunMode::Client == self.mode {
+                if tinc_info.connect_to.is_empty() {
+                    return Err(Error::TincInfo_connect_to_is_empty)
+                }
+
                 buf = buf + "\n"
                     + "route add -host " + &tinc_info.connect_to[0].ip.to_string() + " gw _gateway";
                 buf = buf + "\n"

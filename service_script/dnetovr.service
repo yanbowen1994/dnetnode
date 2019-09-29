@@ -1,10 +1,10 @@
 [Unit]
-Description=DNet proxy
+Description=DNet Daemon
 After=network.target
 
 [Service]
 User=root
-ExecStart=/root/dnetovr/dnetovr -d 1 -c /root/dnetovr
+ExecStart=/opt/dnet/dnet-daemon -d 1 -c /opt/dnet
 
 [Install]
 WantedBy=multi-user.target

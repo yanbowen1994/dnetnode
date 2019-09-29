@@ -21,4 +21,7 @@ pub enum Error {
 
     #[error(display = "Get Mac.")]
     GetMac,
+
+    #[error(display = "Get router SN")]
+    GetSN,
 }

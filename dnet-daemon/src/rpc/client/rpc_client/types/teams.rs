@@ -74,6 +74,8 @@ impl Into<Team> for JavaResponseTeam {
             terminal_count:  self.terminalCount.unwrap_or(0),
             user_count:      self.userCount.unwrap_or(0),
             user_id:         self.userId.unwrap_or(String::new()),
+            proxy_ip:        String::new(),
+            subnet:          String::new(),
         }
     }
 }
@@ -84,6 +86,16 @@ impl Into<TeamMember> for JavaResponseTeamMember {
             .iter_mut()
             .map(|proxy|proxy.clone().into())
             .collect();
+        let lan = self.lan.map(|lan_str| {
+            let lans: Vec<String> = lan_str
+                .split(",")
+                .collect::<Vec<&str>>()
+                .iter_mut()
+                .map(|res_str|res_str.to_owned())
+                .collect();
+            lans
+        }).unwrap_or(vec![]);
+
         TeamMember {
             appversion:         self.appversion.unwrap_or(String::new()),
             city:               self.city.unwrap_or(String::new()),
@@ -91,7 +103,7 @@ impl Into<TeamMember> for JavaResponseTeamMember {
             country:            self.country.unwrap_or(String::new()),
             ip:                 self.ip.unwrap_or(String::new()),
             label_name:         self.labelName.unwrap_or(String::new()),
-            lan:                self.lan.unwrap_or(String::new()),
+            lan,
             latitude:           self.latitude.unwrap_or(String::new()),
             longitude:          self.longitude.unwrap_or(String::new()),
             mac:                self.mac.unwrap_or(String::new()),

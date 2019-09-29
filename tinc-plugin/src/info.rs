@@ -33,7 +33,7 @@ impl ConnectTo {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct TincInfo {
-    pub ip:         IpAddr,
+    pub ip:         Option<IpAddr>,
     pub vip:        IpAddr,
     pub pub_key:    String,
     pub mode:       TincRunMode,
@@ -42,7 +42,7 @@ pub struct TincInfo {
 
 impl TincInfo {
     pub fn new() -> Self {
-        let ip = IpAddr::from_str("255.255.255.255").unwrap();
+        let ip = None;
         let vip = IpAddr::from_str("255.255.255.255").unwrap();
         let pub_key = "".to_string();
         TincInfo {

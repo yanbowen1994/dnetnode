@@ -51,7 +51,7 @@ impl ClientInfo {
         let uid;
         match &device_type[..] {
             #[cfg(target_arc = "arm")]
-            "0" => uid = router_plugin::get_sn(),
+            "0" => uid = router_plugin::get_sn().ok_or(Error::GetSN)?,
             "6" => uid = "linux/".to_owned() + &mac,
             "4" => uid = "macos/".to_owned() + &mac,
             "3" => uid = "windows/".to_owned() + &mac,

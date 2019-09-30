@@ -1,5 +1,6 @@
 use std::sync::mpsc::Sender;
 use dnet_types::response::Response;
+use dnet_types::tinc_host_status_change::HostStatusChange;
 
 pub enum RpcCmd {
     Client(RpcClientCmd),
@@ -14,5 +15,5 @@ pub enum RpcClientCmd {
 }
 
 pub enum RpcProxyCmd {
-
+    HostStatusChange(HostStatusChange),
 }

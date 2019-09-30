@@ -24,6 +24,7 @@ use crate::cmd_api::types::EventListener;
 use crate::mpsc::IntoSender;
 use crate::settings::Settings;
 use dnet_types::team::Team;
+use dnet_types::tinc_host_status_change::HostStatusChange;
 
 /// FIXME(linus): This is here just because the futures crate has deprecated it and jsonrpc_core
 /// did not introduce their own yet (https://github.com/paritytech/jsonrpc/pull/196).
@@ -53,6 +54,9 @@ build_rpc_trait! {
 
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
+
+        #[rpc(meta, name = "host_status_change")]
+        fn host_status_change(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
     }
 }
 
@@ -77,6 +81,8 @@ pub enum ManagementCommand {
 
     /// Get the current geographical location.
     GroupJoin(OneshotSender<Response>, String),
+
+    HostStatusChange(OneshotSender<()>, HostStatusChange),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -192,7 +198,7 @@ for ManagementInterface<T>
     type Metadata = Meta;
 
     fn tunnel_connect(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("create_account");
+        log::debug!("management interface tunnel connect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::TunnelConnect(tx))
@@ -202,7 +208,7 @@ for ManagementInterface<T>
 
     fn tunnel_disconnect(&self,
                          _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("create_account");
+        log::debug!("management interface tunnel disconnect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx))
@@ -211,7 +217,7 @@ for ManagementInterface<T>
     }
 
     fn shutdown(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("management interface get status.");
+        log::debug!("management interface shutdown command.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::Shutdown(tx))
@@ -229,7 +235,7 @@ for ManagementInterface<T>
     }
 
     fn group_list(&self, _: Self::Metadata) -> BoxFuture<Vec<Team>, Error> {
-        log::debug!("create_account");
+        log::debug!("management interface group list");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupList(tx))
@@ -239,7 +245,7 @@ for ManagementInterface<T>
 
 
     fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Option<Team>, Error> {
-        log::debug!("create_account");
+        log::debug!("management interface group info");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupInfo(tx, team_id))
@@ -248,10 +254,23 @@ for ManagementInterface<T>
     }
 
     fn group_join(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
-        log::debug!("management interface get status.");
+        log::debug!("management interface group join.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupJoin(tx, team_id))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn host_status_change(&self, _: Self::Metadata, host_status_change: String)
+        -> BoxFuture<(), Error>
+    {
+        log::debug!("management interface host status change.");
+
+        let host_status_change = serde_json::from_str(&host_status_change).unwrap();
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::HostStatusChange(tx, host_status_change))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

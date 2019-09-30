@@ -6,10 +6,12 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
 use crate::tinc_manager::TincOperator;
-use crate::rpc::rpc_cmd::RpcCmd;
+use crate::rpc::rpc_cmd::{RpcCmd, RpcProxyCmd};
 
 use super::web_server;
 use super::RpcClient;
+use std::sync::mpsc::Receiver;
+use crate::rpc::proxy::report_host_status_change::report_host_status_change;
 
 const HEARTBEAT_FREQUENCY: u32 = 20;
 
@@ -28,19 +30,20 @@ pub struct RpcMonitor {
 
 impl RpcTrait for RpcMonitor {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd> {
-        let (rpc_cmd_tx, _rpc_cmd_rx) = mpsc::channel();
+        let (rpc_cmd_tx, rpc_cmd_rx) = mpsc::channel();
         let client = RpcClient::new();
         RpcMonitor {
             client,
             daemon_event_tx,
-        }.start_monitor();
+        }.start_monitor(rpc_cmd_rx);
         return rpc_cmd_tx;
     }
 }
 
 impl RpcMonitor {
-    fn start_monitor(self) {
+    fn start_monitor(self, rpc_cmd_rx: Receiver<RpcCmd>) {
         let web_server_tx = self.daemon_event_tx.clone();
+        thread::spawn(move || Self::cmd_handle(rpc_cmd_rx));
         thread::spawn(move ||
             web_server(Arc::new(Mutex::new(
                 TincOperator::new())),
@@ -48,6 +51,21 @@ impl RpcMonitor {
             )
         );
         thread::spawn(||self.run());
+    }
+
+    fn cmd_handle(rpc_cmd_rx: mpsc::Receiver<RpcCmd>) {
+        while let Ok(rpc_cmd) = rpc_cmd_rx.recv() {
+            match rpc_cmd {
+                RpcCmd::Proxy(cmd) => {
+                    match cmd {
+                        RpcProxyCmd::HostStatusChange(host_status_change) => {
+                            report_host_status_change(host_status_change);
+                        }
+                    }
+                }
+                _ => ()
+            }
+        }
     }
 
     fn run(self) {

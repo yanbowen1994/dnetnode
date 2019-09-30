@@ -6,3 +6,4 @@ pub mod response;
 pub mod states;
 pub mod settings;
 pub mod team;
+pub mod tinc_host_status_change;

@@ -2,15 +2,14 @@
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::{Instant, Duration};
-use std::thread::sleep;
 
-use reqwest::Response;
 use tinc_plugin::{TincOperatorError, ConnectTo};
 
-use crate::net_tool::url_post;
 use crate::settings::{Settings, get_settings};
 use crate::info::{get_info, get_mut_info};
 use crate::tinc_manager;
+use crate::net_tool::url_post;
+use super::post::post;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
 
@@ -70,26 +69,6 @@ impl RpcClient {
             password,
         }
     }
-    
-    fn post(&self, url: &str, data: &str, uid: &str) -> Result<Response> {
-        let mut wait_sec = 0;
-        loop {
-            let _res = match url_post(&url, &data, uid) {
-                Ok(x) => return Ok(x),
-                Err(e) => {
-                    error!("post - response {:?}", e);
-                    sleep(std::time::Duration::from_secs(wait_sec));
-                    if wait_sec < 5 {
-                        wait_sec += 1;
-                    }
-                    else {
-                        return Err(Error::Reqwest(e))
-                    }
-                    continue;
-                }
-            };
-        }
-    }
 
     pub fn proxy_login(&self,
                        settings:    &Settings,
@@ -100,7 +79,7 @@ impl RpcClient {
         debug!("proxy_login - request url: {} ",url);
         debug!("proxy_login - request data:{}",data);
 
-        let mut res = self.post(&url, &data, "")?;
+        let mut res = post(&url, &data, "")?;
 
         debug!("proxy_login - response code: {}", res.status().as_u16());
         debug!("proxy_login - response header: {:?}", res.headers());
@@ -148,7 +127,7 @@ impl RpcClient {
         }
         debug!("proxy_register - request url: {}", url);
         debug!("proxy_register - request data: {}", data);
-	    let mut res = self.post(&url, &data, &cookie)?;
+	    let mut res = post(&url, &data, &cookie)?;
 
         debug!("proxy_register - response code: {}", res.status().as_u16());
 

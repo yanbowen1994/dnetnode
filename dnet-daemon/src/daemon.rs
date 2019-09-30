@@ -14,7 +14,7 @@ use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
-use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
+use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -262,6 +262,16 @@ impl Daemon {
                     };
                     let _ = Self::oneshot_send(tx, response, "");
                 });
+            }
+
+            ManagementCommand::HostStatusChange(tx, host_status_change) => {
+                // No call back.
+                let _ = Self::oneshot_send(tx, (), "");
+                let _ = self.rpc_command_tx.send(
+                    RpcCmd::Proxy(
+                        RpcProxyCmd::HostStatusChange(host_status_change)
+                    )
+                );
             }
 
             ManagementCommand::Shutdown(tx) => {

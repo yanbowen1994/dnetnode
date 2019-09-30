@@ -1,6 +1,25 @@
-use std::net::{SocketAddr, TcpStream};
-use std::io::Write;
 use std::env;
+use std::path::Path;
+
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+
+use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+
+#[derive(Serialize, Deserialize)]
+enum HostStatusChange {
+    TincUp,
+    TincDown,
+    HostUp(String),
+    HostDown(String),
+}
+
+impl HostStatusChange {
+    fn to_json(&self) -> String {
+        return serde_json::to_string(self).unwrap();
+    }
+}
 
 fn help() {
     let buf = "\r
@@ -15,31 +34,50 @@ fn help() {
     println!("{}", buf);
 }
 
+pub fn new_ipc_client() -> DaemonRpcClient {
+    match new_standalone_ipc_client(&Path::new(&"/opt/dnet/dnet.socket".to_string())) {
+        Ok(client) => client,
+        Err(e) => {
+            panic!(format!("{:?}", e));
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
-        let mut buf = String::new();
-        match args[1] {
-            _ if args[1] == "-u" => buf = format!("Up"),
-            _ if args[1] == "-d" => buf = format!("Down"),
-            _ if args[1] == "-hu" => {
+        let host_status_change;
+        match &args[1][..] {
+            "-u" => host_status_change = HostStatusChange::TincUp,
+            "-d" => host_status_change = HostStatusChange::TincDown,
+            "-hu" => {
                 if args.len() > 2 {
-                    buf = format!("HostUp {}", args[2])
+                    host_status_change = HostStatusChange::HostUp(args[2].to_owned());
+                }
+                else {
+                    help();
+                    std::process::exit(1);
                 }
             },
             _ if args[1] == "-hd" => {
                 if args.len() > 2 {
-                    buf = format!("HostDown {}", args[2])
+                    host_status_change = HostStatusChange::HostDown(args[2].to_owned());
+                }
+                else {
+                    help();
+                    std::process::exit(1);
                 }
             },
-            _ => ()
+            _ => {
+                help();
+                std::process::exit(1);
+            }
         }
-        if buf.len() > 0 {
-            let addr = SocketAddr::from(([127, 0, 0, 1], 50070));
-            let mut stream = TcpStream::connect(&addr).expect("Tinc Monitor not exist");
-            stream.write(buf.as_bytes()).expect("Tinc Monitor not exist");
-            return;
-        }
+
+        let mut client = new_ipc_client();
+        let _ = client.host_status_change(host_status_change.to_json());
     }
-    help();
+    else {
+        help();
+    }
 }

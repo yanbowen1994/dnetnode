@@ -113,6 +113,10 @@ impl DaemonRpcClient {
         self.call("group_join", &team_id)
     }
 
+    pub fn host_status_change(&mut self, host_status_change: String) -> Result<()> {
+        self.call("host_status_change", &host_status_change)
+    }
+
     pub fn call<A, O>(&mut self, method: &'static str, args: &A) -> Result<O>
         where
             A: Serialize + Send + 'static,

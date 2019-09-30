@@ -7,18 +7,18 @@ use super::post::post;
 #[derive(Serialize, Deserialize)]
 struct HereRequest {
     name:       String,
-    status:     String,
+    state:      u32,
     proxyIp:    String,
 }
 
 impl HereRequest {
     fn new(name:       String,
-           status:     String,
+           status:     u32,
            proxy_ip:    String,
     ) -> Self {
         Self {
             name,
-            status,
+            state: status,
             proxyIp: proxy_ip
         }
     }
@@ -41,8 +41,8 @@ pub fn report_host_status_change(host_status_change: HostStatusChange) {
     std::mem::drop(info);
 
     let (name, status) = match host_status_change {
-        HostStatusChange::HostUp(name) => (name, "1".to_owned()),
-        HostStatusChange::HostDown(name) => (name, "0".to_owned()),
+        HostStatusChange::HostUp(name) => (name, 1.to_owned()),
+        HostStatusChange::HostDown(name) => (name, 0.to_owned()),
         _ => return,
     };
 

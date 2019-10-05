@@ -4,8 +4,7 @@ use qt_widgets::{
     qt_core::Slot,
     QApplication, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget,
 };
-use crate::{new_ipc_client};
-use crate::error::Result;
+
 
 struct Form<'a> {
     _widget: CppBox<QWidget>,
@@ -14,6 +13,7 @@ struct Form<'a> {
     button_clicked: Slot<'a>,
     line_edit_edited: Slot<'a>,
 }
+
 
 impl<'a> Form<'a> {
     fn new() -> Form<'a> {
@@ -37,10 +37,6 @@ impl<'a> Form<'a> {
             let form = Form {
                 button_clicked: Slot::new(move || {
                     let text = line_edit.text();
-                    let mut ipc = new_ipc_client()?;
-                    if let Err(e) = ipc.tunnel_connect() {
-                        eprintln!("{:?}", e);
-                    }
                     QMessageBox::information_q_widget2_q_string(
                         widget_ptr,
                         &QString::from_std_str("My title"),

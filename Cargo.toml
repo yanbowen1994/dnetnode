@@ -2,7 +2,9 @@
 members = [
     "dnet-cgi",
     "dnet-cli",
-#    "dnet-gui",
+#    "dnet-app-qt",
+     "dnet-app-mac",
+     "dnet-app-webview",
     "dnet-daemon",
     "dnet-path",
     "dnet-types",

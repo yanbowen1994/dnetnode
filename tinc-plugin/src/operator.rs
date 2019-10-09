@@ -253,7 +253,7 @@ impl TincOperator {
 
     pub fn check_tinc_status(&self) -> Result<()> {
         if self.tinc_handle.is_none() {
-            return Ok(());
+            return Err(Error::TincNotExist);
         }
         if let Some(child) = &self.tinc_handle {
             let out = child.try_wait()

@@ -1,0 +1,11 @@
+[package]
+name = "dnet-app-mac"
+version = "0.1.0"
+authors = ["yanbowen1994 <511838976@qq.com>"]
+edition = "2018"
+
+description = "DNet Node Mac Client App"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+cocoa = "*"

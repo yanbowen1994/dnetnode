@@ -8,6 +8,8 @@ extern crate ipc_server;
 extern crate serde_derive;
 
 use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+use dnet_types::team::Team;
+use crate::response::TeamStatusResponse;
 
 mod response;
 
@@ -94,10 +96,21 @@ fn main() {
         if let Some(request) = InputHandle::get_input() {
             match request {
                 RequestMethod::Get(GetAction::get_vpn_status) => {
-                    ipc.group_list()
-                        .and_then(|teams| {
-
-                        });
+                    let teams = ipc.group_list()
+                        .and_then(|daemon_teams| {
+                            let teams = daemon_teams
+                                .iter()
+                                .map(|daemon_team|Team::from(daemon_team.to_owned()))
+                                .collect::<Vec<Team>>();
+                            teams
+                        }).expect("");
+                    let team_status_response = TeamStatusResponse {
+                            code:
+                            teams:
+                            on:
+                            cloud_led_on:
+                            sn:
+                    }
                 },
                 RequestMethod::Post => (),
             }

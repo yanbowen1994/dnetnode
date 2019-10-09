@@ -1,3 +1,5 @@
+mod team_status_response;
+
 use std::process::Command;
 
 pub fn get_sn() -> Option<String> {

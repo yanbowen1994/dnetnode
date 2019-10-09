@@ -5,3 +5,4 @@ authors = ["bowen.yan <bowen.yan@siteview.com>"]
 edition = "2018"
 
 [dependencies]
+dnet-types = { path = "../dnet-types" }

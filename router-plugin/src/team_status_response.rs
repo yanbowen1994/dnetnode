@@ -5,10 +5,9 @@ use dnet_types::team::{
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct TeamStatusResponse {
+pub struct TeamStatusResponse {
     code:               String,
     teams:              Vec<Team>,
-    cur_team:           String,
     on:                 String,
     cloud_led_on:       String,
     sn:                 String,
@@ -30,7 +29,7 @@ struct Team {
     members:            Vec<Member>,
 }
 
-impl From for Team {
+impl From<DaemonTeam> for Team {
     fn from(team: DaemonTeam) -> Self {
         let mut members = vec![];
         for source_member in team.members {
@@ -75,7 +74,7 @@ struct Member {
     labelName2:         String,
 }
 
-impl From for Member {
+impl From<DaemonTeamMember> for Member {
     fn from(member: DaemonTeamMember) -> Self {
         let proxy_ip;
         if member.proxylist.is_empty() {

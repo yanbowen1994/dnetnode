@@ -24,21 +24,22 @@ pub struct TincOperator {}
 impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
-        let tinc_home;
-        let tinc_run_model;
-        {
-            let settings = get_settings();
-            tinc_home = settings.common.home_path.clone();
-            tinc_run_model = match &settings.common.mode {
-                RunMode::Proxy => TincRunMode::Proxy,
-                RunMode::Client => TincRunMode::Client,
+        if !PluginTincOperator::is_inited() {
+            let tinc_home;
+            let tinc_run_model;
+            {
+                let settings = get_settings();
+                tinc_home = settings.common.home_path.clone();
+                tinc_run_model = match &settings.common.mode {
+                    RunMode::Proxy => TincRunMode::Proxy,
+                    RunMode::Client => TincRunMode::Client,
+                }
             }
+
+            PluginTincOperator::new(&(tinc_home
+                .join("tinc").to_str().unwrap().to_string() + "/"),
+                                    tinc_run_model);
         }
-
-        PluginTincOperator::new(&(tinc_home
-            .join("tinc").to_str().unwrap().to_string() + "/"),
-                                tinc_run_model);
-
         Self {}
     }
 

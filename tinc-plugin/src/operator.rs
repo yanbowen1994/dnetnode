@@ -93,6 +93,10 @@ pub enum Error {
     #[error(display = "tinc process not exist")]
     TincNotExist,
 
+    /// If should restart tinc, like config change, that error will skip to restart.
+    #[error(display = "tinc process not start")]
+    TincNeverStart,
+
     /// tinc host file not exist
     #[error(display = "tinc host file not exist")]
     FileNotExist(String),
@@ -152,7 +156,7 @@ pub struct TincOperator {
     tinc_home:              String,
     mutex:                  Mutex<i32>,
     mode:                   TincRunMode,
-    tinc_handle:            Option<duct::Handle>,
+    tinc_handle:            Mutex<Option<duct::Handle>>,
 }
 
 impl TincOperator {
@@ -162,7 +166,7 @@ impl TincOperator {
             tinc_home:      tinc_home.to_string(),
             mutex:          Mutex::new(0),
             mode,
-            tinc_handle:    None,
+            tinc_handle:    Mutex::new(None),
         };
 
         unsafe {
@@ -197,8 +201,18 @@ impl TincOperator {
         return true;
     }
 
-    /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
+        match self.check_tinc_status() {
+            Ok(_) => self.stop_tinc()?,
+            Err(_) => (),
+        }
+        self.start_tinc_inner()
+    }
+
+    /// 启动tinc 返回duct::handle
+    fn start_tinc_inner(&mut self) -> Result<()> {
+        let mut mutex_tinc_handle = self.tinc_handle.lock().unwrap();
+
         let conf_tinc_home = "--config=".to_string()
             + &self.tinc_home;
         let conf_pidfile = "--pidfile=".to_string()
@@ -220,17 +234,15 @@ impl TincOperator {
         std::env::set_current_dir(current_dir)
             .map_err(|e|Error::IoError(e.to_string()))?;
 
-        let tinc_handle = duct_handle.stderr_capture().stdout_null().start()
+        let mut tinc_handle = duct_handle.stderr_capture().stdout_null().start()
             .map_err(|e| {
                 log::error!("StartTincError {:?}", e.to_string());
                 Error::StartTincError
             })?;
 
         let _ = tinc_handle.try_wait();
-        {
-            let _ = self.mutex.lock();
-            self.tinc_handle = Some(tinc_handle);
-        }
+
+        *mutex_tinc_handle = Some(tinc_handle);
         Ok(())
     }
 
@@ -241,48 +253,57 @@ impl TincOperator {
                 return Ok(());
             }
         }
-        if let Some(child) = &self.tinc_handle {
-            child.kill().map_err(|_| Error::StopTincError)?;
-        }
-        {
-            let _ = self.mutex.lock();
-            self.tinc_handle = None;
-        }
+        self.tinc_handle
+            .lock()
+            .unwrap()
+            .as_ref()
+            .ok_or(Error::StopTincError)
+            .and_then(|child|
+                child.kill().map_err(|_| Error::StopTincError)
+            )?;
+
+        *self.tinc_handle.lock().unwrap() = None;
         Ok(())
     }
 
     pub fn check_tinc_status(&self) -> Result<()> {
-        if self.tinc_handle.is_none() {
-            return Err(Error::TincNotExist);
-        }
-        if let Some(child) = &self.tinc_handle {
-            let out = child.try_wait()
-                .map_err(|_|Error::TincNotExist)?;
+        let mut tinc_handle = self.tinc_handle
+            .lock()
+            .unwrap()
+            .as_ref()
+            .ok_or(Error::TincNeverStart)
+            .and_then(|child| {
+                let out = child.try_wait()
+                    .map_err(|_|Error::TincNotExist)?;
 
-            if let None = out {
-                return Ok(())
-            }
+                if let None = out {
+                    return Ok(())
+                }
 
-            if let Some(mut out) = out {
-                if let Some(code) = out.status.code() {
-                    error!("code:{}\nerror:{:?}", code, String::from_utf8_lossy(&out.stderr));
-                    return Err(Error::TincNotExist);
+                if let Some(mut out) = out {
+                    if let Some(code) = out.status.code() {
+                        let mut error = String::from_utf8_lossy(&out.stderr).to_string();
+                        if error.contains("Address already in use") {
+                            error = "port 50069 already in use".to_owned();
+                        }
+                        error!("code:{} error:{:?}", code, error);
+                        return Err(Error::TincNotExist);
+                    }
                 }
                 return Ok(());
-            }
-        }
-        else {
-            return Err(Error::TincNotExist);
-        }
+            })?;
+
         return Ok(());
     }
 
     pub fn restart_tinc(&mut self)
         -> Result<()> {
-        if let Ok(_) = self.check_tinc_status() {
-            self.stop_tinc()?;
+        match self.check_tinc_status() {
+            Ok(_) => self.stop_tinc()?,
+            Err(Error::TincNeverStart) => (),
+            Err(_) => self.start_tinc_inner()?,
         }
-        self.start_tinc()
+        Ok(())
     }
 
     /// 根据IP地址获取文件名

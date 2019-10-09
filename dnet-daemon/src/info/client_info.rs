@@ -3,6 +3,7 @@ extern crate uuid;
 use mac_address::get_mac_address;
 
 use super::error::{Error, Result};
+use crate::settings::get_settings;
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
@@ -17,6 +18,8 @@ impl ClientInfo {
     pub fn new() -> Result<Self> {
         let device_type = Self::get_device_type();
         let device_uid = Self::get_uid(&device_type)?;
+        // TODO
+        let device_uid = "4H72675W008AF".to_owned();
         Ok(Self {
             uid:                device_uid.clone(),
             cookie:             "0cde13b523sf9aa5a403dc9f5661344b91d77609f70952eb488f31641".to_owned(),
@@ -51,7 +54,7 @@ impl ClientInfo {
         let uid;
         match &device_type[..] {
             #[cfg(target_arc = "arm")]
-            "0" => uid = router_plugin::get_sn().ok_or(Error::GetSN)?,
+            "0" => uid = get_settings().common.username.clone(),
             "6" => uid = "linux/".to_owned() + &mac,
             "4" => uid = "macos/".to_owned() + &mac,
             "3" => uid = "windows/".to_owned() + &mac,

@@ -7,6 +7,10 @@ use super::ProxyInfo;
 use super::TincInfo;
 use super::error::Result;
 
+use tinc_plugin::{ConnectTo, TincInfo as PluginTincInfo, TincRunMode};
+use crate::settings::get_settings;
+use dnet_types::settings::RunMode;
+
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
 #[derive(Debug, Clone)]
@@ -41,6 +45,21 @@ impl Info {
         }
 
         Ok(())
+    }
+
+    pub fn to_plugin_tinc_info(&self) -> PluginTincInfo {
+        let settings = get_settings();
+        let tinc_run_model = match &settings.common.mode {
+            RunMode::Proxy => TincRunMode::Proxy,
+            RunMode::Client => TincRunMode::Client,
+        };
+        PluginTincInfo {
+            ip:             self.proxy_info.ip,
+            vip:            self.tinc_info.vip.clone(),
+            pub_key:        self.tinc_info.pub_key.clone(),
+            mode:           tinc_run_model,
+            connect_to:     self.tinc_info.connect_to.clone(),
+        }
     }
 }
 

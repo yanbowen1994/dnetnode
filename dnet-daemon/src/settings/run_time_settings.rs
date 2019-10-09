@@ -159,9 +159,18 @@ impl Settings {
                         return RunMode::Client;
                     })
                     .unwrap_or(Common::default_running_mode());
-
-                let username = file_common.username.unwrap_or("".to_owned());
-                let password = file_common.password.unwrap_or("".to_owned());
+                let username;
+                let password;
+                #[cfg(target_arc = "arm")]
+                    {
+                        username = router_plugin::get_sn().ok_or(Error::GetSN)?;
+                        password = username.clone();
+                    }
+                #[cfg(not(target_arc = "arm"))]
+                    {
+                        username = file_common.username.unwrap_or("".to_owned());
+                        password = file_common.password.unwrap_or("".to_owned());
+                    }
 
                 Ok(Common {
                     conductor_url,

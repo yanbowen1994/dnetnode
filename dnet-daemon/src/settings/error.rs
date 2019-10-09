@@ -5,6 +5,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(err_derive::Error, Debug)]
 #[allow(non_camel_case_types)]
 pub enum Error {
+    #[error(display = "Get router SN")]
+    GetSN,
+
     #[error(display = "Can find settings.toml, please use --config to specify configuration file.")]
     NoSettingFile,
 

@@ -43,18 +43,19 @@ pub(super) fn search_user_team() -> Result<()> {
                         .collect();
                 }
                 for team in teams {
-                    let members = team.members;
-                    for member in members {
-                        if member.mac.as_ref() == Some(&mac) {
-                            if let Some(vip) = &member.ip {
-                                let vip = IpAddr::from_str(vip)
-                                    .map_err(|e| {
-                                        error!("search_user_team can't parse self vip.");
-                                        Error::ParseIp(e)
-                                    })?;
-                                {
-                                    let mut info = get_mut_info().lock().unwrap();
-                                    info.tinc_info.vip = vip;
+                    if let Some(members) = team.members {
+                        for member in members {
+                            if member.mac.as_ref() == Some(&mac) {
+                                if let Some(vip) = &member.ip {
+                                    let vip = IpAddr::from_str(vip)
+                                        .map_err(|e| {
+                                            error!("search_user_team can't parse self vip.");
+                                            Error::ParseIp(e)
+                                        })?;
+                                    {
+                                        let mut info = get_mut_info().lock().unwrap();
+                                        info.tinc_info.vip = vip;
+                                    }
                                 }
                             }
                         }

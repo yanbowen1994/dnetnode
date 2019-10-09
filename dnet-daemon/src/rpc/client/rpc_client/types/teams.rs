@@ -12,7 +12,7 @@ pub struct JavaResponseTeamSearch {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct JavaResponseTeam {
     pub enable:             Option<bool>,
-    pub members:            Vec<JavaResponseTeamMember>,
+    pub members:            Option<Vec<JavaResponseTeamMember>>,
     pub siteCount:          Option<u32>,
     pub teamDes:            Option<String>,
     pub teamId:             Option<String>,
@@ -37,7 +37,7 @@ pub struct JavaResponseTeamMember {
     pub mac:                Option<String>,
     pub memberPublicKey:    Option<String>,
     pub memberType:         Option<u32>,
-    pub proxylist:          Vec<JavaResponseDeviceProxy>,
+    pub proxylist:          Option<Vec<JavaResponseDeviceProxy>>,
     pub pubkey:             Option<String>,
     pub region:             Option<String>,
     pub serviceaddress:     Option<String>,
@@ -61,9 +61,12 @@ pub struct JavaResponseDeviceProxy {
 impl Into<Team> for JavaResponseTeam {
     fn into(mut self) -> Team {
         let members: Vec<TeamMember> = self.members
-            .iter_mut()
-            .map(|member|member.clone().into())
-            .collect();
+            .map(|mut members| members
+                .iter_mut()
+                .map(|member|member.clone().into())
+                .collect()
+            )
+            .unwrap_or(vec![]);
         Team {
             enable:          self.enable.unwrap_or(false),
             members,
@@ -83,9 +86,11 @@ impl Into<Team> for JavaResponseTeam {
 impl Into<TeamMember> for JavaResponseTeamMember {
     fn into(mut self) -> TeamMember {
         let proxylist: Vec<DeviceProxy> = self.proxylist
-            .iter_mut()
-            .map(|proxy|proxy.clone().into())
-            .collect();
+            .map(|mut proxylist| proxylist
+                .iter_mut()
+                .map(|proxy|proxy.clone().into())
+                .collect())
+            .unwrap_or(vec![]);
         let lan = self.lan.map(|lan_str| {
             let lans: Vec<String> = lan_str
                 .split(",")

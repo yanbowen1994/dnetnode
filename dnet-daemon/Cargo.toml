@@ -15,8 +15,6 @@ bytes = "0.4"
 clap = "2.32"
 chrono = "0.4.6"
 config="0.9"
-dnet-path = { path = "../dnet-path" }
-dnet-types = { path = "../dnet-types" }
 duct = "0.12"
 err-derive = "0.1.5"
 fern = { version = "0.5", features = ["colored"] }
@@ -31,8 +29,7 @@ serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
 simple-signal = "1.1"
-ipc-server = { path = "../ipc-server" }
-tinc-plugin = { path = "../tinc-plugin" }
+rumqtt = "0.30"
 tokio = "0.1"
 tokio-core = "0.1"
 tokio-ping = "0.3.0"
@@ -46,6 +43,11 @@ jsonrpc-core = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-f
 jsonrpc-ipc-server = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 jsonrpc-pubsub = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
 jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad-fork" }
+
+dnet-path = { path = "../dnet-path" }
+dnet-types = { path = "../dnet-types" }
+ipc-server = { path = "../ipc-server" }
+tinc-plugin = { path = "../tinc-plugin" }
 
 [target.arm-unknown-linux-musleabihf.dependencies]
 router-plugin = { path = "../router-plugin" }

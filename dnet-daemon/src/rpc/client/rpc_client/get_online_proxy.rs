@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::net::IpAddr;
+use std::time::Duration;
 
 extern crate tokio_ping;
 extern crate tokio_core;
@@ -13,9 +14,8 @@ use crate::tinc_manager::TincOperator;
 use crate::settings::get_settings;
 use super::post;
 use super::{Error, Result};
-use std::time::Duration;
 
-pub(super) fn client_get_online_proxy() -> Result<()> {
+pub(super) fn client_get_online_proxy() -> Result<Vec<ConnectTo>> {
     let settings = get_settings();
     let url = settings.common.conductor_url.clone()
         + "/vppn/api/v2/proxy/getonlineproxy";
@@ -66,29 +66,8 @@ pub(super) fn client_get_online_proxy() -> Result<()> {
                 }
                 error!("client_get_online_proxy - One proxy data invalid: {:?}", proxy);
             }
-            let mut min_rtt = 0;
-            let mut connect_to = vec![];
-            for proxy in &connect_to_vec {
-                if let Some(rtt) = pinger(proxy.ip) {
-                    if min_rtt == 0 || min_rtt > rtt {
-                        min_rtt = rtt;
-                        connect_to = vec!(proxy.clone());
-                    }
-                }
-            }
-            if connect_to.len() == 0 && connect_to_vec.len() > 0 {
-                let proxy = connect_to_vec[0].to_owned();
-                connect_to = vec![proxy];
-            }
 
-            if connect_to.len() == 0 {
-                return Err(Error::NoUsableProxy);
-            }
-            {
-                let mut info = get_mut_info().lock().unwrap();
-                info.tinc_info.connect_to = connect_to;
-            }
-            return Ok(());
+            return Ok(connect_to_vec);
         }
         else {
             if let Some(msg) = recv.msg {
@@ -105,39 +84,6 @@ pub(super) fn client_get_online_proxy() -> Result<()> {
             format!("Code:{} Msg:{}", res.status().as_u16(), err_msg).to_string()));
     }
     return Err(Error::GetOnlineProxy("Unknown reason.".to_string()));
-}
-
-fn pinger(addr: IpAddr) -> Option<u32> {
-    let mut reactor = Core::new().unwrap();
-    let timeout = Duration::from_secs(1);
-    let pinger = tokio_ping::Pinger::new();
-    let stream = pinger
-        .and_then(move |pinger| Ok(pinger.chain(addr).timeout(timeout).stream()));
-    let future = stream.and_then(|stream| {
-        stream.take(3)
-            .fold(Vec::new(), |mut acc, result|{
-                acc.push(result);
-                future::ok::<Vec<Option<Duration>>, tokio_ping::Error>(acc)
-            })
-    });
-
-    if let Ok(rtts) = reactor.run(future) {
-        let mut num = 0;
-        let mut sum = 0;
-        for rtt in rtts {
-            if let Some(rtt_duration) = rtt {
-                num += 1;
-                sum += rtt_duration.as_millis();
-            }
-        }
-
-        let average: Option<u32> = match num {
-            0 => None,
-            _ => Some(sum as u32 / num),
-        };
-        return average;
-    }
-    None
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

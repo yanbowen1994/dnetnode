@@ -23,7 +23,7 @@ pub(super) fn device_select_proxy() -> Result<()> {
             }.to_json();
         }
         else {
-            return Err(Error::NoUsableProxy);
+            return Err(Error::device_select_proxy_no_usable_proxy);
         }
     }
 

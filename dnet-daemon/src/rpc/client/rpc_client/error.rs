@@ -6,6 +6,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[allow(non_camel_case_types)]
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
+    #[error(display = "device_select_proxy_no_usable_proxy.")]
+    device_select_proxy_no_usable_proxy,
+
     #[error(display = "device_select_proxy.")]
     device_select_proxy,
 
@@ -15,8 +18,11 @@ pub enum Error {
     #[error(display = "search_team_by_mac failed.")]
     search_team_by_mac,
 
+    #[error(display = "client_not_bound.")]
+    client_not_bound,
+
     #[error(display = "get online proxy no usable proxy.")]
-    NoUsableProxy,
+    no_usable_proxy,
 
     #[error(display = "Login can not parse json str.")]
     ParseJsonStr(#[error(cause)] serde_json::Error),

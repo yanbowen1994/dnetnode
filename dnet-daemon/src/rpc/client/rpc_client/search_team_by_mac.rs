@@ -14,16 +14,15 @@ pub(super) fn search_team_by_mac() -> Result<()> {
         + "/vppn/api/v2/client/searchteambymac";;
     let device_id;
     let cookie;
-    let local_pubkey;
     {
         let info = get_info().lock().unwrap();
-        device_id = info.client_info.uid.clone();
+        device_id = get_settings().common.username.clone();
+//        device_id = info.client_info.uid.clone();
         cookie = info.client_info.cookie.clone();
-        local_pubkey = info.tinc_info.pub_key.clone()
     }
 
     let data = DeviceId {
-        deviceid: device_id,
+        deviceid: device_id.clone(),
     }.to_json();
 
     let mut res = post(&url, &data, &cookie)?;
@@ -44,25 +43,33 @@ pub(super) fn search_team_by_mac() -> Result<()> {
                     .map(|jteam| jteam.clone().into())
                     .collect();
                 for team in teams {
-                    let members = team.members;
-                    for member in members {
-                        if member.pubkey == Some(local_pubkey.clone()) {
-                            if let Some(vip) = &member.ip {
-                                let vip = IpAddr::from_str(vip)
-                                    .map_err(|e| {
-                                        error!("search_team_by_mac can't parse self vip.");
-                                        Error::ParseIp(e)
-                                    })?;
-                                info.tinc_info.vip = vip;
+                    println!("{:?}", team);
+                    if let Some(members) = team.members {
+                        for member in members {
+                            if member.mac == Some(device_id.clone()) {
+                                if let Some(vip) = &member.ip {
+                                    let vip = IpAddr::from_str(vip)
+                                        .map_err(|e| {
+                                            error!("search_team_by_mac can't parse self vip.");
+                                            Error::ParseIp(e)
+                                        })?;
+                                    info.tinc_info.vip = vip;
+                                }
                             }
                         }
                     }
                 }
             }
+            else {
+                return Err(Error::client_not_bound);
+            }
             return Ok(());
         }
         else {
             if let Some(msg) = recv.msg {
+                if &msg == "Group does not exist" {
+                    return Err(Error::client_not_bound);
+                }
                 return Err(Error::SearchTeamByMac(msg));
             }
         }

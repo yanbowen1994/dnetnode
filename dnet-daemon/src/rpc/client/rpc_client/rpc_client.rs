@@ -17,6 +17,7 @@ use crate::rpc::client::rpc_client::search_user_team::search_user_team;
 use crate::rpc::client::rpc_client::join_team::join_team;
 use super::get_online_proxy::client_get_online_proxy;
 use super::device_select_proxy::device_select_proxy;
+use tinc_plugin::ConnectTo;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
@@ -55,7 +56,7 @@ impl RpcClient {
         client_key_report()
     }
 
-    pub fn client_get_online_proxy(&self) -> Result<()> {
+    pub fn client_get_online_proxy(&self) -> Result<Vec<ConnectTo>> {
         client_get_online_proxy()
     }
 
@@ -63,23 +64,26 @@ impl RpcClient {
         device_select_proxy()
     }
 
-    pub fn join_team(&self, team_id: String) -> Result<()> {
-        join_team(team_id)
-    }
-
-    pub fn binding_device(&self) -> Result<()> {
-        binding_device()
+    pub fn client_heartbeat(&self) -> Result<()> {
+        client_heartbeat()
     }
 
     pub fn search_team_by_mac(&self) -> Result<()> {
         search_team_by_mac()
     }
 
-    pub fn search_user_team(&self) -> Result<()> {
-        search_user_team()
+    pub fn binding_device(&self) -> Result<()> {
+        binding_device()
+    }
+}
+
+#[cfg(target_arc = "test")]
+impl RpcClient {
+    pub fn join_team(&self, team_id: String) -> Result<()> {
+        join_team(team_id)
     }
 
-    pub fn client_heartbeat(&self) -> Result<()> {
-        client_heartbeat()
+    pub fn search_user_team(&self) -> Result<()> {
+        search_user_team()
     }
 }

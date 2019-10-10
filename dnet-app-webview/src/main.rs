@@ -185,7 +185,7 @@ fn main() {
 
     let mut window = Window::new();
     window.set_title("Demo");
-    window.set_size(440, 260);
+    window.set_size(700, 400);
     window.set_resizable();
     window.set_child(Box::new(tabs1));
     window.set_menubar(menu_bar);

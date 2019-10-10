@@ -6,7 +6,7 @@ extern crate serde;
 extern crate serde_derive;
 
 mod operator;
-pub use operator::{TincOperator, Error as TincOperatorError, PUB_KEY_FILENAME};
+pub use operator::{TincOperator, Error as TincOperatorError, PUB_KEY_FILENAME, PID_FILENAME};
 mod info;
 pub use info::{TincInfo, TincRunMode, ConnectTo};
 mod tinc_tcp_stream;

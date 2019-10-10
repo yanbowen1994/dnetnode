@@ -12,8 +12,7 @@ use super::web_server;
 use super::RpcClient;
 use std::sync::mpsc::Receiver;
 use crate::rpc::proxy::report_host_status_change::report_host_status_change;
-
-const HEARTBEAT_FREQUENCY: u32 = 20;
+use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -69,7 +68,7 @@ impl RpcMonitor {
     }
 
     fn run(self) {
-        let timeout_secs: u32 = HEARTBEAT_FREQUENCY;
+        let timeout_secs: u32 = HEARTBEAT_FREQUENCY_SEC;
         loop {
             self.init();
             loop {

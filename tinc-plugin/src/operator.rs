@@ -51,7 +51,7 @@ const HOST_DOWN_FILENAME: &str = "host-down";
 #[cfg(windows)]
 const HOST_DOWN_FILENAME: &str = "host-down.bat";
 
-const PID_FILENAME: &str = "tinc.pid";
+pub const PID_FILENAME: &str = "tinc.pid";
 
 const TINC_AUTH_PATH: &str = "auth/";
 
@@ -216,7 +216,7 @@ impl TincOperator {
         let conf_tinc_home = "--config=".to_string()
             + &self.tinc_home;
         let conf_pidfile = "--pidfile=".to_string()
-            + &self.tinc_home + "/tinc.pid";
+            + &self.tinc_home + PID_FILENAME;
 
         // Set tinc running dir, for tincd link lib openssl.
         let current_dir = std::env::current_dir()

@@ -7,7 +7,7 @@ use super::ProxyInfo;
 use super::TincInfo;
 use super::error::Result;
 
-use tinc_plugin::{ConnectTo, TincInfo as PluginTincInfo, TincRunMode};
+use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 

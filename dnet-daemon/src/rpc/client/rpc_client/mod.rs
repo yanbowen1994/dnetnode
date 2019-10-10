@@ -1,4 +1,5 @@
 mod binding_device;
+mod connect_team_broadcast;
 mod device_select_proxy;
 mod error;
 mod get_online_proxy;

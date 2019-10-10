@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME};
+use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
@@ -22,8 +22,8 @@ pub struct TincInfo {
 }
 impl TincInfo {
     pub fn new() -> Self {
-        let tinc_home = &get_settings().common.home_path.clone()
-            .join("tinc").to_str().unwrap().to_string();
+        let tinc_home = get_settings().common.home_path.clone()
+            .join("tinc").to_str().unwrap().to_string() + "/";
         let vip = IpAddr::from_str("10.255.255.254").unwrap();
         let pub_key = "".to_owned();
         TincInfo {
@@ -32,7 +32,7 @@ impl TincInfo {
             connections:    0,
             edges:          0,
             nodes:          0,
-            tinc_home:      tinc_home.to_owned(),
+            tinc_home,
             connect_to:     vec![],
         }
     }
@@ -55,7 +55,7 @@ impl TincInfo {
     pub fn flush_connections(&mut self)
                              -> Result<()> {
         let (connections, edges, nodes) = tinc_connections (
-            &(self.tinc_home.to_string() + "/tinc.pid"))
+            &(self.tinc_home.to_string() + PID_FILENAME))
             .map_err(Error::TincDump)?;
         self.connections = connections;
         self.edges = edges;

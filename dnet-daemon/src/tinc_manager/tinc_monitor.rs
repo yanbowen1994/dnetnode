@@ -52,6 +52,7 @@ impl TincMonitor {
                         Ok(_) => Response::success(),
                         Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
+
                     let _ = res_tx.send(res);
                     thread::spawn(move || inner.run());
                 }

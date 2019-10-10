@@ -32,17 +32,28 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<()> {
 
     let mut connect_to = vec![];
     if local_connect_to_vec.len() == 0 {
-        connect_to = select_min_rtt_proxys(proxy_rtt);
+        let (connect_to_tmp, _) = select_min_rtt_proxys(proxy_rtt);
+        connect_to = connect_to_tmp;
         connect_to_change_restart_tunnel = true;
     }
     else {
-        let is_contain = false;
+        let mut need_change_proxy = true;
+        let (min_rtt_proxy, min_rtt) = select_min_rtt_proxys(proxy_rtt.clone());
         for local_connect_to in local_connect_to_vec {
-            // TODO
-            if !connect_to_vec.contains(&local_connect_to) {
-                connect_to = select_min_rtt_proxys(proxy_rtt.clone());
-                connect_to_change_restart_tunnel = true;
+            // proxy offline
+            if connect_to_vec.contains(&local_connect_to) {
+                if let Some(rtt) = proxy_rtt.get(&local_connect_to).cloned() {
+                    // if (min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100
+                    //     Bad proxy network need change proxy.
+                    if !((min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100) {
+                        need_change_proxy = false;
+                    }
+                }
             }
+        }
+        if need_change_proxy {
+            connect_to = min_rtt_proxy;
+            connect_to_change_restart_tunnel = true;
         }
     }
 
@@ -71,7 +82,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<()> {
 }
 
 // Now, connect to only one proxy.
-fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u32>) -> Vec<ConnectTo> {
+fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u32>) -> (Vec<ConnectTo>, u32) {
     let mut min_rtt = 0;
     let mut connect_to = vec![];
 
@@ -81,7 +92,7 @@ fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u32>) -> Vec<ConnectTo> {
             connect_to = vec!(proxy.clone());
         }
     }
-    connect_to
+    (connect_to, min_rtt)
 }
 
 fn pinger(addr: IpAddr) -> Option<u32> {

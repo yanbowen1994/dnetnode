@@ -59,7 +59,7 @@ pub struct JavaResponseDeviceProxy {
 }
 
 impl Into<Team> for JavaResponseTeam {
-    fn into(mut self) -> Team {
+    fn into(self) -> Team {
         let members: Vec<TeamMember> = self.members
             .map(|mut members| members
                 .iter_mut()
@@ -84,7 +84,7 @@ impl Into<Team> for JavaResponseTeam {
 }
 
 impl Into<TeamMember> for JavaResponseTeamMember {
-    fn into(mut self) -> TeamMember {
+    fn into(self) -> TeamMember {
         let proxylist: Vec<DeviceProxy> = self.proxylist
             .map(|mut proxylist| proxylist
                 .iter_mut()

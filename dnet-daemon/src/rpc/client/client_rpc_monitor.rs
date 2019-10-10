@@ -2,12 +2,10 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use dnet_types::response::Response;
-
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
-use crate::info::get_info;
+use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use super::RpcClient;
 use super::rpc_client;
 use super::rpc_client::select_proxy;
@@ -56,7 +54,7 @@ impl RpcMonitor {
     }
 
     fn run(mut self) {
-        let timeout_millis: u32 = 500;
+        let timeout_millis: u32 = HEARTBEAT_FREQUENCY_SEC * 1000;
         loop {
             self.run_status = RunStatus::NotSendHearbeat;
             self.init();
@@ -119,7 +117,7 @@ impl RpcMonitor {
 
     // get_online_proxy with heartbeat (The client must get the proxy offline info in this way.)
     fn exec_heartbeat(&self) -> Result<()> {
-        info!("proxy_heart_beat");
+        info!("client_heart_beat");
         loop {
             let start = Instant::now();
             if let Ok(_) = self.client.client_heartbeat() {

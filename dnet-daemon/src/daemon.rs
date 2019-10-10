@@ -188,35 +188,32 @@ impl Daemon {
         match cmd {
             ManagementCommand::TunnelConnect(tx) => {
                 let run_mode = get_settings().common.mode.clone();
-                if run_mode == RunMode::Proxy {
-//                    let _ = Self::oneshot_send(tx, (), "");
+                let res = if run_mode == RunMode::Proxy {
+                    Response::internal_error().set_msg("Invalid command in proxy mode".to_owned())
                 }
                 else if self.status.tunnel == TunnelState::Connecting
                     || self.status.tunnel == TunnelState::Connected {
-//                    let _ = Self::oneshot_send(tx, (), "");
+                    Response::internal_error().set_msg("Invalid command. Currently connected.".to_owned())
                 }
                 else {
-
 //              TODO async
                     let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
                     let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
 
-                    if let Ok(res) = rpc_response_rx.recv() {
-                        if res.code == 200 {
-                            let (res_tx, res_rx) = mpsc::channel::<Response>();
-                            let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-                            let res = match res_rx.recv_timeout(Duration::from_secs(3)) {
-                                Ok(res) => res,
-                                Err(_) => Response::internal_error(),
-                            };
-                            self.status.daemon = DaemonExecutionState::Finished;
-
-//                     TODO CommandResponse
-//                Self::oneshot_send(tx, Box::new(CommandResponse::success()), "");
-                            let _ = Self::oneshot_send(tx, res, "");
+                    if let Ok(rpc_res) = rpc_response_rx.recv() {
+                        if rpc_res.code == 200 {
+                            let tunnel_res = self.send_tunnel_connect();
+                            tunnel_res
+                        }
+                        else {
+                            Response::internal_error().set_msg(rpc_res.msg)
                         }
                     }
-                }
+                    else {
+                        Response::internal_error().set_msg("Exec failed.".to_owned())
+                    }
+                };
+                let _ = Self::oneshot_send(tx, res, "");
             }
 
             ManagementCommand::TunnelDisconnect(tx) => {
@@ -290,6 +287,7 @@ impl Daemon {
         let mut tunnel_auto_connect = false;
         self.status.rpc = RpcState::Connected;
         let run_mode = get_settings().common.mode.clone();
+
         if run_mode == RunMode::Proxy {
             tunnel_auto_connect = true;
         }
@@ -302,18 +300,9 @@ impl Daemon {
                 }
             }
         }
+
         if tunnel_auto_connect {
-            let (res_tx, res_rx) = mpsc::channel::<Response>();
-            let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
-            let _ = res_rx.recv_timeout(Duration::from_secs(3))
-                .map(|res|{
-                    if res.code != 200 {
-                        error!("Tunnel connect failed. error: {:?}", res.msg);
-                    }
-                })
-                .map_err(|_| {
-                    error!("Tunnel connect failed. error: Respones recv timeout.")
-                });
+            self.send_tunnel_connect();
         }
     }
 
@@ -355,5 +344,25 @@ impl Daemon {
             info!("Management interface shut down");
 //            let _ = exit_tx.send(DaemonEvent::ManagementInterfaceExited);
         });
+    }
+
+    fn send_tunnel_connect(&self) -> Response {
+        let (res_tx, res_rx) = mpsc::channel::<Response>();
+        let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
+        let res = res_rx.recv_timeout(Duration::from_secs(3))
+            .map(|res|{
+                if res.code == 200 {
+                    let _ = self.daemon_event_tx.send(DaemonEvent::TunnelConnected);
+                }
+                else {
+                    error!("Tunnel connect failed. error: {:?}", res.msg);
+                }
+                res
+            })
+            .map_err(|_| {
+                error!("Tunnel connect failed. error: Respones recv timeout.")
+            })
+            .unwrap_or(Response::exec_timeout());
+        res
     }
 }

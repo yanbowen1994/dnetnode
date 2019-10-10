@@ -68,8 +68,12 @@ impl RpcClient {
         client_heartbeat()
     }
 
-    pub fn search_team_by_mac(&self) -> Result<()> {
+    pub fn search_team_by_mac(&self) -> Result<bool> {
         search_team_by_mac()
+    }
+
+    pub fn search_user_team(&self) -> Result<bool> {
+        search_user_team()
     }
 
     pub fn binding_device(&self) -> Result<()> {

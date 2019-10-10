@@ -9,7 +9,8 @@ use std::net::IpAddr;
 use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
 use crate::rpc::client::rpc_client::search_team_handle::search_team_handle;
 
-pub(super) fn search_user_team() -> Result<()> {
+// if return true restart tunnel.
+pub(super) fn search_user_team() -> Result<bool> {
     let url = get_settings().common.conductor_url.clone()
         + "/vppn/api/v2/client/searchuserteam";
     let cookie;
@@ -34,9 +35,9 @@ pub(super) fn search_user_team() -> Result<()> {
 
         if recv.code == Some(200) {
             if let Some(mut teams) = recv.data {
-                search_team_handle(teams)?;
+                let restart = search_team_handle(teams)?;
+                return Ok(restart);
             }
-            return Ok(());
         }
         else {
             if let Some(msg) = recv.msg {

@@ -3,11 +3,12 @@ use std::str::FromStr;
 
 use dnet_types::team::Team;
 
+use crate::info::{get_mut_info, get_info};
 use super::types::teams::JavaResponseTeam;
 use super::{Error, Result};
-use crate::info::{get_mut_info, get_info};
 
-pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<()> {
+// if return true restart tunnel.
+pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<bool> {
     let mut info = get_info().lock().unwrap();
     let device_id = info.client_info.uid.clone();
     std::mem::drop(info);
@@ -36,6 +37,11 @@ pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<()> {
 
     let mut info = get_mut_info().lock().unwrap();
     info.teams = teams;
-    info.tinc_info.vip = local_vip;
-    Ok(())
+    if local_vip != None {
+        if info.tinc_info.vip != local_vip {
+            info.tinc_info.vip = local_vip;
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

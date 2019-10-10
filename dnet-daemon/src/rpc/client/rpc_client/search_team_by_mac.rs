@@ -10,15 +10,15 @@ use std::net::IpAddr;
 use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
 use crate::rpc::client::rpc_client::search_team_handle::search_team_handle;
 
-pub(super) fn search_team_by_mac() -> Result<()> {
+// if return true restart tunnel.
+pub(super) fn search_team_by_mac() -> Result<bool> {
     let url    = get_settings().common.conductor_url.clone()
         + "/vppn/api/v2/client/searchteambymac";;
     let device_id;
     let cookie;
     {
         let info = get_info().lock().unwrap();
-        device_id = get_settings().common.username.clone();
-//        device_id = info.client_info.uid.clone();
+        device_id = info.client_info.uid.clone();
         cookie = info.client_info.cookie.clone();
     }
 
@@ -37,14 +37,12 @@ pub(super) fn search_team_by_mac() -> Result<()> {
             })?;
 
         if recv.code == Some(200) {
-            let mut info = get_mut_info().lock().unwrap();
             if let Some(mut teams) = recv.data {
-                search_team_handle(teams)?;
+                return Ok(search_team_handle(teams)?);
             }
             else {
                 return Err(Error::client_not_bound);
             }
-            return Ok(());
         }
         else {
             if let Some(msg) = recv.msg {

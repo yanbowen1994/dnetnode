@@ -12,7 +12,7 @@ use crate::tinc_manager::TincOperator;
 use crate::info::{get_mut_info, get_info};
 use super::{Error, Result};
 
-pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<()> {
+pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
     let mut connect_to_change_restart_tunnel = false;
 
     let mut min_rtt = 0;
@@ -70,15 +70,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<()> {
     info.tinc_info.connect_to = connect_to;
     std::mem::drop(info);
 
-    if connect_to_change_restart_tunnel {
-        let mut tinc = TincOperator::new();
-        tinc.set_info_to_local()
-            .map_err(Error::TincOperator)?;
-        tinc.restart_tinc()
-            .map_err(Error::TincOperator)?;
-    }
-
-    Ok(())
+    Ok(connect_to_change_restart_tunnel)
 }
 
 // Now, connect to only one proxy.

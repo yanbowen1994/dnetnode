@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use dnet_types::response::Response;
 
-use crate::daemon::DaemonEvent;
+use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
@@ -66,7 +66,7 @@ impl RpcMonitor {
             self.init();
             loop {
                 if let Ok(cmd) = self.rpc_cmd_rx.try_recv() {
-                    if self.handle_rpc_cmd(cmd) {
+                    if !self.handle_rpc_cmd(cmd) {
                         break
                     }
                 }
@@ -145,11 +145,18 @@ impl RpcMonitor {
 
     fn exec_online_proxy(&self) -> Result<()> {
         // get_online_proxy is not most important. If failed still return Ok.
+        info!("exec_online_proxy");
         loop {
             let start = Instant::now();
-
             if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
-                if let Ok(()) = select_proxy(connect_to_vec) {
+                if let Ok(tunnel_restart) = select_proxy(connect_to_vec) {
+                    if tunnel_restart {
+                        self.daemon_event_tx.send(
+                            DaemonEvent::DaemonInnerCmd(
+                                TunnelCommand::Reconnect
+                            )
+                        );
+                    }
                     return Ok(());
                 }
             } else {
@@ -275,7 +282,12 @@ impl RpcMonitor {
             info!("search_team_by_mac");
             {
                 match self.client.search_team_by_mac() {
-                    Ok(_) => (),
+                    Ok(restart_tunnel) => {
+                        if restart_tunnel {
+                            self.daemon_event_tx.send(
+                                DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
+                        }
+                    },
                     Err(rpc_client::Error::client_not_bound) => {
                         thread::sleep(std::time::Duration::from_secs(10));
                         continue
@@ -294,7 +306,11 @@ impl RpcMonitor {
             {
                 match self.client.client_get_online_proxy()
                     .and_then(|connect_to_vec|select_proxy(connect_to_vec)) {
-                    Ok(_) => (),
+                    Ok(tunnel_restart) => {
+                        if tunnel_restart {
+                            let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
+                        }
+                    },
                     Err(e) => {
                         error!("{:?}\n{}", e, e);
                         thread::sleep(std::time::Duration::from_secs(1));
@@ -302,6 +318,7 @@ impl RpcMonitor {
                     },
                 }
             }
+            info!("client_get_online_proxy - ok");
 
             break
         }

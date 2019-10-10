@@ -7,6 +7,8 @@ use dnet_types::team::Team;
 
 #[cfg(target_arc = "arm")]
 use router_plugin::device_info::DeviceInfo;
+use dnet_types::device_type::DeviceType;
+use crate::settings::get_settings;
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
@@ -26,6 +28,11 @@ impl ClientInfo {
         let device_uid = Self::get_uid(&device_type)?;
         // TODO
         let device_uid = "4H72675W008AF".to_owned();
+
+        #[cfg(target_arc = "arm")]
+            {
+                let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
+            }
         Ok(Self {
             uid:                device_uid.clone(),
             cookie:             "0cde13b523sf9aa5a403dc9f5661344b91d77609f70952eb488f31641".to_owned(),
@@ -35,22 +42,12 @@ impl ClientInfo {
             devicename:         device_uid,
             running_teams:      vec![],
             #[cfg(target_arc = "arm")]
-            device_info:    DeviceInfo::get_info(),
+            device_info,
         })
     }
 
     fn get_device_type() -> String {
-        #[cfg(target_arc = "arm")]
-            return (DeviceType::Router as i8) as String;
-        #[cfg(not(target_arc = "arm"))]
-            {
-                #[cfg(target_os = "linux")]
-                    return format!("{}", (DeviceType::Linux as i8));
-                #[cfg(target_os = "macos")]
-                    return format!("{}", (DeviceType::MAC as i8));
-                #[cfg(target_os = "windows")]
-                    return format!("{}", (DeviceType::PC as i8));
-            }
+        return format!("{}", (DeviceType::get_device_type() as i8));
     }
 
     fn get_uid(device_type: &str) -> Result<String> {
@@ -71,17 +68,4 @@ impl ClientInfo {
         };
         Ok(uid)
     }
-}
-
-#[allow(dead_code)]
-#[repr(i8)]
-pub enum  DeviceType {
-    Router                  = 0,
-    Android                 = 1,
-    IOS                     = 2,
-    PC                      = 3,
-    MAC                     = 4,
-    Vrouter                 = 5,
-    Linux                   = 6,
-    Other                   = 7,
 }

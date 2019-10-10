@@ -1,3 +1,22 @@
+use std::net::IpAddr;
+use crate::device_type::DeviceType;
+
+//#[derive(Clone, Debug, Serialize, Deserialize)]
+//pub struct Team {
+//    team_id:    String,
+//    team_name:  String,
+//    members:    Vec<TeamMember>,
+//}
+//
+//#[derive(Clone, Debug, Serialize, Deserialize)]
+//pub struct TeamMember {
+//    vip:            IpAddr,
+//    device_id:      String,
+//    device_type:    DeviceType,
+//    lan:            Vec<(IpAddr, IpAddr)>,
+//    proxy_ip:       IpAddr,
+//}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Team {
     pub enable:             bool,

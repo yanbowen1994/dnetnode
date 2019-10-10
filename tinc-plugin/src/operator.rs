@@ -221,7 +221,7 @@ impl TincOperator {
         // Set tinc running dir, for tincd link lib openssl.
         let current_dir = std::env::current_dir()
             .map_err(|e|Error::IoError(e.to_string()))?;
-        std::env::set_current_dir("/root/tinc")
+        std::env::set_current_dir(self.tinc_home.to_string())
             .map_err(|e|Error::IoError(e.to_string()))?;
         let duct_handle: duct::Expression = duct::cmd(
             OsString::from(self.tinc_home.to_string() + TINC_BIN_FILENAME),
@@ -511,7 +511,7 @@ impl TincOperator {
                    MaxConnectionBurst=1000\n";
         }
 
-        let path = self.tinc_home.clone() + "/tinc.conf";
+        let path = self.tinc_home.clone() + "tinc.conf";
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
@@ -582,7 +582,7 @@ impl TincOperator {
             }
             let file_name = Self::get_filename_by_ip(is_proxy, ip);
 
-            let path = self.tinc_home.clone() + "/hosts/" + &file_name;
+            let path = self.tinc_home.clone() + "hosts/" + &file_name;
             let mut file = fs::File::create(path.clone())
                 .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
             file.write(buf.as_bytes())
@@ -603,7 +603,7 @@ impl TincOperator {
 //        let filename = Self::get_filename_by_ip(is_proxy, &ip);
 //
 //        let path = tinc_home.to_string()
-//            + "/hosts/"
+//            + "hosts/"
 //            + "proxy_"
 //            + &filename;
 //        fs::File::create(path.clone())
@@ -689,7 +689,7 @@ impl TincOperator {
                     + "route add default gw " + &tinc_info.connect_to[0].vip.to_string();
             }
 
-            buf = buf + "\n" + &self.tinc_home + "/tinc-report -u";
+            buf = buf + "\n" + &self.tinc_home + "tinc-report -u";
         }
         #[cfg(target_os = "macos")]
         {
@@ -709,7 +709,7 @@ impl TincOperator {
                     + "route add -net 0.0.0.0 -gateway 10.255.255.254";
             }
 
-            buf = buf + &self.tinc_home + "/tinc-report -u\n";
+            buf = buf + &self.tinc_home + "tinc-report -u\n";
         }
         #[cfg(windows)]
         {
@@ -729,10 +729,10 @@ impl TincOperator {
                         + &vnic_index + "\r\n";
             }
 
-            buf = buf + &self.tinc_home + "/tinc-report.exe -u";
+            buf = buf + &self.tinc_home + "tinc-report.exe -u";
         }
 
-        let path = self.tinc_home.clone() + "/" + TINC_UP_FILENAME;
+        let path = self.tinc_home.clone() + TINC_UP_FILENAME;
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
@@ -747,12 +747,12 @@ impl TincOperator {
         let buf;
         #[cfg(target_os = "linux")]
         {
-            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "/tinc-report -d";
+            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
         }
         #[cfg(target_os = "macos")]
         {
             let default_gateway = get_default_gateway()?.to_string();
-            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "/tinc-report -d"
+            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d"
                 + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
                 + "route -n -q delete -net 0.0.0.0 \n\
                    route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
@@ -762,10 +762,10 @@ impl TincOperator {
             let vnic_index = format!("{}", get_vnic_index()?);
             buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
                 + &vnic_index + "\r\n"
-                + &self.tinc_home.to_string() + "/tinc-report.exe -d";
+                + &self.tinc_home.to_string() + "tinc-report.exe -d";
         }
 
-        let path = self.tinc_home.clone() + "/" + TINC_DOWN_FILENAME;
+        let path = self.tinc_home.clone() + TINC_DOWN_FILENAME;
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
@@ -778,11 +778,11 @@ impl TincOperator {
     fn set_host_up(&self) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -hu ${NODE}");
+            let buf = &(self.tinc_home.to_string() + "tinc-report.exe -hu ${NODE}");
         #[cfg(unix)]
-            let buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "/tinc-report -hu ${NODE}";
+            let buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -hu ${NODE}";
 
-        let path = self.tinc_home.clone() + "/" + HOST_UP_FILENAME;
+        let path = self.tinc_home.clone() + HOST_UP_FILENAME;
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
@@ -795,11 +795,11 @@ impl TincOperator {
     fn set_host_down(&self) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         #[cfg(windows)]
-            let buf = &(self.tinc_home.to_string() + "/tinc-report.exe -hd ${NODE}");
+            let buf = &(self.tinc_home.to_string() + "tinc-report.exe -hd ${NODE}");
         #[cfg(unix)]
-            let buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "/tinc-report -hd ${NODE}";
+            let buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -hd ${NODE}";
 
-        let path = self.tinc_home.clone() + "/" + HOST_DOWN_FILENAME;
+        let path = self.tinc_home.clone() + HOST_DOWN_FILENAME;
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
@@ -810,7 +810,7 @@ impl TincOperator {
     }
 
     pub fn create_tinc_dirs(&self) -> Result<()> {
-        let path_str = self.tinc_home.clone() + "/hosts";
+        let path_str = self.tinc_home.clone() + "hosts";
         if !std::path::Path::new(&path_str).is_dir() {
             fs::create_dir_all(&path_str)
                 .map_err(|_| Error::IoError("Can not create tinc home dir".to_string()))?;
@@ -821,7 +821,7 @@ impl TincOperator {
     /// 获取子设备公钥
     pub fn get_host_pub_key(&self, host_name: &str) -> Result<String> {
         let _guard = self.mutex.lock().unwrap();
-        let file_path = &(self.tinc_home.to_string() + "/hosts/" + host_name);
+        let file_path = &(self.tinc_home.to_string() + "hosts/" + host_name);
         let mut file = fs::File::open(file_path)
             .map_err(|_| Error::FileNotExist(file_path.to_string()))?;
         let mut contents = String::new();

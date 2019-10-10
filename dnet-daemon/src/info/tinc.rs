@@ -12,7 +12,7 @@ use super::error::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {
-    pub vip:            IpAddr,
+    pub vip:            Option<IpAddr>,
     pub pub_key:        String,
     pub connections:    u32,
     pub edges:          u32,
@@ -24,10 +24,9 @@ impl TincInfo {
     pub fn new() -> Self {
         let tinc_home = get_settings().common.home_path.clone()
             .join("tinc").to_str().unwrap().to_string() + "/";
-        let vip = IpAddr::from_str("10.255.255.254").unwrap();
         let pub_key = "".to_owned();
         TincInfo {
-            vip,
+            vip:            None,
             pub_key,
             connections:    0,
             edges:          0,
@@ -41,7 +40,7 @@ impl TincInfo {
     // Success return true.
     pub fn load_local(&mut self) {
         if let Ok(vip) = self.load_local_vip() {
-            self.vip = vip;
+            self.vip = Some(vip);
         }
         self.pub_key = self.load_local_pubkey()
             .expect("Must create tinc key pair before Info init.");

@@ -17,6 +17,9 @@ pub enum Error {
     ParseVip(#[error(cause)] ::std::net::AddrParseError),
 
     #[error(display = "tinc-up vip setting error.")]
+    TincInfoVipNotFound,
+
+    #[error(display = "tinc-up vip setting error.")]
     FileNotExit(#[error(cause)] ::std::io::Error),
 
     #[error(display = "Get Mac.")]

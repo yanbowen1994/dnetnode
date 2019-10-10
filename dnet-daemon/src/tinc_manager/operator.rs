@@ -114,38 +114,9 @@ impl TincOperator {
     }
 
     pub fn set_info_to_local(&self) -> Result<()> {
-        let tinc_info;
-        {
-            let settings = get_settings();
-            let tinc_run_model = match &settings.common.mode {
-                RunMode::Proxy => TincRunMode::Proxy,
-                RunMode::Client => TincRunMode::Client,
-            };
-            let ip;
-            let vip;
-            let pub_key;
-            let connect_to;
-            {
-                let info = get_info().lock().unwrap();
-                if tinc_run_model == TincRunMode::Proxy {
-                    ip = info.proxy_info.ip;
-                }
-                else {
-                    ip = None;
-                }
-                vip = info.tinc_info.vip.to_owned();
-                pub_key = info.tinc_info.pub_key.to_owned();
-                connect_to = info.tinc_info.connect_to.clone();
-            }
-            let mode = tinc_run_model;
-            tinc_info = PluginTincInfo {
-                ip,
-                vip,
-                pub_key,
-                mode,
-                connect_to,
-            };
-        }
+        let tinc_info = get_info().lock().unwrap()
+            .to_plugin_tinc_info()
+            .map_err(|_|TincOperatorError::TincInfoError("Vip is None.".to_owned()))?;
         PluginTincOperator::mut_instance().set_info_to_local(&tinc_info)
     }
 

@@ -5,7 +5,7 @@ use dnet_types::team::Team;
 use super::ClientInfo;
 use super::ProxyInfo;
 use super::TincInfo;
-use super::error::Result;
+use super::error::{Error, Result};
 
 use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use crate::settings::get_settings;
@@ -47,19 +47,23 @@ impl Info {
         Ok(())
     }
 
-    pub fn to_plugin_tinc_info(&self) -> PluginTincInfo {
+    pub fn to_plugin_tinc_info(&self) -> Result<PluginTincInfo> {
         let settings = get_settings();
         let tinc_run_model = match &settings.common.mode {
             RunMode::Proxy => TincRunMode::Proxy,
             RunMode::Client => TincRunMode::Client,
         };
-        PluginTincInfo {
-            ip:             self.proxy_info.ip,
-            vip:            self.tinc_info.vip.clone(),
-            pub_key:        self.tinc_info.pub_key.clone(),
-            mode:           tinc_run_model,
-            connect_to:     self.tinc_info.connect_to.clone(),
+
+        if let Some(vip) = &self.tinc_info.vip {
+            return Ok(PluginTincInfo {
+                ip:             self.proxy_info.ip,
+                vip:            vip.clone(),
+                pub_key:        self.tinc_info.pub_key.clone(),
+                mode:           tinc_run_model,
+                connect_to:     self.tinc_info.connect_to.clone(),
+            })
         }
+        return Err(Error::TincInfoVipNotFound);
     }
 }
 

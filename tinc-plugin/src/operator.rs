@@ -111,7 +111,7 @@ pub enum Error {
 
     /// Invalid tinc info
     #[error(display = "Invalid tinc info")]
-    TincInfoError,
+    TincInfoError(String),
 
     /// Error while running "ip route".
     #[error(display = "Error while running \"ip route\"")]

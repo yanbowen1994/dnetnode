@@ -2,6 +2,8 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use dnet_types::response::Response;
+
 use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
@@ -9,6 +11,7 @@ use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use super::RpcClient;
 use super::rpc_client;
 use super::rpc_client::select_proxy;
+use crate::info::get_mut_info;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -16,6 +19,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(display = "Connection with conductor timeout")]
     RpcTimeout,
+
+    #[error(display = "Connection with conductor timeout")]
+    TeamNotFound,
 }
 
 #[derive(Eq, PartialEq)]
@@ -60,40 +66,8 @@ impl RpcMonitor {
             self.init();
             loop {
                 if let Ok(cmd) = self.rpc_cmd_rx.try_recv() {
-                    match cmd {
-                        RpcCmd::Client(cmd) => {
-                            match cmd {
-                                RpcClientCmd::StartHeartbeat => {
-                                    self.run_status = RunStatus::SendHearbeat;
-                                },
-
-                                RpcClientCmd::RestartRpcConnect => {
-                                    break
-                                }
-                                #[cfg(target_arc = "test")]
-                                RpcClientCmd::JoinTeam(team_id, res_tx) => {
-                                    let response;
-                                    if let Err(error) = self.client.join_team(team_id) {
-                                        response = Response::internal_error().set_msg(error.to_string())
-                                    } else {
-                                        response = Response::success();
-                                    }
-                                    let _ = res_tx.send(response);
-                                }
-                                #[cfg(target_arc = "test")]
-                                RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
-                                    info!("device_select_proxy");
-                                    let response;
-                                    match self.client.device_select_proxy() {
-                                        Ok(_) => response = Response::success(),
-                                        Err(e) => response = Response::internal_error().set_msg(e.to_string())
-                                    }
-                                    let _ = response_tx.send(response);
-                                }
-                                _ => ()
-                            }
-                        }
-                        _ => ()
+                    if self.handle_rpc_cmd(cmd) {
+                        break
                     }
                 }
 
@@ -101,6 +75,10 @@ impl RpcMonitor {
                     let start = Instant::now();
 
                     if let Err(_) = self.exec_heartbeat() {
+                        break
+                    }
+
+                    if let Err(_) = self.exec_online_proxy() {
                         break
                     }
 
@@ -115,28 +93,73 @@ impl RpcMonitor {
         }
     }
 
+    // If return false restart rpc connect.
+    fn handle_rpc_cmd(&mut self, cmd: RpcCmd) -> bool {
+        match cmd {
+            RpcCmd::Client(cmd) => {
+                match cmd {
+                    RpcClientCmd::StartHeartbeat => {
+                        self.run_status = RunStatus::SendHearbeat;
+                    },
+
+                    RpcClientCmd::RestartRpcConnect => {
+                        return false;
+                    }
+
+                    #[cfg(target_arc = "test")]
+                    RpcClientCmd::JoinTeam(team_id, res_tx) => {
+                        let response = self.handle_join_team(team_id);
+                        let _ = res_tx.send(response);
+                    }
+
+                    #[cfg(target_arc = "test")]
+                    RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
+                        let response = self.handle_select_proxy();
+                        let _ = response_tx.send(response);
+                    }
+
+                    _ => ()
+                }
+            }
+            _ => ()
+        }
+        true
+    }
+
     // get_online_proxy with heartbeat (The client must get the proxy offline info in this way.)
     fn exec_heartbeat(&self) -> Result<()> {
         info!("client_heart_beat");
         loop {
             let start = Instant::now();
             if let Ok(_) = self.client.client_heartbeat() {
-                // get_online_proxy is not most important. If failed still return Ok.
-                if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
-                    if let Ok(()) = select_proxy(connect_to_vec) {
-                        return Ok(());
-                    }
-                } else {
-                    error!("Get online proxy failed.");
-                }
                 return Ok(());
             } else {
                 error!("Heart beat send failed.");
             }
-            if Instant::now().duration_since(start) > Duration::from_secs(3) {
+            if Instant::now().duration_since(start) > Duration::from_secs(5) {
                 return Err(Error::RpcTimeout);
             }
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(1000));
+        }
+    }
+
+    fn exec_online_proxy(&self) -> Result<()> {
+        // get_online_proxy is not most important. If failed still return Ok.
+        loop {
+            let start = Instant::now();
+
+            if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
+                if let Ok(()) = select_proxy(connect_to_vec) {
+                    return Ok(());
+                }
+            } else {
+                error!("Get online proxy failed.");
+            }
+
+            if Instant::now().duration_since(start) > Duration::from_secs(5) {
+                return Err(Error::RpcTimeout);
+            }
+            thread::sleep(Duration::from_millis(1000));
         }
     }
 }
@@ -188,25 +211,40 @@ impl RpcMonitor {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
     }
 
-//    fn exec_online_proxy(&self) -> Result<()> {
-//        info!("exec_online_proxy");
-//        let timeout_secs = Duration::from_secs(3);
-//        let start = Instant::now();
-//        loop {
-//            if let Ok(mut info) = self.info_arc.try_lock() {
-//                if let Ok(_) = self.client.proxy_get_online_proxy(&mut info) {
-//                    return Ok(());
-//                } else {
-//                    error!("proxy_get_online_proxy failed.");
-//                }
-//            }
-//
-//            if Instant::now().duration_since(start) > timeout_secs {
-//                return Err(Error::RpcTimeout);
-//            }
-//            thread::sleep(Duration::from_millis(100));
-//        }
-//    }
+    fn handle_join_team(&self, team_id: String) -> Response {
+        info!("handle_join_team");
+        let response;
+        if let Err(error) = self.client.join_team(team_id) {
+            response = Response::internal_error().set_msg(error.to_string())
+        } else {
+            self.client.search_user_team()?;
+            self.start_team(team_id)?;
+            response = Response::success();
+        }
+        response
+    }
+
+    fn start_team(&self, team_id: String) -> Result<()> {
+        let mut info = get_mut_info().lock().unwrap();
+        for team in &info.teams {
+            if team.team_id == team_id {
+                info.client_info.running_teams.push(team.clone());
+                return Ok(());
+            }
+        }
+        return Err(Error::TeamNotFound);
+    }
+
+    fn handle_select_proxy(&self) -> Response {
+        info!("handle_select_proxy");
+        let response;
+        match self.client.device_select_proxy() {
+            Ok(_) => response = Response::success(),
+            Err(e) => response = Response::internal_error().set_msg(e.to_string())
+        }
+        response
+    }
+
 }
 
 //#[cfg(target_arc = "arm")]
@@ -250,6 +288,8 @@ impl RpcMonitor {
                 }
             }
 
+            self.start_team();
+
             info!("client_get_online_proxy");
             {
                 match self.client.client_get_online_proxy()
@@ -266,5 +306,12 @@ impl RpcMonitor {
             break
         }
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
+    }
+
+    // init means copy info.team to info.client.running_teams
+    // use for client run as muti-team.
+    fn start_team(&self) {
+        let mut info = get_mut_info().lock().unwrap();
+        info.client_info.running_teams = info.teams.clone();
     }
 }

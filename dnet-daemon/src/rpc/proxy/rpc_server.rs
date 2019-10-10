@@ -46,16 +46,6 @@ impl KeyReport {
         }
     }
 
-    fn new_from_info() -> Self {
-        let info = get_info().lock().unwrap();
-        KeyReport{
-            mac:                     "".to_string(),
-            vip:                     info.tinc_info.vip.to_string(),
-            pubKey:                  info.tinc_info.pub_key.clone(),
-            proxypubKey:             "".to_string(),
-        }
-    }
-
     fn to_json(&self) -> String {
         return serde_json::to_string(self).unwrap();
     }
@@ -300,8 +290,6 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
     let response = check_apikey(
         req.headers().get("Apikey"));
 
-    let key_report = KeyReport::new_from_info();
-
     debug!("http_report_key - response url : {:?}",req.uri());
 
     req.payload()
@@ -328,6 +316,7 @@ fn check_key(req: HttpRequest<AppState>) -> Box<dyn Future<Item = HttpResponse, 
                 let check_pubkey: CheckPubkey = check_pubkey;
                 debug!("http_check_key - check_pubkey: {:?}", check_pubkey);
                 let operator = TincOperator::new();
+
                 let filename = operator.get_client_filename_by_virtual_ip(
                     check_pubkey.vip.as_str());
                 if let Ok(pubkey) = operator.get_host_pub_key(

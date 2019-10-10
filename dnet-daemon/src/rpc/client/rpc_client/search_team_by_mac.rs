@@ -8,6 +8,7 @@ use super::post;
 use super::types::DeviceId;
 use std::net::IpAddr;
 use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
+use crate::rpc::client::rpc_client::search_team_handle::search_team_handle;
 
 pub(super) fn search_team_by_mac() -> Result<()> {
     let url    = get_settings().common.conductor_url.clone()
@@ -38,27 +39,7 @@ pub(super) fn search_team_by_mac() -> Result<()> {
         if recv.code == Some(200) {
             let mut info = get_mut_info().lock().unwrap();
             if let Some(mut teams) = recv.data {
-                info.teams = teams
-                    .iter_mut()
-                    .map(|jteam| jteam.clone().into())
-                    .collect();
-                for team in teams {
-                    println!("{:?}", team);
-                    if let Some(members) = team.members {
-                        for member in members {
-                            if member.mac == Some(device_id.clone()) {
-                                if let Some(vip) = &member.ip {
-                                    let vip = IpAddr::from_str(vip)
-                                        .map_err(|e| {
-                                            error!("search_team_by_mac can't parse self vip.");
-                                            Error::ParseIp(e)
-                                        })?;
-                                    info.tinc_info.vip = vip;
-                                }
-                            }
-                        }
-                    }
-                }
+                search_team_handle(teams)?;
             }
             else {
                 return Err(Error::client_not_bound);

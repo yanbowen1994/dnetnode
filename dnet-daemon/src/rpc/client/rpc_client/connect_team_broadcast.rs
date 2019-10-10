@@ -1,4 +1,4 @@
-use crate::info::get_info;
+use crate::info::{get_info, Error as InfoError};
 use super::types::DeviceId;
 use super::post;
 use super::{Error, Result};
@@ -9,7 +9,10 @@ pub fn connect_team_broadcast() -> Result<()> {
         + "/vppn/api/v2/client/heartbeat";
     let info = get_info().lock().unwrap();
     let deviceid = info.client_info.uid.clone();
-    let deviceip = info.tinc_info.vip.clone().to_string();
+    let deviceip = info.tinc_info.vip.clone()
+        .ok_or(InfoError::TincInfoVipNotFound)
+        .map_err(Error::InfoError)?
+        .to_string();
     let cookie = info.client_info.cookie.clone();
 
     let running_teams: Vec<String> = info.client_info.running_teams

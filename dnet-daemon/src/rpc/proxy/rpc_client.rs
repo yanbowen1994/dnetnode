@@ -220,9 +220,9 @@ impl RpcClient {
                 for proxy in proxy_vec {
                     if proxy.pubkey.to_string() == local_pub_key {
                         if let Ok(vip) = IpAddr::from_str(&proxy.vip) {
-                            if local_vip != vip {
+                            if local_vip != Some(vip) {
                                 config_change = true;
-                                local_vip = vip;
+                                local_vip = Some(vip);
                             }
                         }
                         else {

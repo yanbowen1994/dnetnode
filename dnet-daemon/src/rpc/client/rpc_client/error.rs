@@ -1,5 +1,6 @@
 use std::net::AddrParseError;
 use tinc_plugin::TincOperatorError;
+use crate::info::Error as InfoError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -68,4 +69,7 @@ pub enum Error {
 
     #[error(display = "operator::Error.")]
     TincOperator(#[error(cause)] TincOperatorError),
+
+    #[error(display = "InfoError.")]
+    InfoError(#[error(cause)] InfoError),
 }

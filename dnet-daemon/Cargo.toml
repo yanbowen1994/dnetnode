@@ -47,6 +47,7 @@ jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad
 dnet-path = { path = "../dnet-path" }
 dnet-types = { path = "../dnet-types" }
 ipc-server = { path = "../ipc-server" }
+net-tool = { path = "../net-tool" }
 tinc-plugin = { path = "../tinc-plugin" }
 
 [target.arm-unknown-linux-musleabihf.dependencies]

@@ -5,6 +5,7 @@ extern crate tokio;
 #[macro_use]
 extern crate serde;
 extern crate dnet_path;
+extern crate net_tool;
 
 mod cmd_api;
 pub mod info;
@@ -16,7 +17,6 @@ pub mod settings;
 pub mod traits;
 mod shutdown;
 pub mod mpsc;
-pub mod net_tool;
 
 pub use logging::init_logger;
 pub use shutdown::set_shutdown_signal_handler;

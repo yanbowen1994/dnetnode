@@ -1,6 +1,6 @@
 use std::thread::sleep;
 use reqwest::Response;
-use crate::net_tool::url_post;
+use crate::rpc::http_post::url_post;
 use super::rpc_client::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -32,6 +32,24 @@ pub struct Team {
     pub user_id:            String,
 }
 
+impl Team {
+    pub fn new(members: Vec<TeamMember>, team_id: &str, team_name: &str) -> Self {
+        Self {
+            enable:             true,
+            members,
+            site_count:         0,
+            team_des:           String::new(),
+            team_id:            team_id.to_owned(),
+            team_name:          team_name.to_owned(),
+            proxy_ip:           String::new(),
+            subnet:             String::new(),
+            terminal_count:     0,
+            user_count:         0,
+            user_id:            String::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TeamMember {
     pub appversion:         String,

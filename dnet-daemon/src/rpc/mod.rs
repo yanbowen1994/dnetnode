@@ -7,6 +7,7 @@ extern crate bytes;
 
 pub mod client;
 pub mod proxy;
+mod http_post;
 mod rpc_monitor;
 pub mod rpc_cmd;
 

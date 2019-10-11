@@ -2,7 +2,7 @@ use crate::info::{get_mut_info, get_info};
 use super::{Error, Result};
 use crate::settings::get_settings;
 use std::time::{Instant, Duration};
-use crate::net_tool::url_post;
+use crate::rpc::http_post::url_post;
 use crate::rpc::client::rpc_client::types::Recv;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;

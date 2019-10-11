@@ -284,7 +284,7 @@ impl RpcMonitor {
                 match self.client.search_team_by_mac() {
                     Ok(restart_tunnel) => {
                         if restart_tunnel {
-                            self.daemon_event_tx.send(
+                            let _ = self.daemon_event_tx.send(
                                 DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
                         }
                     },

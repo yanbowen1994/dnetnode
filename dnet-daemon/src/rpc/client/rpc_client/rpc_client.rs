@@ -5,7 +5,7 @@ use reqwest::Response;
 #[cfg(target_arch = "arm")]
 extern crate router_plugin;
 
-use crate::net_tool::url_post;
+use crate::rpc::http_post::url_post;
 
 use super::{Error, Result};
 use super::login::login;

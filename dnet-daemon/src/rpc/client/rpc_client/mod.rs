@@ -15,7 +15,7 @@ mod select_proxy;
 pub(self) mod types;
 
 pub use error::Error;
-pub(self) use error::Result;
+use error::Result;
 pub use rpc_client::RpcClient;
 pub(self) use rpc_client::{post};
 pub use select_proxy::select_proxy;

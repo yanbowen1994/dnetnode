@@ -1,0 +1,10 @@
+[package]
+name = "net-tool"
+version = "0.1.0"
+authors = ["yanbowen1994 <511838976@qq.com>"]
+edition = "2018"
+
+[dependencies]
+
+[dev-dependencies]
+duct = "0.12"

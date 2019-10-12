@@ -160,7 +160,7 @@ impl RpcMonitor {
     }
 
     fn exec_online_proxy(&self) -> Result<()> {
-        info!("exec_online_proxy");
+        trace!("exec_online_proxy");
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {

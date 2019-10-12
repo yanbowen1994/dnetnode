@@ -11,7 +11,7 @@ use crate::settings::get_settings;
 use super::{Error, Result};
 use serde_json::Value;
 use crate::settings::default_settings::TINC_INTERFACE;
-use crate::info::get_mut_info;
+use crate::info::{get_mut_info, get_info};
 use dnet_types::team::Team;
 
 pub struct Mqtt {
@@ -23,7 +23,7 @@ impl Mqtt {
     pub fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Self {
         let conductor_url = &get_settings().common.conductor_url;
         let broker = conductor_url.replace("https://api", "mqtt");
-        let port = 1883;
+        let port = 3883;
 
         let reconnection_options = ReconnectOptions::Always(10);
 
@@ -44,7 +44,7 @@ impl Mqtt {
         }
     }
 
-    fn run(self) -> Result<()> {
+    pub fn run(self) -> Result<()> {
         let (mut mqtt_client, notifications) =
             MqttClient::start(self.mqtt_options.clone())
                 .map_err(|_|Error::mqtt_connect_error)?;
@@ -52,39 +52,36 @@ impl Mqtt {
         mqtt_client.subscribe(&("vlan/".to_owned() + &username), QoS::AtLeastOnce)
             .map_err(|_|Error::mqtt_client_error)?;
 
-//        thread::spawn(move || {
-//            for i in 0..100 {
-//                let payload = format!("publish {}", i);
-//                thread::sleep(Duration::from_millis(1000));
-//                mqtt_client.publish("rust_test", QoS::AtLeastOnce, false, payload)?
-//            }
-//        });
-
-        let daemon_event_tx = self.daemon_event_tx.clone();
-
-        for notification in notifications {
-            match notification {
-                Notification::Publish(publish) => {
-                    let _ = self.handle_publish(&publish)
-                        .map_err(|e|
-                            error!("error: {:?}, publish: {:?}", e, publish)
-                        );
-                },
-                Notification::PubAck(_) => (),
-                Notification::PubRec(_) => (),
-                Notification::PubRel(_) => (),
-                Notification::PubComp(_) => (),
-                Notification::SubAck(_) => (),
-                _ => (),
+        loop {
+            if let Ok(notification) = notifications.recv() {
+                match notification {
+                    Notification::Publish(publish) => {
+                        let _ = self.handle_publish(&publish)
+                            .map_err(|e|
+                                error!("error: {:?}, publish: {:?}", e, publish)
+                            );
+                    },
+                    Notification::PubAck(_) => (),
+                    Notification::PubRec(_) => (),
+                    Notification::PubRel(_) => (),
+                    Notification::PubComp(_) => (),
+                    Notification::SubAck(_) => (),
+                    _ => (),
+                }
             }
+
+
         }
         Ok(())
     }
 
     fn handle_publish(&self, publish: &Publish) -> Result<()> {
-        let res = String::from_utf8(publish.payload.to_ascii_lowercase())
-            .map_err(|_|Error::mqtt_msg_parse_failed("Request payload not utf8.".to_owned()))?;
+        let res = String::from_utf8(publish.payload.to_vec().to_owned())
+
+            .map_err(|_|Error::mqtt_msg_parse_failed("Request payload not utf8.".to_owned()))?
+            .to_owned();
         let json: serde_json::Value = serde_json::from_str(&res).unwrap();
+        info!("mqtt recv payload: {:?}", json);
         let opt_type = json.get("type")
             .ok_or(Error::mqtt_msg_parse_failed("Request type not found.".to_owned()))?
             .as_str()
@@ -94,8 +91,7 @@ impl Mqtt {
             .ok_or(Error::mqtt_msg_parse_failed("Request data not found.".to_owned()))?;
 
         match opt_type {
-            "DEVICE_ONLINE" => self.handle_host_change(&data, true)?,
-            "DEVICE_OFFLINE" => self.handle_host_change(&data, false)?,
+            "DEVICETINC_STATUS" => self.handle_host_change(&data)?,
             "ROUTER_START" => self.handle_client_start_or_stop(&data, true)?,
             "ROUTER_STOP" => self.handle_client_start_or_stop(&data, false)?,
             _ => (),
@@ -103,19 +99,35 @@ impl Mqtt {
         Ok(())
     }
 
-    fn handle_host_change(&self, data: &Value, is_online: bool) -> Result<()> {
-        let ip = data.get("ip")
-            .ok_or(Error::mqtt_msg_parse_failed("Request data.ip not found.".to_owned()))?
+    fn handle_host_change(&self, data: &Value) -> Result<()> {
+        let ip = data.get("devcieip")
+            .ok_or(Error::mqtt_msg_parse_failed("Request data.devcieip not found.".to_owned()))?
             .as_str()
-            .ok_or(Error::mqtt_msg_parse_failed("Request data.ip wrong format.".to_owned()))
+            .ok_or(Error::mqtt_msg_parse_failed("Request data.devcieip wrong format.".to_owned()))
             .and_then(|ip_str| IpAddr::from_str(ip_str)
-                .map_err(|_|Error::mqtt_msg_parse_failed("Request data.ip wrong format.".to_owned())))?;
+                .map_err(|_|Error::mqtt_msg_parse_failed("Request data.devcieip wrong format.".to_owned())))?;
 
-        if is_online {
-            net_tool::route::add_route(&ip, "32", TINC_INTERFACE);
+        let info = get_info().lock().unwrap();
+        let local_vip = info.tinc_info.vip;
+        std::mem::drop(info);
+
+        // mqtt local info. Skip it.
+        if Some(ip) == local_vip {
+            return Ok(());
+        }
+
+        let is_online = data.get("onlineStatus")
+            .ok_or(Error::mqtt_msg_parse_failed("Request data.onlineStatus not found.".to_owned()))?
+            .as_u64()
+            .ok_or(Error::mqtt_msg_parse_failed("Request data.onlineStatus not found.".to_owned()))?;
+
+        if is_online == 1 {
+            if !net_tool::route::is_in_routing_table(&ip, 32, TINC_INTERFACE) {
+                net_tool::route::add_route(&ip, 32, TINC_INTERFACE);
+            }
         }
         else {
-            net_tool::route::del_route(&ip, "32", TINC_INTERFACE);
+            net_tool::route::del_route(&ip, 32, TINC_INTERFACE);
         }
         Ok(())
     }

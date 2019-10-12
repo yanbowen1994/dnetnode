@@ -1,23 +1,56 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::process::Command;
 use crate::route::types::RouteInfo;
 
 // netmask CIDR
-pub fn add_route(ip: &IpAddr, netmask: &str, dev: &str) {
+pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
-            let ip_mask = ip.clone().to_string() + "/" + netmask;
+            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
             let _ = Command::new("ip").args(vec!["route", "add", &ip_mask, "dev", dev]).spawn();
         }
 }
 
-pub fn del_route(ip: &IpAddr, netmask: &str, dev: &str) {
+pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
-            let ip_mask = ip.clone().to_string() + "/" + netmask;
+            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
             let _ = Command::new("ip").args(vec!["route", "del", &ip_mask, "dev", dev]).spawn();
         }
+}
+
+pub fn is_in_routing_table(ip: &IpAddr, netmask: u32, dev: &str) -> bool {
+    let routing_table: Vec<RouteInfo> = parse_routing_table();
+    for route_info in routing_table {
+//      Skip default route,
+        if let Ok(cur_ip) = IpAddr::from_str(&route_info.dst) {
+            if route_info.mask == netmask
+                && &cur_ip == ip
+                && &route_info.dev == dev {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+// CIDR classless inter-domain routing
+pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
+    let mut cidr: u32 = 32;
+    if let Ok(a) = Ipv4Addr::from_str(netmask) {
+        let a = u32::from(a);
+        let mut b = 4294967295 as u32 - a;
+        loop {
+            if b == 0 {
+                break;
+            }
+            b = b >> 1;
+            cidr -= 1;
+        }
+        return Some(cidr);
+    }
+    None
 }
 
 #[cfg(not(target_arch = "arm"))]
@@ -106,12 +139,12 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
 #[test]
 fn test() {
     let ip = IpAddr::from_str("12.12.12.12").unwrap();
-    add_route(&ip, "32", "enp3s0");
+    add_route(&ip, 32, "enp3s0");
 
     let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
     let stdout = String::from_utf8(stdout).unwrap();
     assert!(stdout.contains("12.12.12.12"));
-    del_route(&ip, "32", "enp3s0");
+    del_route(&ip, 32, "enp3s0");
 
     let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
     let stdout = String::from_utf8(stdout).unwrap();

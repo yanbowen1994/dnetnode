@@ -8,13 +8,15 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
+use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client;
-use super::rpc_client::select_proxy;
-use crate::info::get_mut_info;
+use super::rpc_mqtt;
+use tinc_plugin::spawn;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[allow(non_camel_case_types)]
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
     #[error(display = "Connection with conductor timeout")]
@@ -22,6 +24,9 @@ pub enum Error {
 
     #[error(display = "Connection with conductor timeout")]
     TeamNotFound,
+
+    #[error(display = "mqtt_error")]
+    mqtt_error(#[error(cause)] rpc_mqtt::Error),
 }
 
 #[derive(Eq, PartialEq)]
@@ -149,7 +154,7 @@ impl RpcMonitor {
         loop {
             let start = Instant::now();
             if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
-                if let Ok(tunnel_restart) = select_proxy(connect_to_vec) {
+                if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
                     if tunnel_restart {
                         self.daemon_event_tx.send(
                             DaemonEvent::DaemonInnerCmd(
@@ -300,12 +305,18 @@ impl RpcMonitor {
                 }
             }
 
+            let mqtt = rpc_mqtt::Mqtt::new(self.daemon_event_tx.clone());
+            thread::spawn(|| {
+                let _ = mqtt.run()
+                    .map_err(Error::mqtt_error);
+            });
+
             self.start_team();
 
             info!("client_get_online_proxy");
             {
                 match self.client.client_get_online_proxy()
-                    .and_then(|connect_to_vec|select_proxy(connect_to_vec)) {
+                    .and_then(|connect_to_vec| rpc_client::select_proxy(connect_to_vec)) {
                     Ok(tunnel_restart) => {
                         if tunnel_restart {
                             let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));

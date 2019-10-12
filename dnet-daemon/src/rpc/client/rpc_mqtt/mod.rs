@@ -6,3 +6,4 @@ mod mqtt_cmd;
 
 pub use error::Error;
 use error::Result;
+pub use mqtt::Mqtt;

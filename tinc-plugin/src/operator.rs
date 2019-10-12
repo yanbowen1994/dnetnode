@@ -671,43 +671,47 @@ impl TincOperator {
 
         #[cfg(target_os = "linux")]
         {
-            buf = "#! /bin/bash\n\
+            buf = "#!/bin/bash\n\
             dev=dnet\n\
             vpngw=".to_string() + &tinc_info.vip.to_string() + "\n" +
             "ifconfig ${dev} ${vpngw} netmask " + netmask;
 
-            if TincRunMode::Client == self.mode {
-                if tinc_info.connect_to.is_empty() {
-                    return Err(Error::TincInfo_connect_to_is_empty)
-                }
-
-                buf = buf + "\n"
-                    + "route add -host " + &tinc_info.connect_to[0].ip.to_string() + " gw _gateway";
-                buf = buf + "\n"
-                    + "route add -host 10.255.255.254 dev dnet";
-                buf = buf + "\n"
-                    + "route add default gw " + &tinc_info.connect_to[0].vip.to_string();
-            }
+//          Example for global proxy
+//
+//            if TincRunMode::Client == self.mode {
+//                if tinc_info.connect_to.is_empty() {
+//                    return Err(Error::TincInfo_connect_to_is_empty)
+//                }
+//
+//                buf = buf + "\n"
+//                    + "route add -host " + &tinc_info.connect_to[0].ip.to_string() + " gw _gateway";
+//                buf = buf + "\n"
+//                    + "route add -host 10.255.255.254 dev dnet";
+//                buf = buf + "\n"
+//                    + "route add default gw " + &tinc_info.connect_to[0].vip.to_string();
+//            }
 
             buf = buf + "\n" + &self.tinc_home + "tinc-report -u";
         }
         #[cfg(target_os = "macos")]
         {
-            buf = "#! /bin/bash\n\
+            buf = "#!/bin/bash\n\
                    dev=tap0\n\
                    vpngw=".to_string()
                    + &tinc_info.vip.to_string() + "\n"
                    + "ifconfig ${dev} ${vpngw} netmask  " + netmask + "\n";
 
-            if TincRunMode::Client == self.mode {
-                let default_gateway = get_default_gateway()?.to_string();
-                buf = buf
-                    + "route -q -n delete -net 0.0.0.0\n\
-                    route -q -n add -host " + &tinc_info.connect_to[0].ip.to_string()
-                    + " -gateway " + &default_gateway + "\n"
-                    + "route add -host 10.255.255.254 -interface tap0 -iface -cloning\n"
-                    + "route add -net 0.0.0.0 -gateway 10.255.255.254";
-            }
+//          Example for global proxy
+//
+//            if TincRunMode::Client == self.mode {
+//                let default_gateway = get_default_gateway()?.to_string();
+//                buf = buf
+//                    + "route -q -n delete -net 0.0.0.0\n\
+//                    route -q -n add -host " + &tinc_info.connect_to[0].ip.to_string()
+//                    + " -gateway " + &default_gateway + "\n"
+//                    + "route add -host 10.255.255.254 -interface tap0 -iface -cloning\n"
+//                    + "route add -net 0.0.0.0 -gateway 10.255.255.254";
+//            }
 
             buf = buf + &self.tinc_home + "tinc-report -u\n";
         }
@@ -716,19 +720,19 @@ impl TincOperator {
             buf = "netsh interface ipv4 set address name=\"dnet\" source=static addr=".to_string() +
                 &tinc_info.vip.to_string() + " mask=" + netmask + "\r\n";
 
-            if TincRunMode::Client == self.mode {
-                let default_gateway = get_default_gateway()?.to_string();
-                let vnic_index = format!("{}", get_vnic_index()?);
-
-                buf = buf
-                    + "route add " + &tinc_info.connect_to[0].ip.to_string()
-                        + " mask 255.255.255.255 " + &default_gateway + "\r\n"
-                    + "route add 10.255.255.254 mask 255.255.255.255 10.255.255.254 if "
-                        + &vnic_index + "\r\n"
-                    + "route add 0.0.0.0 mask 0.0.0.0 10.255.255.254 if "
-                        + &vnic_index + "\r\n";
-            }
-
+//          Example for global proxy
+//            if TincRunMode::Client == self.mode {
+//                let default_gateway = get_default_gateway()?.to_string();
+//                let vnic_index = format!("{}", get_vnic_index()?);
+//
+//                buf = buf
+//                    + "route add " + &tinc_info.connect_to[0].ip.to_string()
+//                        + " mask 255.255.255.255 " + &default_gateway + "\r\n"
+//                    + "route add 10.255.255.254 mask 255.255.255.255 10.255.255.254 if "
+//                        + &vnic_index + "\r\n"
+//                    + "route add 0.0.0.0 mask 0.0.0.0 10.255.255.254 if "
+//                        + &vnic_index + "\r\n";
+//            }
             buf = buf + &self.tinc_home + "tinc-report.exe -u";
         }
 
@@ -752,17 +756,21 @@ impl TincOperator {
         #[cfg(target_os = "macos")]
         {
             let default_gateway = get_default_gateway()?.to_string();
-            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d"
-                + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
-                + "route -n -q delete -net 0.0.0.0 \n\
-                   route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
+            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
+
+//          Example for global proxy
+//                + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
+//                + "route -n -q delete -net 0.0.0.0 \n\
+//                   route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
         }
         #[cfg(windows)]
         {
             let vnic_index = format!("{}", get_vnic_index()?);
-            buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
-                + &vnic_index + "\r\n"
-                + &self.tinc_home.to_string() + "tinc-report.exe -d";
+            buf = &self.tinc_home.to_string() + "tinc-report.exe -d";
+//          Example for global proxy
+//            buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
+//                + &vnic_index + "\r\n"
+//                + &self.tinc_home.to_string() + "tinc-report.exe -d";
         }
 
         let path = self.tinc_home.clone() + TINC_DOWN_FILENAME;
@@ -829,35 +837,6 @@ impl TincOperator {
             .map_err(|_| Error::FileNotExist(file_path.to_string()))?;
         Ok(contents)
     }
-
-    // 写TINC_AUTH_PATH/TINC_AUTH_FILENAME(auth/auth.txt),用于tinc reporter C程序
-    // TODO 去除C上报tinc上线信息流程,以及去掉auth/auth.txt.
-//    fn write_auth_file(&self,
-//                           server_url:  &str,
-//                           info:        &TincInfo,
-//    ) -> Result<()> {
-//        let path = self.tinc_home.to_string() + TINC_AUTH_PATH;
-//        let auth_dir = path::PathBuf::from(&(path));
-//        if !path::Path::new(&auth_dir).is_dir() {
-//            fs::create_dir_all(&auth_dir)
-//                .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-//        }
-//
-//        let file_path_buf = auth_dir.join(TINC_AUTH_FILENAME);
-//        let file_path = path::Path::new(&file_path_buf);
-//
-//        if let Some(file_str) = file_path.to_str() {
-//            let path = file_str.to_string();
-//            let mut file = fs::File::create(path.clone())
-//                .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-//            let auth_info = AuthInfo::load(server_url, info);
-//            file.write(auth_info.to_json_str().as_bytes())
-//                .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-//        }
-//
-//        return Ok(());
-//    }
-
 }
 
 #[cfg(unix)]

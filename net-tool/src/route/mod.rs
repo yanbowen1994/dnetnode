@@ -5,4 +5,10 @@ use std::net::IpAddr;
 mod imp;
 pub mod types;
 
-pub use imp::{add_route, del_route, parse_routing_table};
+pub use imp::{
+    add_route,
+    del_route,
+    is_in_routing_table,
+    parse_routing_table,
+    parse_netmask_to_cidr,
+};

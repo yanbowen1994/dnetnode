@@ -23,14 +23,8 @@ pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<bool> {
     for team in &teams {
         println!("{:?}", team);
         for member in &team.members {
-            if &member.mac == &device_id {
-                let vip = IpAddr::from_str(&member.ip)
-                    .map_err(|e| {
-                        error!("search_team_by_mac can't parse self vip.");
-                        Error::ParseIp(e)
-                    })?;
-
-                local_vip = Some(vip);
+            if &member.device_id == &device_id {
+                local_vip = Some(member.vip.clone());
             }
         }
     }

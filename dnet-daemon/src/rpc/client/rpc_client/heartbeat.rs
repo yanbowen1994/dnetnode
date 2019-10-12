@@ -1,4 +1,4 @@
-use crate::info::{get_mut_info, get_info};
+use crate::info::get_info;
 use super::{Error, Result};
 use crate::settings::get_settings;
 use std::time::{Instant, Duration};

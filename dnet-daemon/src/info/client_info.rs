@@ -8,7 +8,6 @@ use dnet_types::team::Team;
 #[cfg(target_arc = "arm")]
 use router_plugin::device_info::DeviceInfo;
 use dnet_types::device_type::DeviceType;
-use crate::settings::get_settings;
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {

@@ -236,9 +236,9 @@ impl Daemon {
 
             ManagementCommand::GroupInfo(tx, team_id) => {
                 let mut team = None;
-                for group_info in &get_info().lock().unwrap().teams {
-                    if group_info.team_id == team_id {
-                        team = Some(group_info.clone());
+                for team_info in &get_info().lock().unwrap().teams {
+                    if team_info.team_id == team_id {
+                        team = Some(team_info.clone());
                     }
                 }
                 let _ = Self::oneshot_send(tx, team, "");

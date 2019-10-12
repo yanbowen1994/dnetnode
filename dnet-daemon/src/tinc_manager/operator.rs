@@ -7,7 +7,6 @@ use std::io::Write;
 
 use tinc_plugin::{TincRunMode,
                   TincOperator as PluginTincOperator,
-                  TincInfo as PluginTincInfo,
                   TincOperatorError};
 use dnet_types::settings::RunMode;
 

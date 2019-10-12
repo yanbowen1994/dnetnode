@@ -12,6 +12,22 @@ pub enum  DeviceType {
     Other                   = 7,
 }
 
+impl From<u32> for DeviceType {
+    fn from(type_code: u32) -> Self {
+        match type_code {
+            0 => DeviceType::Router,
+            1 => DeviceType::Android,
+            2 => DeviceType::IOS,
+            3 => DeviceType::Windows,
+            4 => DeviceType::MAC,
+            5 => DeviceType::Vrouter,
+            6 => DeviceType::Linux,
+            7 => DeviceType::Other,
+            _ => DeviceType::Other
+        }
+    }
+}
+
 impl DeviceType {
     pub fn get_device_type() -> Self {
         #[cfg(target_arc = "arm")]

@@ -134,7 +134,7 @@ impl MonitorInner {
 
     fn reconnect(&mut self) -> Result<()> {
         let mut tinc = TincOperator::new();
-        tinc.set_info_to_local();
+        tinc.set_info_to_local()?;
         tinc.restart_tinc()
     }
 

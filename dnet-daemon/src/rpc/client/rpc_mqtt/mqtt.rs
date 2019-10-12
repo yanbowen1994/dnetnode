@@ -152,7 +152,7 @@ impl Mqtt {
             }
         }
         if !is_running_team {
-            let new_team = Team::new(vec![], team_id, team_name);
+            let new_team = Team::new(team_id, team_name, vec![]);
         }
 
         Ok(())

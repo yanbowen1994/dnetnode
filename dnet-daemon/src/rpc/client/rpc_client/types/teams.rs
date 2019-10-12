@@ -1,4 +1,7 @@
-use dnet_types::team::{Team, TeamMember, DeviceProxy};
+use std::net::IpAddr;
+use std::str::FromStr;
+use dnet_types::team::{Team, TeamMember, NetSegment};
+use dnet_types::device_type::DeviceType;
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,80 +64,80 @@ pub struct JavaResponseDeviceProxy {
 impl Into<Team> for JavaResponseTeam {
     fn into(self) -> Team {
         let members: Vec<TeamMember> = self.members
-            .map(|mut members| members
-                .iter_mut()
-                .map(|member|member.clone().into())
-                .collect()
+            .map(|mut members|
+                members
+                    .iter_mut()
+                    .filter_map(|member|member.clone().into())
+                    .collect::<Vec<TeamMember>>()
             )
             .unwrap_or(vec![]);
         Team {
-            enable:          self.enable.unwrap_or(false),
             members,
-            site_count:      self.siteCount.unwrap_or(0),
-            team_des:        self.teamDes.unwrap_or(String::new()),
             team_id:         self.teamId.unwrap_or(String::new()),
             team_name:       self.teamName.unwrap_or(String::new()),
-            terminal_count:  self.terminalCount.unwrap_or(0),
-            user_count:      self.userCount.unwrap_or(0),
-            user_id:         self.userId.unwrap_or(String::new()),
-            proxy_ip:        String::new(),
-            subnet:          String::new(),
         }
     }
 }
 
-impl Into<TeamMember> for JavaResponseTeamMember {
-    fn into(self) -> TeamMember {
-        let proxylist: Vec<DeviceProxy> = self.proxylist
-            .map(|mut proxylist| proxylist
-                .iter_mut()
-                .map(|proxy|proxy.clone().into())
-                .collect())
+impl JavaResponseTeamMember {
+    fn into(self) -> Option<TeamMember> {
+        let device_type = self.memberType
+            .map(|type_code|DeviceType::from(type_code))
+            .unwrap_or(DeviceType::Other);
+
+        let lan = self.lan
+            .map(|lan_str| {
+                let lans: Vec<NetSegment> = lan_str
+                    .split(",")
+                    .collect::<Vec<&str>>()
+                    .iter_mut()
+                    .filter_map(|res_str| {
+                        let ip_mask: Vec<&str> = res_str.split("/").collect();
+                        if ip_mask.len() == 2 {
+                            if let Ok(ip) = IpAddr::from_str(ip_mask[0]) {
+                                if let Ok(mask_cidr) = ip_mask[0].parse::<u32>() {
+                                    return Some(NetSegment {
+                                        ip,
+                                        mask: mask_cidr,
+                                    });
+                                }
+                            }
+                        }
+                        return None;
+                    })
+                    .collect();
+                lans
+            })
             .unwrap_or(vec![]);
-        let lan = self.lan.map(|lan_str| {
-            let lans: Vec<String> = lan_str
-                .split(",")
-                .collect::<Vec<&str>>()
-                .iter_mut()
-                .map(|res_str|res_str.to_owned())
-                .collect();
-            lans
-        }).unwrap_or(vec![]);
 
-        TeamMember {
-            appversion:         self.appversion.unwrap_or(String::new()),
-            city:               self.city.unwrap_or(String::new()),
-            connection_limit:   self.connectionLimit.unwrap_or(String::new()),
-            country:            self.country.unwrap_or(String::new()),
-            ip:                 self.ip.unwrap_or(String::new()),
-            label_name:         self.labelName.unwrap_or(String::new()),
+        let proxy_ip: Vec<IpAddr> = self.proxylist
+            .unwrap_or(vec![])
+            .iter()
+            .filter_map(|device_proxy|
+                            device_proxy.proxyIp
+                                .to_owned()
+                                .and_then(|ip_str|
+                                    IpAddr::from_str(&ip_str)
+                                        .map(|ip| Some(ip))
+                                        .unwrap_or(None)
+                                ))
+            .collect();
+
+        let vip = self.ip
+            .and_then(|ip_str|
+                IpAddr::from_str(&ip_str).ok()
+            );
+
+        if vip.is_none() {
+            return None;
+        }
+
+        Some(TeamMember {
+            device_id:      self.mac.unwrap_or("".to_owned()),
+            device_type,
+            vip:            vip.unwrap(),
             lan,
-            latitude:           self.latitude.unwrap_or(String::new()),
-            longitude:          self.longitude.unwrap_or(String::new()),
-            mac:                self.mac.unwrap_or(String::new()),
-            member_public_key:  self.memberPublicKey.unwrap_or(String::new()),
-            member_type:        self.memberType.unwrap_or(0),
-            proxylist,
-            pubkey:             self.pubkey.unwrap_or(String::new()),
-            region:             self.region.unwrap_or(String::new()),
-            serviceaddress:     self.serviceaddress.unwrap_or(String::new()),
-            status:             self.status.unwrap_or(0),
-            team_id:            self.teamId.unwrap_or(String::new()),
-            user_id:            self.userId.unwrap_or(String::new()),
-            user_name:          self.userName.unwrap_or(String::new()),
-            wan:                self.wan.unwrap_or(String::new()),
-        }
-    }
-}
-
-impl Into<DeviceProxy> for JavaResponseDeviceProxy {
-    fn into(self) -> DeviceProxy {
-        DeviceProxy {
-            city:          self.city.unwrap_or(String::new()),
-            country:       self.country.unwrap_or(String::new()),
-            proxy_ip:      self.proxyIp.unwrap_or(String::new()),
-            proxygw:       self.proxygw.unwrap_or(String::new()),
-            proxypubkey:   self.proxypubkey.unwrap_or(String::new()),
-        }
+            proxy_ip,
+        })
     }
 }

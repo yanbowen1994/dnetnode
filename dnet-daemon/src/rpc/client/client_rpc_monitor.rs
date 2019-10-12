@@ -2,8 +2,6 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use dnet_types::response::Response;
-
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
@@ -12,7 +10,6 @@ use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client;
 use super::rpc_mqtt;
-use tinc_plugin::spawn;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -156,7 +153,7 @@ impl RpcMonitor {
             if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
                 if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
                     if tunnel_restart {
-                        self.daemon_event_tx.send(
+                        let _ = self.daemon_event_tx.send(
                             DaemonEvent::DaemonInnerCmd(
                                 TunnelCommand::Reconnect
                             )

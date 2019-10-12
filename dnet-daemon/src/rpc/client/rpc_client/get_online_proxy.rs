@@ -1,15 +1,13 @@
 use std::str::FromStr;
 use std::net::IpAddr;
-use std::time::Duration;
 
 extern crate tokio_ping;
 extern crate tokio_core;
-use futures::{Future, Stream, future};
-use self::tokio_core::reactor::Core;
+use futures::{Future, Stream};
 
 use tinc_plugin::ConnectTo;
 
-use crate::info::{get_info, get_mut_info};
+use crate::info::get_info;
 use crate::tinc_manager::TincOperator;
 use crate::settings::get_settings;
 use super::post;

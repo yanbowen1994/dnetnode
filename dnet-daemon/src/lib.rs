@@ -5,7 +5,7 @@ extern crate tokio;
 #[macro_use]
 extern crate serde;
 extern crate dnet_path;
-extern crate net_tool;
+extern crate sandbox;
 
 mod cmd_api;
 pub mod info;

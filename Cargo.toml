@@ -2,16 +2,16 @@
 members = [
     "dnet-cgi",
     "dnet-cli",
-#    "dnet-app-qt",
-#    "dnet-app-mac",
-#    "dnet-app-webview",
+    "dnet-app-qt",
+    "dnet-app-mac",
+    "dnet-app-webview",
     "dnet-daemon",
     "dnet-path",
     "dnet-types",
     "ipc-client",
     "ipc-server",
-    "net-tool",
-    "router-plugin",
+    "sandbox",
+#    "router-plugin",
     "tinc-plugin",
 ]
 

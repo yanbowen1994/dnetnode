@@ -122,12 +122,12 @@ impl Mqtt {
             .ok_or(Error::mqtt_msg_parse_failed("Request data.onlineStatus not found.".to_owned()))?;
 
         if is_online == 1 {
-            if !net_tool::route::is_in_routing_table(&ip, 32, TINC_INTERFACE) {
-                net_tool::route::add_route(&ip, 32, TINC_INTERFACE);
+            if !sandbox::route::is_in_routing_table(&ip, 32, TINC_INTERFACE) {
+                sandbox::route::add_route(&ip, 32, TINC_INTERFACE);
             }
         }
         else {
-            net_tool::route::del_route(&ip, 32, TINC_INTERFACE);
+            sandbox::route::del_route(&ip, 32, TINC_INTERFACE);
         }
         Ok(())
     }

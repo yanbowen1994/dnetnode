@@ -75,7 +75,7 @@ impl TincOperator {
 
         std::mem::drop(info);
 
-        let routing_table = net_tool::route::parse_routing_table();
+        let routing_table = sandbox::route::parse_routing_table();
         let routing_table = routing_table
             .iter()
             .filter_map(|route_info| {
@@ -85,7 +85,7 @@ impl TincOperator {
 
         for member_vip in members_vip {
             if !routing_table.contains(&member_vip) {
-                net_tool::route::add_route(&member_vip, 32, TINC_INTERFACE);
+                sandbox::route::add_route(&member_vip, 32, TINC_INTERFACE);
                 info!("routing table add {:?}", member_vip);
             }
         }

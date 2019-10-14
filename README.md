@@ -1,5 +1,8 @@
-# DNetovr
+# DNet Node
 [中文说明](./README_zh.md)
+
+The system service/daemon, GUI and CLI for the DNet Node app, including end node, router/gateway and cloud proxy.
+
 ## platform
 Linux  
 Ubuntu16.04 ubuntu18.04 to complete the test. Other PC Linux should work.  

@@ -10,6 +10,7 @@ use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client;
 use super::rpc_mqtt;
+use dnet_types::response::Response;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -108,13 +109,13 @@ impl RpcMonitor {
                         return false;
                     }
 
-                    #[cfg(target_arc = "test")]
+                    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                     RpcClientCmd::JoinTeam(team_id, res_tx) => {
                         let response = self.handle_join_team(team_id);
                         let _ = res_tx.send(response);
                     }
 
-                    #[cfg(target_arc = "test")]
+                    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                     RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
                         let response = self.handle_select_proxy();
                         let _ = response_tx.send(response);
@@ -173,7 +174,7 @@ impl RpcMonitor {
     }
 }
 
-#[cfg(target_arc = "test")]
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 impl RpcMonitor {
     fn init(&self) {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);
@@ -223,25 +224,40 @@ impl RpcMonitor {
     fn handle_join_team(&self, team_id: String) -> Response {
         info!("handle_join_team");
         let response;
-        if let Err(error) = self.client.join_team(team_id) {
+        if let Err(error) = self.client.join_team(&team_id) {
             response = Response::internal_error().set_msg(error.to_string())
         } else {
-            self.client.search_user_team()?;
-            self.start_team(team_id)?;
+            self.client.search_user_team();
+            self.start_team(&team_id);
             response = Response::success();
         }
         response
     }
 
-    fn start_team(&self, team_id: String) -> Result<()> {
+    fn start_team(&self, team_id: &str) -> Result<()> {
         let mut info = get_mut_info().lock().unwrap();
-        for team in &info.teams {
-            if team.team_id == team_id {
-                info.client_info.running_teams.push(team.clone());
-                return Ok(());
-            }
+        let mut add_running_team = vec![];
+
+        info.teams
+            .iter()
+            .filter_map(|team| {
+                if &team.team_id == team_id {
+                    add_running_team.push(team.clone());
+                    Some(())
+                }
+                else {
+                    None
+                }
+            })
+            .collect::<Vec<()>>();
+
+        if add_running_team.len() > 0 {
+            info.client_info.running_teams.append(&mut add_running_team);
+            Ok(())
         }
-        return Err(Error::TeamNotFound);
+        else {
+            return Err(Error::TeamNotFound);
+        }
     }
 
     fn handle_select_proxy(&self) -> Response {
@@ -256,7 +272,7 @@ impl RpcMonitor {
 
 }
 
-//#[cfg(target_arc = "arm")]
+#[cfg(any(target_arch = "arm", feature = "router_debug"))]
 impl RpcMonitor {
     fn init(&self) {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);

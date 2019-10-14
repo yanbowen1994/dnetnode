@@ -1,7 +1,6 @@
 use dnet_types::team::{
     Team as DaemonTeam,
     TeamMember as DaemonTeamMember,
-    DeviceProxy,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -39,15 +38,15 @@ impl From<DaemonTeam> for Team {
 
         Self {
             teamName:      team.team_name,
-            teamDes:       team.team_des,
-            proxyIp:       team.proxy_ip,
-            subnet:        team.subnet,
-            userId:        team.user_id,
-            siteCount:     team.site_count,
-            terminalCount: team.terminal_count,
+            teamDes:       String::new(),
+            proxyIp:       String::new(),
+            subnet:        String::new(),
+            userId:        String::new(),
+            siteCount:     0,
+            terminalCount: 0,
             teamId:        team.team_id,
             pubKey:        String::new(),
-            teamUserId:    team.user_id.clone(),
+            teamUserId:    String::new(),
             members,
         }
     }
@@ -77,18 +76,14 @@ struct Member {
 impl From<DaemonTeamMember> for Member {
     fn from(member: DaemonTeamMember) -> Self {
         let proxy_ip;
-        if member.proxylist.is_empty() {
+        if member.proxy_ip.is_empty() {
             proxy_ip = "".to_owned();
         }
         else {
-            proxy_ip = member.proxylist[0].proxy_ip.clone();
+            proxy_ip = member.proxy_ip[0].to_string();
         }
 
-        let lan = member.lan.clone().iter_mut().map(|lan|
-            Lan {
-                lan_name: String::new(),
-                lan_subnet: lan.to_owned(),
-            }).collect::<Vec<Lan>>();
+        let lan = member.lan;
 
         Self {
             teamId:           member.team_id,

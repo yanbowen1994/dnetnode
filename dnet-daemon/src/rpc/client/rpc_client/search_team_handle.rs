@@ -6,6 +6,7 @@ use dnet_types::team::Team;
 use crate::info::{get_mut_info, get_info};
 use super::types::teams::JavaResponseTeam;
 use super::{Error, Result};
+use crate::settings::default_settings::TINC_INTERFACE;
 
 // if return true restart tunnel.
 pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<bool> {

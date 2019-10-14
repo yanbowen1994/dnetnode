@@ -8,6 +8,9 @@ edition = "2018"
 name = "dnet-daemon"
 path = "src/main.rs"
 
+[features]
+router_debug = ["router-plugin"]
+
 [dependencies]
 actix = "0.7"
 actix-web = { version = "0.7", features=["ssl"] }
@@ -24,7 +27,7 @@ mac_address = "1.0"
 openssl = "0.10"
 os_type = "2.2.0"
 regex = "1.1.0"
-reqwest = "0.9"
+reqwest = "0.9.22"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
@@ -49,6 +52,10 @@ dnet-types = { path = "../dnet-types" }
 ipc-server = { path = "../ipc-server" }
 sandbox = { path = "../sandbox" }
 tinc-plugin = { path = "../tinc-plugin" }
+
+[dependencies.router-plugin]
+path = "../router-plugin"
+optional = true
 
 [target.arm-unknown-linux-musleabihf.dependencies]
 router-plugin = { path = "../router-plugin" }

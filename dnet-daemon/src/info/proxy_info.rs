@@ -19,7 +19,7 @@ impl ProxyInfo {
         let os = "macos";
         #[cfg(target_os = "windows")]
         let os = "windows";
-        #[cfg(target_arch = "arm")]
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
         let os = "arm-linux";
         #[cfg(all(not(target_arch = "arm"), target_os = "linux"))]
         let os = "linux";

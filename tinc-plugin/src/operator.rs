@@ -61,6 +61,9 @@ const TINC_AUTH_FILENAME: &str = "auth.txt";
 #[derive(err_derive::Error, Debug)]
 #[allow(non_camel_case_types)]
 pub enum Error {
+    #[error(display = "local_vip_not_init")]
+    local_vip_not_init,
+
     #[error(display = "Tinc Info Proxy Ip Not Found")]
     TincInfo_connect_to_is_empty,
 
@@ -638,8 +641,10 @@ impl TincOperator {
 
         self.set_tinc_up(&info)?;
         self.set_tinc_down(info)?;
-        self.set_host_up()?;
-        self.set_host_down()?;
+        if is_proxy {
+            self.set_host_up()?;
+            self.set_host_down()?;
+        }
 
         for online_proxy in info.connect_to.clone() {
             self.set_hosts(true,
@@ -669,7 +674,17 @@ impl TincOperator {
 
         let mut buf;
 
-        #[cfg(target_os = "linux")]
+        #[cfg(target_arch = "arm")]
+            {
+                buf = "#!/bin/sh\n\
+                dev=dnet\n\
+                vpngw=".to_string() + &tinc_info.vip.to_string() + "\n" +
+                    "ifconfig ${dev} up\n\
+                     ifconfig ${dev} ${vpngw} netmask " + netmask;
+
+                buf = buf + "\n" + &self.tinc_home + "tinc-report -u";
+            }
+        #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
         {
             buf = "#!/bin/bash\n\
             dev=dnet\n\
@@ -749,29 +764,33 @@ impl TincOperator {
     fn set_tinc_down(&self, tinc_info: &TincInfo) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         let buf;
-        #[cfg(target_os = "linux")]
-        {
-            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
-        }
+        #[cfg(target_arch = "arm")]
+            {
+                buf = "#!/bin/sh\n".to_string() + &self.tinc_home + "tinc-report -d";
+            }
+        #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
+            {
+                buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
+            }
         #[cfg(target_os = "macos")]
-        {
-            let default_gateway = get_default_gateway()?.to_string();
-            buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
+            {
+                let default_gateway = get_default_gateway()?.to_string();
+                buf = "#!/bin/bash\n".to_string() + &self.tinc_home + "tinc-report -d";
 
-//          Example for global proxy
-//                + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
-//                + "route -n -q delete -net 0.0.0.0 \n\
-//                   route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
-        }
+//              Example for global proxy
+//                    + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
+//                    + "route -n -q delete -net 0.0.0.0 \n\
+//                       route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
+            }
         #[cfg(windows)]
-        {
-            let vnic_index = format!("{}", get_vnic_index()?);
-            buf = &self.tinc_home.to_string() + "tinc-report.exe -d";
-//          Example for global proxy
-//            buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
-//                + &vnic_index + "\r\n"
-//                + &self.tinc_home.to_string() + "tinc-report.exe -d";
-        }
+            {
+                let vnic_index = format!("{}", get_vnic_index()?);
+                buf = &self.tinc_home.to_string() + "tinc-report.exe -d";
+//              Example for global proxy
+//                buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
+//                    + &vnic_index + "\r\n"
+//                    + &self.tinc_home.to_string() + "tinc-report.exe -d";
+            }
 
         let path = self.tinc_home.clone() + TINC_DOWN_FILENAME;
         let mut file = fs::File::create(path.clone())

@@ -3,11 +3,13 @@ use std::net::IpAddr;
 extern crate nix;
 use nix::sys::socket::{AddressFamily, SockAddr};
 
+#[derive(Clone, Debug)]
 pub struct NetSegment {
     pub ip:     IpAddr,
     pub mask:   IpAddr,
 }
 
+#[derive(Clone, Debug)]
 pub struct DeviceInfo {
     pub lan:            Vec<NetSegment>,
     pub cloud_led_on:   bool,
@@ -15,7 +17,14 @@ pub struct DeviceInfo {
 
 impl DeviceInfo {
     pub fn get_info() -> Option<Self> {
-        let mut lan = get_lans(vec![
+        #[cfg(not(target_arch = "arm"))]
+            {
+                return Some(DeviceInfo {
+                    lan: vec![],
+                    cloud_led_on: false,
+                });
+            }
+        let mut lan = Self::get_lans(vec![
             "br0".to_owned(),
             "br1".to_owned(),
             "br2".to_owned(),
@@ -44,7 +53,7 @@ impl DeviceInfo {
 
                 if let Some(sock) = interface.netmask {
                     if let SockAddr::Inet(sock) = sock {
-                        mask = sock.to_std().ip();
+                        mask = Some(sock.to_std().ip());
                     }
                 };
             }

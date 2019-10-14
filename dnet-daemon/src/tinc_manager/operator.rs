@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-#[cfg(unix)]
 use std::net::IpAddr;
 use std::fs;
 use std::io::Write;
+use std::str::FromStr;
 
 use tinc_plugin::{TincRunMode,
                   TincOperator as PluginTincOperator,
@@ -12,6 +12,7 @@ use dnet_types::settings::RunMode;
 
 use crate::info::{AuthInfo, get_info};
 use crate::settings::get_settings;
+use crate::settings::default_settings::TINC_INTERFACE;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -54,7 +55,41 @@ impl TincOperator {
     pub fn start_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
         PluginTincOperator::mut_instance().start_tinc()?;
+        self.set_routing()?;
         return Ok(());
+    }
+
+    fn set_routing(&self) -> Result<()> {
+        let info = get_info().lock().unwrap();
+        let local_vip = info.tinc_info.vip.ok_or(TincOperatorError::local_vip_not_init)?;
+
+        let mut members_vip = vec![];
+        for running_team in &info.client_info.running_teams {
+            for member in &running_team.members {
+                if &member.vip == &local_vip {
+                    continue;
+                }
+                members_vip.push(member.vip.clone());
+            }
+        }
+
+        std::mem::drop(info);
+
+        let routing_table = net_tool::route::parse_routing_table();
+        let routing_table = routing_table
+            .iter()
+            .filter_map(|route_info| {
+                IpAddr::from_str(&route_info.dev).ok()
+            })
+            .collect::<Vec<IpAddr>>();
+
+        for member_vip in members_vip {
+            if !routing_table.contains(&member_vip) {
+                net_tool::route::add_route(&member_vip, 32, TINC_INTERFACE);
+                info!("routing table add {:?}", member_vip);
+            }
+        }
+        Ok(())
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {

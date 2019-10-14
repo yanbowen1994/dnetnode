@@ -161,12 +161,14 @@ impl Settings {
                     .unwrap_or(Common::default_running_mode());
                 let username;
                 let password;
-                #[cfg(target_arc = "arm")]
+                #[cfg(target_arch = "arm")]
                     {
                         username = router_plugin::get_sn().ok_or(Error::GetSN)?;
                         password = username.clone();
                     }
-                #[cfg(not(target_arc = "arm"))]
+
+                // If run router debug in x86, router_sn should setting in settings.toml.
+                #[cfg(any(not(target_arch = "arm"), feature = "router_debug"))]
                     {
                         username = file_common.username.unwrap_or("".to_owned());
                         password = file_common.password.unwrap_or("".to_owned());

@@ -4,7 +4,7 @@ use crate::rpc::client::rpc_client::types::teams::{JavaResponseTeamMember, JavaR
 use super::post;
 use super::{Error, Result};
 
-pub(super) fn join_team(team_id: String) -> Result<()> {
+pub(super) fn join_team(team_id: &str) -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vppn/api/v2/client/jointeam";
 
@@ -16,7 +16,7 @@ pub(super) fn join_team(team_id: String) -> Result<()> {
         cookie = info.client_info.cookie.clone();
     }
     let data = RequestJoinTeam {
-        teamid:   team_id,
+        teamid:   team_id.to_owned(),
         deviceid: device_id,
     }.to_json();
 

@@ -2,7 +2,7 @@
 use std::thread::sleep;
 
 use reqwest::Response;
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "arm", feature = "router_debug"))]
 extern crate router_plugin;
 
 use crate::rpc::http_post::url_post;
@@ -72,22 +72,18 @@ impl RpcClient {
         search_team_by_mac()
     }
 
-    pub fn search_user_team(&self) -> Result<bool> {
-        search_user_team()
-    }
-
     pub fn binding_device(&self) -> Result<()> {
         binding_device()
     }
 }
 
-#[cfg(target_arc = "test")]
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 impl RpcClient {
-    pub fn join_team(&self, team_id: String) -> Result<()> {
+    pub fn join_team(&self, team_id: &str) -> Result<()> {
         join_team(team_id)
     }
 
-    pub fn search_user_team(&self) -> Result<()> {
+    pub fn search_user_team(&self) -> Result<bool> {
         search_user_team()
     }
 }

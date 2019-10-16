@@ -2,15 +2,17 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use dnet_types::response::Response;
+
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use crate::info::get_mut_info;
+use super::rpc_client::Error as RpcError;
 use super::RpcClient;
 use super::rpc_client;
 use super::rpc_mqtt;
-use dnet_types::response::Response;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -148,7 +150,7 @@ impl RpcMonitor {
 
     fn exec_online_proxy(&self) -> Result<()> {
         // get_online_proxy is not most important. If failed still return Ok.
-        info!("exec_online_proxy");
+//        info!("exec_online_proxy");
         loop {
             let start = Instant::now();
             if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
@@ -210,10 +212,14 @@ impl RpcMonitor {
 
             info!("search_user_team");
             {
-                if let Err(e) = self.client.search_user_team() {
-                    error!("{:?}\n{}", e, e);
-                    thread::sleep(std::time::Duration::from_secs(1));
-                    continue
+                match self.client.search_user_team() {
+                    Ok(_) => (),
+                    Err(RpcError::no_team_in_search_condition) => (),
+                    Err(e) => {
+                        error!("{:?}\n{}", e, e);
+                        thread::sleep(std::time::Duration::from_secs(1));
+                        continue
+                    }
                 }
             }
             break
@@ -223,15 +229,18 @@ impl RpcMonitor {
 
     fn handle_join_team(&self, team_id: String) -> Response {
         info!("handle_join_team");
-        let response;
         if let Err(error) = self.client.join_team(&team_id) {
-            response = Response::internal_error().set_msg(error.to_string())
+            return Response::internal_error().set_msg(error.to_string());
         } else {
-            self.client.search_user_team();
-            self.start_team(&team_id);
-            response = Response::success();
+            if let Err(error) = self.client.search_user_team() {
+                return Response::internal_error().set_msg(error.to_string());
+            }
+
+            if let Err(error) = self.start_team(&team_id) {
+                return Response::internal_error().set_msg(error.to_string());
+            }
         }
-        response
+        Response::success()
     }
 
     fn start_team(&self, team_id: &str) -> Result<()> {
@@ -330,11 +339,7 @@ impl RpcMonitor {
             {
                 match self.client.client_get_online_proxy()
                     .and_then(|connect_to_vec| rpc_client::select_proxy(connect_to_vec)) {
-                    Ok(tunnel_restart) => {
-                        if tunnel_restart {
-                            let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
-                        }
-                    },
+                    Ok(_) => (),
                     Err(e) => {
                         error!("{:?}\n{}", e, e);
                         thread::sleep(std::time::Duration::from_secs(1));

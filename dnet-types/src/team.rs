@@ -21,17 +21,26 @@ impl Team {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TeamMember {
     pub device_id:      String,
+    pub device_name:    String,
     pub device_type:    DeviceType,
     pub vip:            IpAddr,
     pub lan:            Vec<NetSegment>,
+    pub wan:            String,
     pub proxy_ip:       Vec<IpAddr>,
+    pub status:         u32,
 }
 
 // mask CIDR.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NetSegment {
     pub ip:     IpAddr,
     pub mask:   u32,
+}
+
+impl NetSegment {
+    pub fn to_string(&self) -> String {
+        format!("{}/{}", self.ip.to_string(), self.mask)
+    }
 }
 
 //#[derive(Clone, Debug, Serialize, Deserialize)]

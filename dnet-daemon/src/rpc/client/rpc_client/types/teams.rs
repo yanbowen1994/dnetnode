@@ -133,11 +133,14 @@ impl JavaResponseTeamMember {
         }
 
         Some(TeamMember {
-            device_id:      self.mac.unwrap_or("".to_owned()),
+            device_id:      self.mac.clone().unwrap_or("".to_owned()),
+            device_name:    self.labelName.unwrap_or(self.mac.unwrap_or("".to_owned())),
             device_type,
             vip:            vip.unwrap(),
             lan,
+            wan:            self.wan.unwrap_or("".to_string()),
             proxy_ip,
+            status:         self.status.unwrap_or(0),
         })
     }
 }

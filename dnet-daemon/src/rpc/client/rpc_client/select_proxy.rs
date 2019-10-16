@@ -2,10 +2,8 @@ use std::net::IpAddr;
 use std::time::Duration;
 use std::collections::HashMap;
 
-use futures::{Future, Stream, future};
-extern crate tokio_ping;
-extern crate tokio_core;
-use self::tokio_core::reactor::Core;
+extern crate pinger;
+
 use tinc_plugin::ConnectTo;
 
 use crate::tinc_manager::TincOperator;
@@ -18,7 +16,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
     let mut min_rtt = 0;
     let mut proxy_rtt = HashMap::new();
     for proxy in &connect_to_vec {
-        if let Some(rtt) = pinger(proxy.ip) {
+        if let Some(rtt) = ping(proxy.ip) {
             if min_rtt == 0 || min_rtt > rtt {
                 min_rtt = rtt;
                 proxy_rtt.insert(proxy.clone(), rtt);
@@ -74,7 +72,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
 }
 
 // Now, connect to only one proxy.
-fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u32>) -> (Vec<ConnectTo>, u32) {
+fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u128>) -> (Vec<ConnectTo>, u128) {
     let mut min_rtt = 0;
     let mut connect_to = vec![];
 
@@ -87,35 +85,16 @@ fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u32>) -> (Vec<ConnectTo>,
     (connect_to, min_rtt)
 }
 
-fn pinger(addr: IpAddr) -> Option<u32> {
-    let mut reactor = Core::new().unwrap();
-    let timeout = Duration::from_secs(1);
-    let pinger = tokio_ping::Pinger::new();
-    let stream = pinger
-        .and_then(move |pinger| Ok(pinger.chain(addr).timeout(timeout).stream()));
-    let future = stream.and_then(|stream| {
-        stream.take(3)
-            .fold(Vec::new(), |mut acc, result|{
-                acc.push(result);
-                future::ok::<Vec<Option<Duration>>, tokio_ping::Error>(acc)
-            })
-    });
-
-    if let Ok(rtts) = reactor.run(future) {
-        let mut num = 0;
-        let mut sum = 0;
-        for rtt in rtts {
-            if let Some(rtt_duration) = rtt {
-                num += 1;
-                sum += rtt_duration.as_millis();
-            }
-        }
-
-        let average: Option<u32> = match num {
-            0 => None,
-            _ => Some(sum as u32 / num),
-        };
-        return average;
+fn ping(addr: IpAddr) -> Option<u128> {
+    let timeout = Some(Duration::from_secs(1));
+    let ttl = None;
+    let ident = None;
+    let seq_cnt = Some(1);
+    let payload = None;
+    if let Ok(rtt) = pinger::ping(addr, timeout, ttl, ident, seq_cnt, payload) {
+        return Some(rtt);
     }
-    None
+    else {
+        return None;
+    }
 }

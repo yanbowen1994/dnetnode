@@ -9,13 +9,14 @@ use std::io::{self, Write, Read};
 use std::sync::Mutex;
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
+use std::path::Path;
+use std::time::SystemTime;
+use std::process::{Command, Stdio};
 
 use duct;
 use openssl::rsa::Rsa;
 
 use crate::{TincInfo, TincRunMode, TincStream};
-use std::path::Path;
-use std::time::SystemTime;
 
 /// Results from fallible operations on the Tinc tunnel.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -57,10 +58,17 @@ const TINC_AUTH_PATH: &str = "auth/";
 
 const TINC_AUTH_FILENAME: &str = "auth.txt";
 
+pub const TINC_MEMORY_LIMIT: f32 = (85 as f32);
+// if per 3 seconds check. out of memory over 15 second. Error::OutOfMemory
+pub const TINC_ALLOWED_OUT_MEMORY_TIMES: u32 = 5;
+
 /// Errors that can happen when using the Tinc tunnel.
 #[derive(err_derive::Error, Debug)]
 #[allow(non_camel_case_types)]
 pub enum Error {
+    #[error(display = "tinc use too many memory.")]
+    OutOfMemory,
+
     #[error(display = "local_vip_not_init")]
     local_vip_not_init,
 
@@ -160,16 +168,18 @@ pub struct TincOperator {
     mutex:                  Mutex<i32>,
     mode:                   TincRunMode,
     tinc_handle:            Mutex<Option<duct::Handle>>,
+    tinc_out_memory_times:  u32,
 }
 
 impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new(tinc_home: &str, mode: TincRunMode) {
         let operator = TincOperator {
-            tinc_home:      tinc_home.to_string(),
-            mutex:          Mutex::new(0),
+            tinc_home:              tinc_home.to_string(),
+            mutex:                  Mutex::new(0),
             mode,
-            tinc_handle:    Mutex::new(None),
+            tinc_handle:            Mutex::new(None),
+            tinc_out_memory_times:  0,
         };
 
         unsafe {
@@ -205,108 +215,225 @@ impl TincOperator {
     }
 
     pub fn start_tinc(&mut self) -> Result<()> {
-        match self.check_tinc_status() {
-            Ok(_) => self.stop_tinc()?,
-            Err(_) => (),
-        }
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                match self.check_tinc_listen() {
+                    Ok(_) => self.stop_tinc()?,
+                    Err(_) => (),
+                }
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                let _ = self.stop_tinc();
+            }
+
         self.start_tinc_inner()
     }
 
     /// 启动tinc 返回duct::handle
     fn start_tinc_inner(&mut self) -> Result<()> {
-        let mut mutex_tinc_handle = self.tinc_handle.lock().unwrap();
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let mut mutex_tinc_handle = self.tinc_handle.lock().unwrap();
 
-        let conf_tinc_home = "--config=".to_string()
-            + &self.tinc_home;
-        let conf_pidfile = "--pidfile=".to_string()
-            + &self.tinc_home + PID_FILENAME;
+                let conf_tinc_home = "--config=".to_string()
+                    + &self.tinc_home;
+                let conf_pidfile = "--pidfile=".to_string()
+                    + &self.tinc_home + PID_FILENAME;
 
-        // Set tinc running dir, for tincd link lib openssl.
-        let current_dir = std::env::current_dir()
-            .map_err(|e|Error::IoError(e.to_string()))?;
-        std::env::set_current_dir(self.tinc_home.to_string())
-            .map_err(|e|Error::IoError(e.to_string()))?;
-        let duct_handle: duct::Expression = duct::cmd(
-            OsString::from(self.tinc_home.to_string() + TINC_BIN_FILENAME),
-            vec![
-                &conf_tinc_home[..],
-                &conf_pidfile[..],
-                "--no-detach",
-            ])
-            .unchecked();
-        std::env::set_current_dir(current_dir)
-            .map_err(|e|Error::IoError(e.to_string()))?;
+                // Set tinc running dir, for tincd link lib openssl.
+                let current_dir = std::env::current_dir()
+                    .map_err(|e| Error::IoError(e.to_string()))?;
+                std::env::set_current_dir(self.tinc_home.to_string())
+                    .map_err(|e| Error::IoError(e.to_string()))?;
+                let duct_handle: duct::Expression = duct::cmd(
+                    OsString::from(self.tinc_home.to_string() + TINC_BIN_FILENAME),
+                    vec![
+                        &conf_tinc_home[..],
+                        &conf_pidfile[..],
+                        "--no-detach",
+                    ])
+                    .unchecked();
+                std::env::set_current_dir(current_dir)
+                    .map_err(|e| Error::IoError(e.to_string()))?;
 
-        let mut tinc_handle = duct_handle.stderr_capture().stdout_null().start()
-            .map_err(|e| {
-                log::error!("StartTincError {:?}", e.to_string());
-                Error::StartTincError
-            })?;
+                let mut tinc_handle = duct_handle.stderr_capture().stdout_null().start()
+                    .map_err(|e| {
+                        log::error!("StartTincError {:?}", e.to_string());
+                        Error::StartTincError
+                    })?;
 
-        let _ = tinc_handle.try_wait();
+                let _ = tinc_handle.try_wait();
 
-        *mutex_tinc_handle = Some(tinc_handle);
-        Ok(())
+                *mutex_tinc_handle = Some(tinc_handle);
+                Ok(())
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                let conf_tinc_home = "--config=".to_string()
+                    + &self.tinc_home;
+                let conf_pidfile = "--pidfile=".to_string()
+                    + &self.tinc_home + PID_FILENAME;
+                Command::new(self.tinc_home.to_string() + TINC_BIN_FILENAME)
+                    .args(vec![conf_tinc_home, conf_pidfile, "-D".to_owned()])
+                    .spawn();
+
+                Ok(())
+            }
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {
-        let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
-        if let Ok(mut tinc_stream) = TincStream::new(&tinc_pid) {
-            if let Ok(_) = tinc_stream.stop() {
-                return Ok(());
-            }
-        }
-        self.tinc_handle
-            .lock()
-            .unwrap()
-            .as_ref()
-            .ok_or(Error::StopTincError)
-            .and_then(|child|
-                child.kill().map_err(|_| Error::StopTincError)
-            )?;
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
+                if let Ok(mut tinc_stream) = TincStream::new(&tinc_pid) {
+                    if let Ok(_) = tinc_stream.stop() {
+                        // TODO async send and ipc check.
+                        std::thread::sleep(std::time::Duration::from_secs(1));
+                        ()
+                    }
+                }
+                self.tinc_handle
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .ok_or(Error::StopTincError)
+                    .and_then(|child|
+                        child.kill().map_err(|_| Error::StopTincError)
+                    )?;
 
-        *self.tinc_handle.lock().unwrap() = None;
-        Ok(())
+                let handle = self.tinc_handle.lock().unwrap().take();
+                std::mem::drop(handle);
+                Ok(())
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                Command::new("killall").arg("tincd").spawn();
+                Ok(())
+            }
     }
 
     pub fn check_tinc_status(&self) -> Result<()> {
-        let mut tinc_handle = self.tinc_handle
-            .lock()
-            .unwrap()
-            .as_ref()
-            .ok_or(Error::TincNeverStart)
-            .and_then(|child| {
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let mut tinc_handle = self.tinc_handle
+                    .lock()
+                    .unwrap();
+                let child = tinc_handle
+                    .as_ref()
+                    .ok_or(Error::TincNeverStart)?;
                 let out = child.try_wait()
                     .map_err(|_|Error::TincNotExist)?;
-
                 if let None = out {
-                    return Ok(())
+                    return Ok(());
                 }
-
                 if let Some(mut out) = out {
                     if let Some(code) = out.status.code() {
                         let mut error = String::from_utf8_lossy(&out.stderr).to_string();
+                        if error.contains("Ready") {
+                            return Ok(());
+                        }
+
                         if error.contains("Address already in use") {
                             error = "port 50069 already in use".to_owned();
+                            return Err(Error::AnotherTincRunning);
+                        }
+
+                        if error.contains("Device or resource busy") {
+                            return Err(Error::AnotherTincRunning);
                         }
                         error!("code:{} error:{:?}", code, error);
                         return Err(Error::TincNotExist);
                     }
                 }
-                return Ok(());
-            })?;
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                let mut res1 = Command::new("ps")
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+                let res2 = Command::new("grep")
+                    .arg("tincd")
+                    .stdin(res1.stdout.take().unwrap())
+                    .output()
+                    .unwrap();
+                let res = String::from_utf8_lossy( &res2.stdout).to_string();
+                if !res.contains("config") {
+                    return Err(Error::TincNotExist);
+                }
+            }
 
         return Ok(());
     }
 
-    pub fn restart_tinc(&mut self)
-        -> Result<()> {
-        match self.check_tinc_status() {
-            Ok(_) => self.stop_tinc()?,
-            Err(Error::TincNeverStart) => (),
-            Err(_) => self.start_tinc_inner()?,
+    pub fn check_tinc_listen(&self) -> Result<()> {
+        let pid_file = self.tinc_home.clone() + PID_FILENAME;
+        TincStream::new(&pid_file)
+            .map_err(|_|Error::TincNotExist)?
+            .connect_test()
+            .map_err(|_|Error::TincNotExist)
+    }
+
+    pub fn check_tinc_memory(&mut self) -> Result<()> {
+        let pid_file = self.tinc_home.clone() + PID_FILENAME;
+        let tinc_pid = Self::get_tinc_pid(&pid_file)?;
+
+        let mut res1 = Command::new("ps")
+            .arg("-aux")
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let res2 = Command::new("grep")
+            .arg("tincd")
+            .stdin(res1.stdout.take().unwrap())
+            .output()
+            .unwrap();
+        let res = String::from_utf8_lossy( &res2.stdout).to_string();
+        let res_vec = res.split_ascii_whitespace().collect::<Vec<&str>>();
+
+        if res_vec.len() < 4 {
+            return Err(Error::TincNotExist);
+        }
+
+        let memory: f32 = res_vec[3].parse().map_err(|_|Error::TincNotExist)?;
+
+        if memory > TINC_MEMORY_LIMIT {
+            if self.tinc_out_memory_times >= TINC_ALLOWED_OUT_MEMORY_TIMES {
+                self.tinc_out_memory_times = 0;
+                return Err(Error::OutOfMemory);
+            }
+            else {
+                self.tinc_out_memory_times += 1;
+            }
         }
         Ok(())
+    }
+
+
+    pub fn restart_tinc(&mut self)
+        -> Result<()> {
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                match self.check_tinc_status() {
+                    Ok(_) => {
+                        self.stop_tinc()?;
+                        self.start_tinc_inner()?;
+                    },
+                    Err(Error::AnotherTincRunning) => {
+                        self.stop_tinc()?;
+                        self.start_tinc_inner()?;
+                    },
+                    Err(Error::TincNeverStart) => (),
+                    Err(_) => self.start_tinc_inner()?,
+                }
+                Ok(())
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                self.stop_tinc()?;
+                self.start_tinc()
+            }
     }
 
     /// 根据IP地址获取文件名
@@ -855,6 +982,21 @@ impl TincOperator {
         file.read_to_string(&mut contents)
             .map_err(|_| Error::FileNotExist(file_path.to_string()))?;
         Ok(contents)
+    }
+
+    pub fn get_tinc_pid(path: &str) -> Result<u64> {
+        let mut file = fs::File::open(path)
+            .map_err(|_|Error::TincNotExist)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .map_err(|_|Error::TincNotExist)?;
+        let iter: Vec<&str> = contents.split_whitespace().collect();
+        if iter.len() < 1 {
+            return Err(Error::TincNotExist);
+        }
+        let pid: u64 = iter[0].parse()
+            .map_err(|_|Error::TincNotExist)?;
+        Ok(pid)
     }
 }
 

@@ -264,6 +264,9 @@ impl Daemon {
             ManagementCommand::HostStatusChange(tx, host_status_change) => {
                 // No call back.
                 let _ = Self::oneshot_send(tx, (), "");
+
+                let _ = TincOperator::new().set_routing();
+
                 let _ = self.rpc_command_tx.send(
                     RpcCmd::Proxy(
                         RpcProxyCmd::HostStatusChange(host_status_change)

@@ -13,6 +13,7 @@ use dnet_types::settings::RunMode;
 use crate::info::{AuthInfo, get_info};
 use crate::settings::get_settings;
 use crate::settings::default_settings::TINC_INTERFACE;
+use dnet_types::team::NetSegment;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -55,11 +56,10 @@ impl TincOperator {
     pub fn start_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
         PluginTincOperator::mut_instance().start_tinc()?;
-        self.set_routing()?;
         return Ok(());
     }
 
-    fn set_routing(&self) -> Result<()> {
+    pub fn set_routing(&self) -> Result<()> {
         let info = get_info().lock().unwrap();
         let local_vip = info.tinc_info.vip.ok_or(TincOperatorError::local_vip_not_init)?;
 
@@ -89,6 +89,51 @@ impl TincOperator {
                 info!("routing table add {:?}", member_vip);
             }
         }
+
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                let info = get_info().lock().unwrap();
+                let local_vip = info.client_info.device_info.lan.clone();
+
+                let mut members_lan = vec![];
+                for running_team in &info.client_info.running_teams {
+                    for member in &running_team.members {
+                        for member_lan in &member.lan {
+                            if local_vip.contains(member_lan) {
+                                continue;
+                            }
+                            else {
+                                members_lan.push(member_lan.clone());
+                            }
+                        }
+
+
+                    }
+                }
+                std::mem::drop(info);
+
+                let routing_table = sandbox::route::parse_routing_table();
+                let routing_table = routing_table
+                    .iter()
+                    .filter_map(|route_info| {
+                        if let Ok(ip) = IpAddr::from_str(&route_info.dev) {
+                            return Some(NetSegment {
+                                ip,
+                                mask: route_info.mask
+                            });
+                        }
+                        None
+                    })
+                    .collect::<Vec<NetSegment>>();
+
+                for member_lan in members_lan {
+                    if !routing_table.contains(&member_lan) {
+                        sandbox::route::add_route(&member_lan.ip, member_lan.mask, TINC_INTERFACE);
+                        info!("routing table add {:?}/{}", member_lan.ip, member_lan.mask);
+                    }
+                }
+            }
+
         Ok(())
     }
 
@@ -105,7 +150,11 @@ impl TincOperator {
     }
 
     pub fn check_tinc_status(&mut self) -> Result<()> {
-        PluginTincOperator::mut_instance().check_tinc_status()
+        let mut tinc = PluginTincOperator::mut_instance();
+        tinc.check_tinc_status()?;
+//        tinc.check_tinc_listen()?;
+//        tinc.check_tinc_memory()?;
+        Ok(())
     }
 
     pub fn restart_tinc(&mut self) -> Result<()> {

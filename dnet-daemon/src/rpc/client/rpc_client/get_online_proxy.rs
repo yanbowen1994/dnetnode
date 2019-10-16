@@ -1,10 +1,6 @@
 use std::str::FromStr;
 use std::net::IpAddr;
 
-extern crate tokio_ping;
-extern crate tokio_core;
-use futures::{Future, Stream};
-
 use tinc_plugin::ConnectTo;
 
 use crate::info::get_info;

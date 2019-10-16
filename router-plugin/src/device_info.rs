@@ -1,13 +1,9 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
+use std::str::FromStr;
 
 extern crate nix;
 use nix::sys::socket::{AddressFamily, SockAddr};
-
-#[derive(Clone, Debug)]
-pub struct NetSegment {
-    pub ip:     IpAddr,
-    pub mask:   IpAddr,
-}
+use dnet_types::team::NetSegment;
 
 #[derive(Clone, Debug)]
 pub struct DeviceInfo {
@@ -58,12 +54,32 @@ impl DeviceInfo {
                 };
             }
             if lan_ip.is_some() && mask.is_some() {
-                net_segment.push(NetSegment {
-                    ip: lan_ip.unwrap(),
-                    mask: mask.unwrap(),
-                });
+                if let Some(mask) = parse_netmask_to_cidr(&mask.unwrap().to_string()) {
+                    net_segment.push(NetSegment {
+                        ip: lan_ip.unwrap(),
+                        mask,
+                    });
+                }
             }
         }
         net_segment
     }
+}
+
+// CIDR classless inter-domain routing
+fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
+    let mut cidr: u32 = 32;
+    if let Ok(a) = Ipv4Addr::from_str(netmask) {
+        let a = u32::from(a);
+        let mut b = 4294967295 as u32 - a;
+        loop {
+            if b == 0 {
+                break;
+            }
+            b = b >> 1;
+            cidr -= 1;
+        }
+        return Some(cidr);
+    }
+    None
 }

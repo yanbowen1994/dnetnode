@@ -42,4 +42,17 @@ impl DeviceType {
                     return DeviceType::PC;
             }
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            DeviceType::Router    => "Router".to_owned(),
+            DeviceType::Android   => "Android".to_owned(),
+            DeviceType::IOS       => "IOS".to_owned(),
+            DeviceType::Windows   => "Windows".to_owned(),
+            DeviceType::MAC       => "MAC".to_owned(),
+            DeviceType::Vrouter   => "Vrouter".to_owned(),
+            DeviceType::Linux     => "Linux".to_owned(),
+            DeviceType::Other     => "Other".to_owned(),
+        }
+    }
 }

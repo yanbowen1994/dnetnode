@@ -22,7 +22,7 @@ const COLORS: ColoredLevelConfig = ColoredLevelConfig {
     warn: Color::Yellow,
     info: Color::Green,
     debug: Color::Blue,
-    trace: Color::Black,
+    trace: Color::Magenta,
 };
 
 #[cfg(not(windows))]

@@ -38,6 +38,10 @@ pub(super) fn search_user_team() -> Result<bool> {
                 let restart = search_team_handle(teams)?;
                 return Ok(restart);
             }
+            else {
+                warn!("No team in current user.");
+                return Err(Error::no_team_in_search_condition);
+            }
         }
         else {
             if let Some(msg) = recv.msg {

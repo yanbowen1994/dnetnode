@@ -35,7 +35,6 @@ simple-signal = "1.1"
 rumqtt = "0.30"
 tokio = "0.1"
 tokio-core = "0.1"
-tokio-ping = "0.3.0"
 trust-dns-resolver = "0.12.0"
 uuid = "0.7"
 
@@ -50,6 +49,7 @@ jsonrpc-macros = { git = "https://github.com/mullvad/jsonrpc", branch = "mullvad
 dnet-path = { path = "../dnet-path" }
 dnet-types = { path = "../dnet-types" }
 ipc-server = { path = "../ipc-server" }
+pinger = { path = "../pinger" }
 sandbox = { path = "../sandbox" }
 tinc-plugin = { path = "../tinc-plugin" }
 

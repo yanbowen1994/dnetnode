@@ -105,9 +105,23 @@ impl TincStream {
         return Ok((control_cookie.to_string(), _tinc_ip.to_string(), _tinc_port.to_string()));
     }
 
+    pub fn connect_test(&mut self) -> Result<()> {
+        let cmd = format!("{} {}\n", Request::Control as i8, RequestType::ReqInvalid as i8);
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqInvalid as i8) {
+            return Ok(());
+        }
+        return Ok(());
+    }
+
     pub fn stop(&mut self) -> Result<()> {
         let cmd = format!("{} {}\n", Request::Control as i8, RequestType::ReqStop as i8);
         self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqStop as i8) {
+            return Ok(());
+        }
         return Ok(());
     }
 

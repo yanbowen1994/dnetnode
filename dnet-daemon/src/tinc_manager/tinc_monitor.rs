@@ -54,7 +54,11 @@ impl TincMonitor {
                     };
 
                     let _ = res_tx.send(res);
-                    thread::spawn(move || inner.run());
+                    thread::spawn(move || {
+                        // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
+                        thread::sleep(Duration::from_secs(3));
+                        inner.run()
+                    });
                 }
                 TunnelCommand::Disconnect => {
                     if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
@@ -140,13 +144,26 @@ impl MonitorInner {
 
     fn exec_tinc_check(&mut self) {
         let mut tinc = TincOperator::new();
-        {
-            if let Ok(_) = tinc.check_tinc_status() {
+
+        match tinc.check_tinc_status() {
+            Ok(_) => {
                 trace!("check tinc process: tinc exist.");
-                return;
+                return ();
+            }
+
+            Err(TincOperatorError::OutOfMemory) => {
+                error!("check tinc process: tinc out of memory.");
+            }
+
+            Err(TincOperatorError::TincNotExist) => {
+                error!("check tinc process: tinc not exist.");
+            }
+
+            Err(err) => {
+                error!("check tinc process: check failed. error:{:?}", err);
             }
         }
-        error!("check tinc process: tinc not exist.");
+
         let mut i = 1;
         loop {
             let result;

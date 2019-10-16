@@ -46,6 +46,9 @@ pub enum Error {
     #[error(display = "SearchUserTeam.")]
     SearchUserTeam(String),
 
+    #[error(display = "no_team_in_search_condition.")]
+    no_team_in_search_condition,
+
     #[error(display = "Search Team By Mac failed.")]
     SearchTeamByMac(String),
 

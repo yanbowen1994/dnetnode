@@ -127,22 +127,35 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
         }
     }
 
-    let mut _log_dir: PathBuf = settings.common.log_dir.clone();
+    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+        {
+            let mut _log_dir: PathBuf = settings.common.log_dir.clone();
 
-    if !std::path::Path::new(&_log_dir).is_dir() {
-        std::fs::create_dir_all(&_log_dir).map_err(Error::CreateLogDir)?;
-    }
+            if !std::path::Path::new(&_log_dir).is_dir() {
+                std::fs::create_dir_all(&_log_dir).map_err(Error::CreateLogDir)?;
+            }
+            let log_file = _log_dir.join(LOG_FILENAME);
+            if let Err(e) = init_logger(
+                log_level,
+                Some(&log_file),
+                true,
+            ) {
+                println!("Error: Can't start logger.\n{:?}", e);
+                std::process::exit(1);
+            }
+        }
+    #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        {
+            if let Err(e) = init_logger(
+                log_level,
+                None,
+                true,
+            ) {
+                println!("Error: Can't start logger.\n{:?}", e);
+                std::process::exit(1);
+            }
+        }
 
-    let log_file = _log_dir.join(LOG_FILENAME);
-
-    if let Err(e) = init_logger(
-        log_level,
-        Some(&log_file),
-        true,
-    ) {
-        println!("Error: Can't start logger.\n{:?}", e);
-        std::process::exit(1);
-    }
     Ok(())
 }
 

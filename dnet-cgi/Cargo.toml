@@ -18,3 +18,4 @@ serde_derive = "1.0"
 serde_json = "1.0"
 ipc-server = { path = "../ipc-server" }
 ipc-client = { path = "../ipc-client" }
+router-plugin = { path = "../router-plugin" }

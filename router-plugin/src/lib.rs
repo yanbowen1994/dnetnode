@@ -4,7 +4,7 @@ use std::process::Command;
 extern crate serde_derive;
 
 pub mod device_info;
-//mod team_status_response;
+pub mod team_status_response;
 
 pub fn get_sn() -> Option<String> {
     let out = Command::new("artmtd").arg("-r").arg("sn").output().unwrap();

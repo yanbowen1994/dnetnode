@@ -59,3 +59,9 @@ optional = true
 
 [target.arm-unknown-linux-musleabihf.dependencies]
 router-plugin = { path = "../router-plugin" }
+
+[target.'cfg(target_os="windows")'.dependencies]
+ceviche = "*"
+
+[target.'cfg(target_os="macos")'.dependencies]
+ceviche = "*"

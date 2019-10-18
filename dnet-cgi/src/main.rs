@@ -85,22 +85,35 @@ impl Exec {
     }
 }
 
-fn print_res() {
-    println!("Content-type: text/plain");
-}
+//fn main() {
+//    if let Some(mut ipc) = new_ipc_client() {
+//        if let Some(request) = InputHandle::get_input() {
+//            match request {
+//                RequestMethod::Get(GetAction::get_vpn_status) => {
+//                    let teams = ipc.group_list().unwrap();
+//                    let team_status_response = TeamStatusResponse::from(teams);
+//                    let json = team_status_response.to_json_str();
+//                    println!("{}", json)
+//                },
+//                RequestMethod::Post => (),
+//            }
+//        }
+//    }
+//}
 
 fn main() {
     if let Some(mut ipc) = new_ipc_client() {
-        if let Some(request) = InputHandle::get_input() {
-            match request {
-                RequestMethod::Get(GetAction::get_vpn_status) => {
-                    let teams = ipc.group_list().unwrap();
-                    let team_status_response = TeamStatusResponse::from(teams);
-                    let json = team_status_response.to_json_str();
-                    println!("{}", json)
-                },
-                RequestMethod::Post => (),
-            }
-        }
+        let teams = ipc.group_list().unwrap();
+        let team_status_response = TeamStatusResponse::from(teams);
+        let json = team_status_response.to_json_str();
+        println!("{}", json);
+    }
+    else {
+        let json = TeamStatusResponse {
+            code: 500,
+            teams: vec![],
+        }.to_json_str();
+        println!("{}", json);
     }
 }
+

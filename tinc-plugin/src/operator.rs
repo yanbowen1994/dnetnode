@@ -232,6 +232,7 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     fn start_tinc_inner(&mut self) -> Result<()> {
+        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let mut mutex_tinc_handle = self.tinc_handle.lock().unwrap();
@@ -274,15 +275,21 @@ impl TincOperator {
                     + &self.tinc_home;
                 let conf_pidfile = "--pidfile=".to_string()
                     + &self.tinc_home + PID_FILENAME;
-                Command::new(self.tinc_home.to_string() + TINC_BIN_FILENAME)
+                let child = Command::new(self.tinc_home.to_string() + TINC_BIN_FILENAME)
                     .args(vec![conf_tinc_home, conf_pidfile, "-D".to_owned()])
                     .spawn();
+
+                let _ = child.and_then(|mut child| {
+                    let _ = child.try_wait();
+                    Ok(())
+                });
 
                 Ok(())
             }
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {
+        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
@@ -298,9 +305,14 @@ impl TincOperator {
                     .unwrap()
                     .as_ref()
                     .ok_or(Error::StopTincError)
-                    .and_then(|child|
-                        child.kill().map_err(|_| Error::StopTincError)
-                    )?;
+                    .and_then(|child| {
+                        child.kill().map_err(|_| Error::StopTincError)?;
+                        // clean out put.
+                        for i in 0..10 {
+                            let _ = child.try_wait();
+                        }
+                        Ok(())
+                    })?;
 
                 let handle = self.tinc_handle.lock().unwrap().take();
                 std::mem::drop(handle);
@@ -308,12 +320,17 @@ impl TincOperator {
             }
         #[cfg(any(target_arch = "arm", feature = "router_debug"))]
             {
-                Command::new("killall").arg("tincd").spawn();
+                let child = Command::new("killall").arg("tincd").spawn();
+                let _ = child.and_then(|mut child| {
+                    let _ = child.wait();
+                    Ok(())
+                });
                 Ok(())
             }
     }
 
     pub fn check_tinc_status(&self) -> Result<()> {
+        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let mut tinc_handle = self.tinc_handle
@@ -359,6 +376,7 @@ impl TincOperator {
                     .output()
                     .unwrap();
                 let res = String::from_utf8_lossy( &res2.stdout).to_string();
+                let _ = res1.wait();
                 if !res.contains("config") {
                     return Err(Error::TincNotExist);
                 }

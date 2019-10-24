@@ -232,7 +232,6 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     fn start_tinc_inner(&mut self) -> Result<()> {
-        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let mut mutex_tinc_handle = self.tinc_handle.lock().unwrap();
@@ -289,7 +288,6 @@ impl TincOperator {
     }
 
     pub fn stop_tinc(&mut self) -> Result<()> {
-        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let tinc_pid = self.tinc_home.to_string() + PID_FILENAME;
@@ -330,7 +328,6 @@ impl TincOperator {
     }
 
     pub fn check_tinc_status(&self) -> Result<()> {
-        self.mutex.lock().unwrap();
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 let mut tinc_handle = self.tinc_handle
@@ -428,6 +425,13 @@ impl TincOperator {
         Ok(())
     }
 
+    // if outside kill tinc clean tinc_handle
+    pub fn clean_tinc_output(&self) {
+        let handle = self.tinc_handle.lock().unwrap();
+        if handle.is_some() {
+            let _ = handle.as_ref().unwrap().try_wait();
+        }
+    }
 
     pub fn restart_tinc(&mut self)
         -> Result<()> {
@@ -616,7 +620,7 @@ impl TincOperator {
             buf_connect_to += &buf;
         }
 
-        let buf;
+        let mut buf;
         #[cfg(target_os = "linux")]
         {
             buf = "Name = ".to_string() + &name + "\n"
@@ -715,8 +719,7 @@ impl TincOperator {
                      is_proxy: bool,
                      ip: &str,
                      pubkey: &str)
-        -> Result<()>
-    {
+        -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         {
             let mut buf;

@@ -83,6 +83,12 @@ pub struct Daemon {
 
 impl Daemon {
     pub fn start() -> Result<Self> {
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                info!("start dnet firewall config.");
+                router_plugin::firewall::start_firewall();
+            }
+
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
@@ -152,13 +158,12 @@ impl Daemon {
                 let _ = res_rx.recv_timeout(Duration::from_secs(3))
                     .map(|res|{
                         if res.code != 200 {
-                            error!("cmd {:?} exec failed. error: {:?}", cmd.clone(), res.msg);
+                            error!("DaemonInnerCmd::{:?} exec failed. error: {:?}", cmd.clone(), res.msg);
                         }
                     })
                     .map_err(|_| {
-                        error!("cmd {:?} exec failed. error: Respones recv timeout.", cmd.clone())
+                        error!("DaemonInnerCmd::{:?} exec failed. error: Respones recv timeout.", cmd.clone())
                     });
-
             }
             DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
@@ -174,6 +179,11 @@ impl Daemon {
         let (res_tx, res_rx) = mpsc::channel::<Response>();
         let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
         let _ = res_rx.recv_timeout(Duration::from_secs(3));
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                info!("stop dnet firewall config.");
+                router_plugin::firewall::stop_firewall();
+            }
         self.status.daemon = DaemonExecutionState::Finished;
     }
 
@@ -265,7 +275,13 @@ impl Daemon {
                 // No call back.
                 let _ = Self::oneshot_send(tx, (), "");
 
-                let _ = TincOperator::new().set_routing();
+                // TODO tunnel ipc -> monitor
+                match host_status_change {
+                    dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
+                        TincOperator::new().set_routing();
+                    },
+                    _ => (),
+                }
 
                 let _ = self.rpc_command_tx.send(
                     RpcCmd::Proxy(

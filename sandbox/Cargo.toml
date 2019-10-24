@@ -8,3 +8,4 @@ edition = "2018"
 
 [dev-dependencies]
 duct = "0.12"
+err-derive = "0.1.5"

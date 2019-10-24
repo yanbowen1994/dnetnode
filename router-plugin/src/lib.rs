@@ -4,6 +4,7 @@ use std::process::Command;
 extern crate serde_derive;
 
 pub mod device_info;
+pub mod firewall;
 pub mod team_status_response;
 
 pub fn get_sn() -> Option<String> {

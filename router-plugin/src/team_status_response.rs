@@ -5,8 +5,8 @@ use dnet_types::team::{
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TeamStatusResponse {
-    code:               u32,
-    teams:              Vec<Team>,
+    pub code:               u32,
+    pub teams:              Vec<Team>,
 }
 
 
@@ -31,7 +31,7 @@ impl TeamStatusResponse {
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Team {
+pub struct Team {
     id:                 String,
     name:               String,
     offline:            u32,

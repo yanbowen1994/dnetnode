@@ -158,6 +158,7 @@ impl TincOperator {
     }
 
     pub fn restart_tinc(&mut self) -> Result<()> {
+        self.set_info_to_local()?;
         PluginTincOperator::mut_instance().restart_tinc()
     }
 

@@ -267,10 +267,6 @@ impl RpcClient {
                 info.tinc_info.vip = local_vip;
                 std::mem::drop(info);
 
-                if config_change {
-                    tinc.set_info_to_local()
-                        .map_err(Error::TincOperator)?;
-                }
                 return Ok(config_change);
             }
             else {

@@ -74,12 +74,19 @@ impl ClientInfo {
 
         let uid;
         match &device_type[..] {
-            #[cfg(feature = "router_debug")]
-            "6" => uid = get_settings().common.username.clone(),
+            "6" => {
+                #[cfg(feature = "router_debug")]
+                    {
+                        uid = get_settings().common.username.clone();
+                    }
+
+                #[cfg(not(feature = "router_debug"))]
+                    {
+                        uid = "linux/".to_owned() + &mac;
+                    }
+            }
             #[cfg(target_arch = "arm")]
             "0" => uid = get_sn().ok_or(Error::GetMac)?,
-            #[cfg(not(feature = "router_debug"))]
-            "6" => uid = "linux/".to_owned() + &mac,
             "4" => uid = "macos/".to_owned() + &mac,
             "3" => uid = "windows/".to_owned() + &mac,
             _ => uid = "unknown".to_owned() + &mac,

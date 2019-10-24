@@ -16,7 +16,6 @@ const TINC_FREQUENCY: u32 = 5;
 static mut EL: *mut MonitorInner = 0 as *mut _;
 
 pub struct TincMonitor {
-    connect_cmd_mutex:      Arc<Mutex<bool>>,
     tunnel_command_rx:      mpsc::Receiver<(TunnelCommand, mpsc::Sender<Response>)>,
 }
 
@@ -27,7 +26,6 @@ impl TunnelTrait for TincMonitor {
         Arc::new(MonitorInner::new(daemon_event_tx.clone()));
 
         let tinc_monitor = TincMonitor {
-            connect_cmd_mutex: Arc::new(Mutex::new(false)),
             tunnel_command_rx,
         };
 
@@ -44,26 +42,21 @@ impl TincMonitor {
         while let Ok((event, res_tx)) = self.tunnel_command_rx.recv() {
             match event {
                 TunnelCommand::Connect => {
-                    if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
-                        *connect_cmd_mutex = true;
-                    }
                     let inner = get_monitor_inner();
                     let res = match inner.connect() {
                         Ok(_) => Response::success(),
                         Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
 
-                    let _ = res_tx.send(res);
                     thread::spawn(move || {
                         // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
                         thread::sleep(Duration::from_secs(3));
-                        inner.run()
+                        inner.run();
                     });
+
+                    let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
-                    if let Ok(mut connect_cmd_mutex) = self.connect_cmd_mutex.lock() {
-                        *connect_cmd_mutex = false;
-                    }
                     let inner = get_monitor_inner();
                     let res = match inner.disconnect() {
                         Ok(_) => Response::success(),
@@ -85,7 +78,9 @@ impl TincMonitor {
 }
 
 struct MonitorInner {
-    stop_sign:          Mutex<u32>,
+    stop_sign_tx:          mpsc::Sender<mpsc::Sender<bool>>,
+    stop_sign_rx:          mpsc::Receiver<mpsc::Sender<bool>>,
+    is_tunnel_connect:        Arc<Mutex<bool>>,
 }
 
 impl MonitorInner {
@@ -99,8 +94,13 @@ impl MonitorInner {
                 daemon_event_tx.send(DaemonEvent::TunnelInitFailed(e.to_string()))
             )
             .unwrap_or(());
+
+        let (tx, rx) = mpsc::channel();
+
         let inner = Self {
-            stop_sign:          Mutex::new(0),
+            stop_sign_tx: tx,
+            stop_sign_rx: rx,
+            is_tunnel_connect: Arc::new(Mutex::new(false)),
         };
 
         unsafe {
@@ -110,15 +110,17 @@ impl MonitorInner {
     }
 
     fn connect(&mut self) -> Result<()> {
-        *self.stop_sign.lock().unwrap() = 0;
         TincOperator::new().start_tinc()?;
+        info!("tinc_monitor start tinc");
+        *self.is_tunnel_connect.lock().unwrap() = true;
+
         Ok(())
     }
 
     fn run(&mut self) {
         loop {
-            if *self.stop_sign.lock().unwrap() == 1 {
-                break
+            if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
+                let _ = res_tx.send(true);
             }
             let start = Instant::now();
             self.exec_tinc_check();
@@ -131,15 +133,33 @@ impl MonitorInner {
     }
 
     fn disconnect(&mut self) -> Result<()> {
-        *self.stop_sign.lock().unwrap() = 1;
-        let mut tinc = TincOperator::new();
-        tinc.stop_tinc()
+        let (tx, rx) = mpsc::channel();
+        if let Err(err) = self.stop_sign_tx.send(tx) {
+            let mut tinc = TincOperator::new();
+            tinc.stop_tinc()?;
+        }
+        else {
+            let _ = rx.recv_timeout(Duration::from_secs(1));
+            let mut tinc = TincOperator::new();
+            tinc.stop_tinc()?;
+        }
+        info!("tinc_monitor stop tinc");
+        Ok(())
     }
 
     fn reconnect(&mut self) -> Result<()> {
+        let (tx, rx) = mpsc::channel();
+        match self.stop_sign_tx.send(tx) {
+            Ok(_) => {
+                let _ = rx.recv_timeout(Duration::from_secs(1));
+                ()
+            },
+            Err(_) => (),
+        }
         let mut tinc = TincOperator::new();
-        tinc.set_info_to_local()?;
-        tinc.restart_tinc()
+        tinc.restart_tinc()?;
+        info!("tinc_monitor restart tinc");
+        Ok(())
     }
 
     fn exec_tinc_check(&mut self) {

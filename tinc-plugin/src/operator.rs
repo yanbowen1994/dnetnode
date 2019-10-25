@@ -841,6 +841,7 @@ impl TincOperator {
 
 //          Example for global proxy
 //
+// ```
 //            if TincRunMode::Client == self.mode {
 //                if tinc_info.connect_to.is_empty() {
 //                    return Err(Error::TincInfo_connect_to_is_empty)
@@ -853,6 +854,7 @@ impl TincOperator {
 //                buf = buf + "\n"
 //                    + "route add default gw " + &tinc_info.connect_to[0].vip.to_string();
 //            }
+// ```
 
             buf = buf + "\n" + &self.tinc_home + "tinc-report -u";
         }
@@ -862,19 +864,20 @@ impl TincOperator {
                    dev=tap0\n\
                    vpngw=".to_string()
                    + &tinc_info.vip.to_string() + "\n"
-                   + "ifconfig ${dev} ${vpngw} netmask  " + netmask + "\n";
+                   + "ifconfig ${dev} ${vpngw} netmask " + netmask + "\n";
 
-//          Example for global proxy
-//
-//            if TincRunMode::Client == self.mode {
-//                let default_gateway = get_default_gateway()?.to_string();
-//                buf = buf
-//                    + "route -q -n delete -net 0.0.0.0\n\
-//                    route -q -n add -host " + &tinc_info.connect_to[0].ip.to_string()
-//                    + " -gateway " + &default_gateway + "\n"
-//                    + "route add -host 10.255.255.254 -interface tap0 -iface -cloning\n"
-//                    + "route add -net 0.0.0.0 -gateway 10.255.255.254";
-//            }
+// Example for global proxy
+// ```
+//  if TincRunMode::Client == self.mode {
+//      let default_gateway = get_default_gateway()?.to_string();
+//      buf = buf
+//          + "route -q -n delete -net 0.0.0.0\n\
+//      route -q -n add -host " + &tinc_info.connect_to[0].ip.to_string()
+//          + " -gateway " + &default_gateway + "\n"
+//          + "route add -host 10.255.255.254 -interface tap0 -iface -cloning\n"
+//          + "route add -net 0.0.0.0 -gateway 10.255.255.254";
+//  }
+// ```
 
             buf = buf + &self.tinc_home + "tinc-report -u\n";
         }

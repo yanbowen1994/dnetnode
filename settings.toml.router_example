@@ -1,0 +1,8 @@
+[common]
+home_path = "/usr/local/opt/dnet"
+log_dir = "/usr/local/opt/dnet"
+mode = "client"
+conductor_url = "https://api-qa.vlan.cn"
+
+[client]
+auto_connect = true

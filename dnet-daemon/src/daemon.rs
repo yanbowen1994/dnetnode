@@ -346,9 +346,10 @@ impl Daemon {
     fn start_management_interface_server(
         event_tx: IntoSender<ManagementCommand, DaemonEvent>,
     ) -> Result<ManagementInterfaceServer> {
-        // TODO ipc path
+        let path = get_settings().common.home_path.clone().join("dnet.socket");
+        let path = path.to_str().unwrap();
         let server =
-            ManagementInterfaceServer::start("/opt/dnet/dnet.socket", event_tx).map_err(Error::StartManagementInterface)?;
+            ManagementInterfaceServer::start(path, event_tx).map_err(Error::StartManagementInterface)?;
         info!("Management interface listening on {}", server.socket_path());
 
         Ok(server)

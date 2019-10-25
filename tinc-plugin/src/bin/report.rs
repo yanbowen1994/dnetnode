@@ -35,7 +35,9 @@ fn help() {
 }
 
 pub fn new_ipc_client() -> DaemonRpcClient {
-    match new_standalone_ipc_client(&Path::new(&"/opt/dnet/dnet.socket".to_string())) {
+    let path = dnet_path::ipc_path();
+
+    match new_standalone_ipc_client(&Path::new(&path)) {
         Ok(client) => client,
         Err(e) => {
             panic!(format!("{:?}", e));

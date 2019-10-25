@@ -630,7 +630,7 @@ impl TincOperator {
                    Interface=dnet\n\
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
-                   PingTimeout=10\n\
+                   PingTimeout=3\n\
                    Device = /dev/net/tun\n\
                    AutoConnect=no\n\
                    MaxConnectionBurst=1000\n";
@@ -644,7 +644,7 @@ impl TincOperator {
                    Interface=dnet\n\
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
-                   PingTimeout=10\n\
+                   PingTimeout=3\n\
                    Device = /dev/tap0\n\
                    AutoConnect=no\n\
                    MaxConnectionBurst=1000\n";
@@ -658,7 +658,7 @@ impl TincOperator {
                    Interface=dnet\n\
                    BindToAddress = * 50069\n\
                    ProcessPriority = high\n\
-                   PingTimeout=10\n\
+                   PingTimeout=3\n\
                    AutoConnect=no\n\
                    MaxConnectionBurst=1000\n";
         }

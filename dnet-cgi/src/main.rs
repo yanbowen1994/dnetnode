@@ -12,7 +12,8 @@ use dnet_types::team::Team;
 use router_plugin::team_status_response::TeamStatusResponse;
 
 pub fn new_ipc_client() -> Option<DaemonRpcClient> {
-    match new_standalone_ipc_client(&Path::new(&"/opt/dnet/dnet.socket".to_string())) {
+    let path = dnet_path::ipc_path();
+    match new_standalone_ipc_client(&Path::new(&path)) {
         Ok(client) => Some(client),
         Err(_) => None,
     }

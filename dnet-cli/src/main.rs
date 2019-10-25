@@ -1,20 +1,21 @@
-extern crate ipc_server;
+use std::path::Path;
 
+extern crate ipc_server;
+extern crate dnet_path;
 use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
 use clap::App;
 
 mod cmds;
 mod error;
 use error::{Error, Result};
-use std::path::Path;
 
 pub const COMMIT_ID: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-id.txt"));
 
 pub const COMMIT_DATE: &str = include_str!(concat!(env!("OUT_DIR"), "/git-commit-date.txt"));
 
 pub fn new_ipc_client() -> Result<DaemonRpcClient> {
-    // TODO dnet path
-    match new_standalone_ipc_client(&Path::new(&"/opt/dnet/dnet.socket".to_string())) {
+    let path = dnet_path::ipc_path();
+    match new_standalone_ipc_client(&Path::new(&path)) {
         Err(e) => Err(Error::DaemonNotRunning(e)),
         Ok(client) => Ok(client),
     }

@@ -212,8 +212,8 @@ cp /root/ovrouter_Rust/key.pem ./dnetovr/root/dnetovr
 cp /root/ovrouter_Rust/settings.toml.example ./dnetovr/root/dnetovr/settings.toml
 cp /root/ovrouter_Rust/target/release/dnetovr ./dnetovr/root/dnetovr
 
-cp /root/ovrouter_Rust/service_script/control  ./dnetovr/DEBIAN
-cp /root/ovrouter_Rust/service_script/dnetovr.service  ./dnetovr/lib/systemd/system/dnetovr.service
+cp /root/ovrouter_Rust/compile_script/control  ./dnetovr/DEBIAN
+cp /root/ovrouter_Rust/compile_script/dnetovr.service  ./dnetovr/lib/systemd/system/dnetovr.service
 
 cp /root/tinc /root/dnetovr/root -rf
 

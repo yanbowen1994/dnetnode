@@ -2,7 +2,7 @@
 START=99
 
 start() {
-    /usr/local/opt/dnet/dnet-daemon -d 0 -c /usr/local/opt/dnet/
+    /usr/local/opt/dnet/dnet-daemon -c /usr/local/opt/dnet/
 }
 
 stop() {

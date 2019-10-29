@@ -29,10 +29,22 @@ pub struct Client {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct Tinc {
+    pub auto_connect:                              Option<String>,
+    pub tinc_memory_limit:                         Option<String>,
+    pub tinc_check_frequency:                      Option<String>,
+    pub tinc_allowed_out_memory_times:             Option<String>,
+    pub tinc_allowed_tcp_failed_times:             Option<String>,
+    pub tinc_debug_level:                          Option<String>,
+}
+
+
+#[derive(Clone, Debug, Deserialize)]
 pub(crate) struct FileSettings {
     pub common: Option<Common>,
     pub proxy:  Option<Proxy>,
-    pub client:   Option<Client>,
+    pub client: Option<Client>,
+    pub tinc:   Option<Tinc>,
 }
 
 impl FileSettings {

@@ -1,14 +1,10 @@
-use std::str::FromStr;
-
-use crate::info::{get_info, get_mut_info};
-
-use super::error::{Error, Result};
+use crate::info::get_info;
 use crate::settings::get_settings;
+use super::types::teams::JavaResponseTeamSearch;
+use super::search_team_handle::search_team_handle;
+use super::error::{Error, Result};
 use super::post;
 use super::types::DeviceId;
-use std::net::IpAddr;
-use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
-use crate::rpc::client::rpc_client::search_team_handle::search_team_handle;
 
 // if return true restart tunnel.
 pub(super) fn search_team_by_mac() -> Result<bool> {
@@ -37,7 +33,7 @@ pub(super) fn search_team_by_mac() -> Result<bool> {
             })?;
 
         if recv.code == Some(200) {
-            if let Some(mut teams) = recv.data {
+            if let Some(teams) = recv.data {
                 return Ok(search_team_handle(teams)?);
             }
             else {

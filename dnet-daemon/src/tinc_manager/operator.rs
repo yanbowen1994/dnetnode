@@ -5,15 +5,12 @@ use std::fs;
 use std::io::Write;
 use std::str::FromStr;
 
-use tinc_plugin::{TincRunMode,
-                  TincOperator as PluginTincOperator,
-                  TincOperatorError};
+use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator, TincOperatorError, TincTools, TincSettings};
 use dnet_types::settings::RunMode;
 
 use crate::info::{AuthInfo, get_info};
 use crate::settings::get_settings;
 use crate::settings::default_settings::TINC_INTERFACE;
-use dnet_types::team::NetSegment;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -26,20 +23,24 @@ impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
         if !PluginTincOperator::is_inited() {
-            let tinc_home;
-            let tinc_run_model;
-            {
-                let settings = get_settings();
-                tinc_home = settings.common.home_path.clone();
-                tinc_run_model = match &settings.common.mode {
-                    RunMode::Proxy => TincRunMode::Proxy,
-                    RunMode::Client => TincRunMode::Client,
-                }
-            }
+            let settings = get_settings();
+            let tinc_home = settings.common.home_path.clone()
+                .join("tinc").to_str().unwrap().to_string() + "/";
+            let tinc_run_model = match &settings.common.mode {
+                RunMode::Proxy => TincRunMode::Proxy,
+                RunMode::Client => TincRunMode::Client,
+            };
+            let tinc_settings = TincSettings {
+                tinc_home,
+                mode: tinc_run_model,
+                tinc_memory_limit: settings.tinc.tinc_memory_limit,
+                tinc_allowed_out_memory_times: settings.tinc.tinc_allowed_out_memory_times,
+                tinc_allowed_tcp_failed_times: settings.tinc.tinc_allowed_tcp_failed_times,
+                tinc_check_frequency: settings.tinc.tinc_check_frequency,
+                tinc_debug_level: settings.tinc.tinc_debug_level,
+            };
 
-            PluginTincOperator::new(&(tinc_home
-                .join("tinc").to_str().unwrap().to_string() + "/"),
-                                    tinc_run_model);
+            PluginTincOperator::new(tinc_settings);
         }
         Self {}
     }
@@ -150,7 +151,7 @@ impl TincOperator {
     }
 
     pub fn check_tinc_status(&mut self) -> Result<()> {
-        let mut tinc = PluginTincOperator::mut_instance();
+        let tinc = PluginTincOperator::mut_instance();
         tinc.check_tinc_status()?;
 //        tinc.check_tinc_listen()?;
 //        tinc.check_tinc_memory()?;
@@ -205,11 +206,11 @@ impl TincOperator {
     }
 
     pub fn get_client_filename_by_virtual_ip(&self, vip: &str) -> String {
-        PluginTincOperator::get_filename_by_ip(false, vip)
+        TincTools::get_filename_by_ip(false, vip)
     }
 
     pub fn get_proxy_filename_by_virtual_ip(&self, vip: &str) -> String {
-        PluginTincOperator::get_filename_by_ip(true, vip)
+        TincTools::get_filename_by_ip(true, vip)
     }
 
     // 写TINC_AUTH_PATH/TINC_AUTH_FILENAME(auth/auth.txt),用于tinc reporter C程序

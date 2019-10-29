@@ -95,10 +95,31 @@ impl Client {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Tinc {
+    pub tinc_memory_limit:                         f64,
+    pub tinc_check_frequency:                      u32,
+    pub tinc_allowed_out_memory_times:             u32,
+    pub tinc_allowed_tcp_failed_times:             u32,
+    pub tinc_debug_level:                          u32,
+}
+impl Tinc {
+    fn default() -> Self {
+        Tinc {
+            tinc_memory_limit:                     100 as f64,
+            tinc_check_frequency:                  0,
+            tinc_allowed_out_memory_times:         0,
+            tinc_allowed_tcp_failed_times:         0,
+            tinc_debug_level:                      0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Settings {
     pub common:         Common,
     pub proxy:          Proxy,
     pub client:         Client,
+    pub tinc:           Tinc,
     pub last_runtime:   String,
 }
 
@@ -123,10 +144,12 @@ impl Settings {
         let common = Common::default()?;
         let proxy = Proxy::empty();
         let client = Client::default();
+        let tinc = Tinc::default();
         Ok(Self {
             common,
             proxy,
             client,
+            tinc,
             last_runtime: String::new(),
         })
     }
@@ -245,10 +268,39 @@ impl Settings {
             }
         };
 
+        let tinc = file_settings.tinc
+            .and_then(|file_settings| {
+                let tinc_memory_limit = file_settings.tinc_memory_limit
+                    .and_then(|x|x.parse::<f64>().ok())
+                    .unwrap_or(100 as f64);
+                let tinc_check_frequency = file_settings.tinc_check_frequency
+                    .and_then(|x|x.parse::<u32>().ok())
+                    .unwrap_or(0 as u32);
+                let tinc_allowed_out_memory_times = file_settings.tinc_allowed_out_memory_times
+                    .and_then(|x|x.parse::<u32>().ok())
+                    .unwrap_or(0 as u32);
+                let tinc_allowed_tcp_failed_times = file_settings.tinc_allowed_tcp_failed_times
+                    .and_then(|x|x.parse::<u32>().ok())
+                    .unwrap_or(0 as u32);
+                let tinc_debug_level = file_settings.tinc_debug_level
+                    .and_then(|x|x.parse::<u32>().ok())
+                    .unwrap_or(0 as u32);
+
+                Some(Tinc {
+                    tinc_memory_limit,
+                    tinc_check_frequency,
+                    tinc_allowed_out_memory_times,
+                    tinc_allowed_tcp_failed_times,
+                    tinc_debug_level,
+                })
+            })
+            .unwrap_or(Tinc::default());
+
         Ok(Self {
             common,
             proxy,
             client,
+            tinc,
             last_runtime: String::new(),
         })
     }

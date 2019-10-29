@@ -1,6 +1,3 @@
-use std::net::IpAddr;
-use std::str::FromStr;
-
 use dnet_types::team::Team;
 
 use crate::info::{get_mut_info, get_info};
@@ -10,7 +7,7 @@ use crate::settings::default_settings::TINC_INTERFACE;
 
 // if return true restart tunnel.
 pub fn search_team_handle(mut jteams: Vec<JavaResponseTeam>) -> Result<bool> {
-    let mut info = get_info().lock().unwrap();
+    let info = get_info().lock().unwrap();
     let device_id = info.client_info.uid.clone();
     std::mem::drop(info);
 

@@ -122,8 +122,6 @@ impl RpcMonitor {
                         let response = self.handle_select_proxy();
                         let _ = response_tx.send(response);
                     }
-
-                    _ => ()
                 }
             }
             _ => ()

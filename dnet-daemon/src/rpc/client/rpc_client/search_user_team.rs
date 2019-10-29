@@ -34,7 +34,7 @@ pub(super) fn search_user_team() -> Result<bool> {
             })?;
 
         if recv.code == Some(200) {
-            if let Some(mut teams) = recv.data {
+            if let Some(teams) = recv.data {
                 let restart = search_team_handle(teams)?;
                 return Ok(restart);
             }

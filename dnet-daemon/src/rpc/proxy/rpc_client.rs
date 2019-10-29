@@ -417,7 +417,9 @@ struct Heartbeat {
 impl Heartbeat {
     fn new_from_info() -> Self {
         let mut info = get_mut_info().lock().unwrap();
-        let _ = info.tinc_info.flush_connections();
+        if let Err(e) = info.tinc_info.flush_connections() {
+            warn!("{:?}", e);
+        }
         Heartbeat {
             authID:         info.proxy_info.uid.to_string(),
             connections:    info.tinc_info.connections,

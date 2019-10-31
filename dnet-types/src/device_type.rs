@@ -39,7 +39,7 @@ impl DeviceType {
                 #[cfg(target_os = "macos")]
                     return DeviceType::MAC;
                 #[cfg(target_os = "windows")]
-                    return DeviceType::PC;
+                    return DeviceType::Windows;
             }
     }
 

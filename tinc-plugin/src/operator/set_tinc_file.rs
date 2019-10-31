@@ -168,8 +168,8 @@ impl TincOperator {
             }
         #[cfg(windows)]
             {
-                let vnic_index = format!("{}", get_vnic_index()?);
-                buf = &self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
+                let vnic_index = format!("{}", TincTools::get_vnic_index()?);
+                buf = self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
 //              Example for global proxy
 //                buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
 //                    + &vnic_index + "\r\n"

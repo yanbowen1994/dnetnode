@@ -31,7 +31,14 @@ reqwest = "0.9.22"
 serde = "^1.0"
 serde_json = "^1.0"
 serde_derive = "^1.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 simple-signal = "1.1"
+
+[target.'cfg(windows)'.dependencies]
+ctrlc = "3.0"
+
 rumqtt = "0.30"
 tokio = "0.1"
 tokio-core = "0.1"

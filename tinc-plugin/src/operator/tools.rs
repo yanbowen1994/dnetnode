@@ -1,4 +1,6 @@
 use super::{Error, Result};
+use std::str::FromStr;
+use std::net::IpAddr;
 
 pub struct TincTools;
 

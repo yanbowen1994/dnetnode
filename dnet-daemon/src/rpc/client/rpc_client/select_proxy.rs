@@ -6,7 +6,6 @@ extern crate pinger;
 
 use tinc_plugin::ConnectTo;
 
-use crate::tinc_manager::TincOperator;
 use crate::info::{get_mut_info, get_info};
 use super::{Error, Result};
 

@@ -1,6 +1,3 @@
-use std::net::IpAddr;
-use std::str::FromStr;
-
 use super::{Error, Result};
 
 pub struct TincTools;

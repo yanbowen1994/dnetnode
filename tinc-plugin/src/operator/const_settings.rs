@@ -34,10 +34,6 @@ pub const PUB_KEY_FILENAME: &str = "rsa_key.pub";
 
 pub const PID_FILENAME: &str = "tinc.pid";
 
-pub const TINC_AUTH_PATH: &str = "auth/";
-
-pub const TINC_AUTH_FILENAME: &str = "auth.txt";
-
 pub const TINC_MEMORY_LIMIT: f32 = (85 as f32);
 // if per 3 seconds check. out of memory over 15 second. Error::OutOfMemory
 pub const TINC_ALLOWED_OUT_MEMORY_TIMES: u32 = 5;

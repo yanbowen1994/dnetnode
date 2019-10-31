@@ -1,18 +1,20 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 use std::sync::mpsc;
 use std::str::FromStr;
 use std::net::IpAddr;
-use std::{thread, time::Duration};
 
 use rumqtt::{MqttClient, MqttOptions, QoS, ReconnectOptions, SecurityOptions, Notification, Publish};
+use serde_json::Value;
+use dnet_types::team::Team;
 
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::settings::get_settings;
-
-use super::{Error, Result};
-use serde_json::Value;
 use crate::settings::default_settings::TINC_INTERFACE;
-use crate::info::{get_mut_info, get_info};
-use dnet_types::team::Team;
+use crate::info::get_info;
+use super::{Error, Result};
+
 
 pub struct Mqtt {
     mqtt_options:       MqttOptions,
@@ -69,10 +71,7 @@ impl Mqtt {
                     _ => (),
                 }
             }
-
-
         }
-        Ok(())
     }
 
     fn handle_publish(&self, publish: &Publish) -> Result<()> {
@@ -144,7 +143,7 @@ impl Mqtt {
             .ok_or(Error::mqtt_msg_parse_failed("Request data.teamName wrong format.".to_owned()))?;
 
         let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Connect));
-        let mut info = get_mut_info().lock().unwrap();
+        let info = get_info().lock().unwrap();
         let mut is_running_team = false;
         for running_team in &info.client_info.running_teams {
             if &running_team.team_id == team_id {

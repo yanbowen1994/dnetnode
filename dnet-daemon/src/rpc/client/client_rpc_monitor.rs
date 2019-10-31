@@ -12,7 +12,6 @@ use crate::info::get_mut_info;
 use super::rpc_client::Error as RpcError;
 use super::RpcClient;
 use super::rpc_client;
-use super::rpc_mqtt;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -24,9 +23,6 @@ pub enum Error {
 
     #[error(display = "Connection with conductor timeout")]
     TeamNotFound,
-
-    #[error(display = "mqtt_error")]
-    mqtt_error(#[error(cause)] rpc_mqtt::Error),
 }
 
 #[derive(Eq, PartialEq)]
@@ -245,7 +241,7 @@ impl RpcMonitor {
         let mut info = get_mut_info().lock().unwrap();
         let mut add_running_team = vec![];
 
-        info.teams
+        let _ = info.teams
             .iter()
             .filter_map(|team| {
                 if &team.team_id == team_id {
@@ -276,7 +272,6 @@ impl RpcMonitor {
         }
         response
     }
-
 }
 
 #[cfg(any(target_arch = "arm", feature = "router_debug"))]
@@ -336,6 +331,20 @@ impl RpcMonitor {
             info!("client_get_online_proxy");
             {
                 match self.client.client_get_online_proxy()
+                    .and_then(|connect_to_vec| rpc_client::select_proxy(connect_to_vec)) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        error!("{:?}\n{}", e, e);
+                        thread::sleep(std::time::Duration::from_secs(1));
+                        continue
+                    },
+                }
+            }
+            info!("client_get_online_proxy - ok");
+
+            info!("connect_team_broadcast");
+            {
+                match self.client.connect_team_broadcast()
                     .and_then(|connect_to_vec| rpc_client::select_proxy(connect_to_vec)) {
                     Ok(_) => (),
                     Err(e) => {

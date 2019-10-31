@@ -278,7 +278,9 @@ impl Daemon {
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
-                        TincOperator::new().set_routing();
+                        if let Err(e) = TincOperator::new().set_routing() {
+                            error!("host_status_change tinc-up {:?}", e);
+                        }
                     },
                     _ => (),
                 }

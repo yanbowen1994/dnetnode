@@ -5,6 +5,8 @@ use reqwest::Response;
 #[cfg(any(target_arch = "arm", feature = "router_debug"))]
 extern crate router_plugin;
 
+use tinc_plugin::ConnectTo;
+
 use crate::rpc::http_post::url_post;
 
 use super::{Error, Result};
@@ -13,11 +15,11 @@ use super::search_team_by_mac::search_team_by_mac;
 use super::binding_device::binding_device;
 use super::heartbeat::client_heartbeat;
 use super::key_report::client_key_report;
-use crate::rpc::client::rpc_client::search_user_team::search_user_team;
-use crate::rpc::client::rpc_client::join_team::join_team;
+use super::search_user_team::search_user_team;
+use super::join_team::join_team;
 use super::get_online_proxy::client_get_online_proxy;
 use super::device_select_proxy::device_select_proxy;
-use tinc_plugin::ConnectTo;
+use super::connect_team_broadcast::connect_team_broadcast;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
@@ -46,6 +48,10 @@ pub struct RpcClient;
 impl RpcClient {
     pub fn new() -> Self {
         RpcClient {}
+    }
+
+    pub fn connect_team_broadcast(&self) -> Result<()> {
+        connect_team_broadcast()
     }
 
     pub fn client_login(&self) -> Result<()> {

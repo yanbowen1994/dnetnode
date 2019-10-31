@@ -145,7 +145,7 @@ impl TincOperator {
         Ok(())
     }
 
-    fn set_tinc_down(&self, tinc_info: &TincInfo) -> Result<()> {
+    fn set_tinc_down(&self, _tinc_info: &TincInfo) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         let buf;
         #[cfg(target_arch = "arm")]
@@ -321,7 +321,7 @@ impl TincOperator {
             buf_connect_to += &buf;
         }
 
-        let mut buf;
+        let buf;
         #[cfg(target_os = "linux")]
             {
                 buf = "Name = ".to_string() + &name + "\n"
@@ -382,7 +382,7 @@ impl TincOperator {
                      -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         {
-            let mut buf;
+            let buf;
             if is_proxy {
                 buf = "Address=".to_string() + ip + "\n"
                     + "Port=50069\n"

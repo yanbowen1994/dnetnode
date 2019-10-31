@@ -1,8 +1,7 @@
 use crate::info::{get_info, Error as InfoError};
-use super::types::DeviceId;
+use crate::settings::get_settings;
 use super::post;
 use super::{Error, Result};
-use crate::settings::get_settings;
 
 pub fn connect_team_broadcast() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
@@ -28,7 +27,7 @@ pub fn connect_team_broadcast() -> Result<()> {
             deviceip:     deviceip.clone(),
             status:       "1".to_owned(),
             teamid:       teamid.clone(),
-        }.to_json();
+        }.to_json_str();
 
         debug!("client_heart_beat - request data: {}", data);
         connect_team_broadcast_inner(&url, &data, &cookie)?;
@@ -37,20 +36,6 @@ pub fn connect_team_broadcast() -> Result<()> {
 }
 
 fn connect_team_broadcast_inner(url: &str, data: &str, cookie: &str) -> Result<()> {
-    let url = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/bindingdevice";
-
-    let device_id;
-    let cookie;
-    {
-        let info = get_info().lock().unwrap();
-        device_id = info.client_info.uid.clone();
-        cookie = info.client_info.cookie.clone();
-    }
-    let data = DeviceId {
-        deviceid: device_id,
-    }.to_json();
-
     post(&url, &data, &cookie)
         .and_then(|mut res| {
             if res.status().as_u16() == 200 {
@@ -61,14 +46,11 @@ fn connect_team_broadcast_inner(url: &str, data: &str, cookie: &str) -> Result<(
                             return Ok(());
                         }
                         else {
-                            if recv.msg == Some("The device has been bound by other users.".to_owned()) {
-                                return Ok(());
-                            }
-                            error!("binding_device response msg: {:?}", recv.msg);
+                            error!("connect_team_broadcast response msg: {:?}", recv.msg);
                         }
                     }
                     else {
-                        error!("binding_device - response can't parse: {:?}", res_data);
+                        error!("connect_team_broadcast - response can't parse: {:?}", res_data);
                     }
                 }
                 else {
@@ -99,7 +81,7 @@ struct Broadcast {
 }
 
 impl Broadcast {
-    fn to_json(&self) -> String {
+    fn to_json_str(&self) -> String {
         return serde_json::to_string(self).unwrap();
     }
 }

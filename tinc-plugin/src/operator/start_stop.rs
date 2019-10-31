@@ -1,5 +1,3 @@
-use std::process::Command;
-
 use crate::TincStream;
 use super::{Error, Result, TincOperator, PID_FILENAME, TINC_BIN_FILENAME};
 
@@ -52,7 +50,7 @@ impl TincOperator {
             ])
             .unchecked();
 
-        let mut tinc_handle = duct_handle.stderr_capture().stdout_null().start()
+        let tinc_handle = duct_handle.stderr_capture().stdout_null().start()
             .map_err(|e| {
                 log::error!("StartTincError {:?}", e.to_string());
                 Error::StartTincError
@@ -81,7 +79,7 @@ impl TincOperator {
                     .and_then(|child| {
                         child.kill().map_err(|_| Error::StopTincError)?;
                         // clean out put.
-                        for i in 0..10 {
+                        for _i in 0..10 {
                             let _ = child.try_wait();
                         }
                         Ok(())

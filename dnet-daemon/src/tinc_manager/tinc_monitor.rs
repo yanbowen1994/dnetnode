@@ -135,6 +135,7 @@ impl MonitorInner {
     fn disconnect(&mut self) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         if let Err(err) = self.stop_sign_tx.send(tx) {
+            error!("disconnect {:?}", err);
             let mut tinc = TincOperator::new();
             tinc.stop_tinc()?;
         }

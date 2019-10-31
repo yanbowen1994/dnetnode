@@ -9,7 +9,7 @@ impl TincOperator {
     pub fn check_tinc_status(&self) -> Result<()> {
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
-                let mut tinc_handle = self.tinc_handle
+                let tinc_handle = self.tinc_handle
                     .lock()
                     .unwrap();
                 let child = tinc_handle
@@ -20,9 +20,9 @@ impl TincOperator {
                 if let None = out {
                     return Ok(());
                 }
-                if let Some(mut out) = out {
+                if let Some(out) = out {
                     if let Some(code) = out.status.code() {
-                        let mut error = String::from_utf8_lossy(&out.stderr).to_string();
+                        let error = String::from_utf8_lossy(&out.stderr).to_string();
                         if error.contains("Ready") {
                             return Ok(());
                         }
@@ -71,9 +71,6 @@ impl TincOperator {
     }
 
     pub fn check_tinc_memory(&mut self) -> Result<()> {
-        let pid_file = self.tinc_settings.tinc_home.clone() + PID_FILENAME;
-        let tinc_pid = Self::get_tinc_pid(&pid_file)?;
-
         let mut res1 = Command::new("ps")
             .arg("-aux")
             .stdout(Stdio::piped())

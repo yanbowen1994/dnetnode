@@ -46,6 +46,7 @@ impl Mqtt {
         }
     }
 
+    // TODO Error handle.
     pub fn run(self) -> Result<()> {
         let (mut mqtt_client, notifications) =
             MqttClient::start(self.mqtt_options.clone())

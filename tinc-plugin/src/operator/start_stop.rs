@@ -6,7 +6,11 @@ impl TincOperator {
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
                 match self.check_tinc_listen() {
-                    Ok(_) => self.stop_tinc()?,
+                    Ok(_) => {
+                        if let Err(Error::StopTincError) = self.stop_tinc() {
+                            return Err(Error::StopTincError);
+                        }
+                    },
                     Err(_) => (),
                 }
             }
@@ -34,20 +38,17 @@ impl TincOperator {
         ];
 
         let tinc_debug_level = format!("{}", self.tinc_settings.tinc_debug_level);
+        let log_file = self.tinc_settings.tinc_home.clone() + "tinc.log";
         if self.tinc_settings.tinc_debug_level != 0 {
             args.push("-d");
             args.push(&tinc_debug_level);
             args.push("--logfile");
-            args.push(&(self.tinc_settings.tinc_home.clone() + "tinc.log"));
+            args.push(&log_file);
         }
 
         let duct_handle: duct::Expression = duct::cmd(
             &(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME),
-            vec![
-                &conf_tinc_home[..],
-                &conf_pidfile[..],
-                "--no-detach",
-            ])
+            args)
             .unchecked();
 
         let tinc_handle = duct_handle.stderr_capture().stdout_null().start()
@@ -75,7 +76,7 @@ impl TincOperator {
                     .lock()
                     .unwrap()
                     .as_ref()
-                    .ok_or(Error::StopTincError)
+                    .ok_or(Error::TincNeverStart)
                     .and_then(|child| {
                         child.kill().map_err(|_| Error::StopTincError)?;
                         // clean out put.
@@ -91,7 +92,7 @@ impl TincOperator {
             }
         #[cfg(any(target_arch = "arm", feature = "router_debug"))]
             {
-                let child = Command::new("killall").arg("tincd").spawn();
+                let child = std::process::Command::new("killall").arg("tincd").spawn();
                 let _ = child.and_then(|mut child| {
                     let _ = child.wait();
                     Ok(())

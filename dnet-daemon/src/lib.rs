@@ -11,6 +11,7 @@ mod cmd_api;
 pub mod info;
 pub mod tinc_manager;
 pub mod daemon;
+mod daemon_event_handle;
 mod logging;
 pub mod rpc;
 pub mod settings;

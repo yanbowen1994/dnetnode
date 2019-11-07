@@ -28,6 +28,7 @@ pub struct TeamMember {
     pub wan:            String,
     pub proxy_ip:       Vec<IpAddr>,
     pub status:         u32,
+//    pub is_self:        bool,
 }
 
 // mask CIDR.

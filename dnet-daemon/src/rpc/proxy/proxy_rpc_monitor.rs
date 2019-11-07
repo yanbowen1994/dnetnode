@@ -6,7 +6,7 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::settings::get_settings;
 use crate::tinc_manager::TincOperator;
-use crate::rpc::rpc_cmd::{RpcCmd, RpcProxyCmd};
+use crate::rpc::rpc_cmd::{RpcEvent, RpcProxyCmd};
 
 use super::web_server;
 use super::RpcClient;
@@ -28,21 +28,21 @@ pub struct RpcMonitor {
 }
 
 impl RpcTrait for RpcMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd> {
-        let (rpc_cmd_tx, rpc_cmd_rx) = mpsc::channel();
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcEvent> {
+        let (rpc_tx, rpc_rx) = mpsc::channel();
         let client = RpcClient::new();
         RpcMonitor {
             client,
             daemon_event_tx,
-        }.start_monitor(rpc_cmd_rx);
-        return rpc_cmd_tx;
+        }.start_monitor(rpc_rx);
+        return rpc_tx;
     }
 }
 
 impl RpcMonitor {
-    fn start_monitor(self, rpc_cmd_rx: Receiver<RpcCmd>) {
+    fn start_monitor(self, rpc_rx: Receiver<RpcEvent>) {
         let web_server_tx = self.daemon_event_tx.clone();
-        thread::spawn(move || Self::cmd_handle(rpc_cmd_rx));
+        thread::spawn(move || Self::cmd_handle(rpc_rx));
         thread::spawn(move ||
             web_server(Arc::new(Mutex::new(
                 TincOperator::new())),
@@ -52,10 +52,10 @@ impl RpcMonitor {
         thread::spawn(||self.run());
     }
 
-    fn cmd_handle(rpc_cmd_rx: mpsc::Receiver<RpcCmd>) {
-        while let Ok(rpc_cmd) = rpc_cmd_rx.recv() {
+    fn cmd_handle(rpc_rx: mpsc::Receiver<RpcEvent>) {
+        while let Ok(rpc_cmd) = rpc_rx.recv() {
             match rpc_cmd {
-                RpcCmd::Proxy(cmd) => {
+                RpcEvent::Proxy(cmd) => {
                     match cmd {
                         RpcProxyCmd::HostStatusChange(host_status_change) => {
                             report_host_status_change(host_status_change);

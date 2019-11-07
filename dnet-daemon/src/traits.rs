@@ -3,14 +3,14 @@ use std::sync::mpsc;
 use dnet_types::response::Response;
 
 use crate::daemon::{DaemonEvent, TunnelCommand};
-use crate::rpc::rpc_cmd::RpcCmd;
+use crate::rpc::rpc_cmd::RpcEvent;
 
 pub enum RpcRequest {
     Status,
 }
 
 pub trait RpcTrait {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcCmd>;
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcEvent>;
 }
 
 pub trait InfoTrait {

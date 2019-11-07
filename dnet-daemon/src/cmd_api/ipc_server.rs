@@ -25,6 +25,7 @@ use crate::mpsc::IntoSender;
 use crate::settings::Settings;
 use dnet_types::team::Team;
 use dnet_types::tinc_host_status_change::HostStatusChange;
+use dnet_types::user::User;
 
 /// FIXME(linus): This is here just because the futures crate has deprecated it and jsonrpc_core
 /// did not introduce their own yet (https://github.com/paritytech/jsonrpc/pull/196).
@@ -55,6 +56,9 @@ build_rpc_trait! {
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
 
+        #[rpc(meta, name = "login")]
+        fn login(&self, Self::Metadata, User) -> BoxFuture<Response, Error>;
+
         #[rpc(meta, name = "host_status_change")]
         fn host_status_change(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
     }
@@ -83,6 +87,8 @@ pub enum ManagementCommand {
     GroupJoin(OneshotSender<Response>, String),
 
     HostStatusChange(OneshotSender<()>, HostStatusChange),
+
+    Login(OneshotSender<Response>, User),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -243,6 +249,14 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
+    fn login(&self, _: Self::Metadata, user: User) -> BoxFuture<Response, Error> {
+        log::debug!("management interface group list");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::Login(tx, user))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
 
     fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Option<Team>, Error> {
         log::debug!("management interface group info");

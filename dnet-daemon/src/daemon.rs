@@ -11,11 +11,13 @@ use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
-use crate::settings::get_settings;
+use crate::settings::{get_settings, get_mut_settings};
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
-use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd, RpcProxyCmd};
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
+use std::sync::mpsc::{channel, Sender};
+use super::daemon_event_handle;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -78,7 +80,7 @@ pub struct Daemon {
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    rpc_command_tx:         mpsc::Sender<RpcCmd>,
+    rpc_command_tx:         mpsc::Sender<RpcEvent>,
 }
 
 impl Daemon {
@@ -93,7 +95,8 @@ impl Daemon {
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
-        Self::start_management_interface(daemon_event_tx.clone())?;
+        let event_broadcaster = Self::start_management_interface(daemon_event_tx.clone())?;
+//        event_broadcaster.
 
         TincOperator::new().init()
             .map_err(Error::TunnelInit)?;
@@ -190,7 +193,7 @@ impl Daemon {
     fn handle_tunnel_connected(&mut self) {
         self.status.tunnel = TunnelState::Connected;
         if get_settings().common.mode == RunMode::Client {
-            let _ =self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::StartHeartbeat));
+            let _ =self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
         }
     }
 
@@ -208,7 +211,7 @@ impl Daemon {
                 else {
 //              TODO async
                     let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                    let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+                    let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
 
                     if let Ok(rpc_res) = rpc_response_rx.recv() {
                         if rpc_res.code == 200 {
@@ -261,7 +264,7 @@ impl Daemon {
 
             ManagementCommand::GroupJoin(tx, team_id) => {
                 let (res_tx, res_rx) = mpsc::channel();
-                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
+                let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
                 thread::spawn(move || {
                     let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
                         Ok(res) => res,
@@ -269,6 +272,11 @@ impl Daemon {
                     };
                     let _ = Self::oneshot_send(tx, response, "");
                 });
+            }
+
+            ManagementCommand::Login(tx, user) => {
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(move ||daemon_event_handle::handle_login(tx, user, rpc_command_tx));
             }
 
             ManagementCommand::HostStatusChange(tx, host_status_change) => {
@@ -286,7 +294,7 @@ impl Daemon {
                 }
 
                 let _ = self.rpc_command_tx.send(
-                    RpcCmd::Proxy(
+                    RpcEvent::Proxy(
                         RpcProxyCmd::HostStatusChange(host_status_change)
                     )
                 );
@@ -327,7 +335,7 @@ impl Daemon {
         }
     }
 
-    fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
+    pub fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
         if tx.send(t).is_err() {
             warn!("Unable to send {} to management interface client", msg);
         }

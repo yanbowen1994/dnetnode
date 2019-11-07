@@ -341,8 +341,7 @@ pub fn get_settings() -> &'static Settings {
     }
 }
 
-// Todo client ipc client set config.
-pub fn _get_mut_settings() ->  &'static mut Settings {
+pub fn get_mut_settings() ->  &'static mut Settings {
     unsafe {
         if EL == 0 as *mut _ {
             panic!("Get settings instance, before init");

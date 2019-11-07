@@ -184,7 +184,10 @@ impl MonitorInner {
                 error!("check tinc process: check failed. error:{:?}", err);
             }
         }
+    }
 
+    fn exec_restart(&mut self) {
+        let mut tinc = TincOperator::new();
         let mut i = 1;
         loop {
             let result;

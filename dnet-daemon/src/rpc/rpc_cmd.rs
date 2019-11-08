@@ -11,7 +11,7 @@ pub enum RpcEvent {
 pub enum RpcClientCmd {
     HeartbeatStart,
     Stop,
-    RestartRpcConnect,
+    RestartRpcConnect(Sender<bool>),
     JoinTeam(String, Sender<Response>),
     ReportDeviceSelectProxy(Sender<Response>),
 }

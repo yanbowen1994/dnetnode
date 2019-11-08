@@ -59,8 +59,9 @@ impl RpcTrait for RpcMonitor {
 
 impl RpcMonitor {
     fn start_monitor(self) {
-        let mqtt = rpc_mqtt::Mqtt::new(self.daemon_event_tx.clone());
-        thread::spawn(|| {
+        let daemon_event_tx = self.daemon_event_tx.clone();
+        thread::spawn(move || {
+            let mqtt = rpc_mqtt::Mqtt::new(daemon_event_tx);
             let _ = mqtt.run();
         });
         thread::spawn(|| self.start_cmd_recv());
@@ -68,7 +69,7 @@ impl RpcMonitor {
 
     // If return false restart rpc connect.
     fn start_cmd_recv(mut self) {
-        let mut executor_tx = Some(Self::start_executor(self.rpc_tx.clone()));
+        let mut executor_tx: Option<mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>> = None;
 
         match self.rpc_rx.recv().unwrap() {
             RpcEvent::Client(cmd) => {
@@ -76,7 +77,7 @@ impl RpcMonitor {
                     RpcClientCmd::HeartbeatStart => {
                         self.run_status = RunStatus::SendHearbeat;
                         if let Some(executor_tx) = executor_tx {
-                            executor_tx.send((ExecutorCmd::Heartbeat, None));
+                            let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
                         }
                     },
 
@@ -85,9 +86,11 @@ impl RpcMonitor {
                         executor_tx = None;
                     }
 
-                    RpcClientCmd::RestartRpcConnect => {
+                    RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
+                        info!("restart rpc connect");
                         executor_tx = Some(Self::restart_executor(
                             self.rpc_tx.clone(), executor_tx));
+                        let _ = rpc_restart_tx.send(true);
                     },
 
                     #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
@@ -123,7 +126,7 @@ impl RpcMonitor {
     {
         let executor = Executor::new(rpc_tx.clone());
         let executor_tx = executor.executor_tx.clone();
-        executor.start_monitor();
+        executor.spawn();
         executor_tx
     }
 
@@ -133,7 +136,7 @@ impl RpcMonitor {
         if let Some(tx) = executor_tx {
             let (stop_tx, stop_rx) = mpsc::channel();
             if let Ok(_) = tx.send((ExecutorCmd::Stop, Some(stop_tx))) {
-                stop_rx.recv();
+                let _ = stop_rx.recv();
             }
         }
     }
@@ -161,6 +164,10 @@ impl Executor {
             executor_tx,
             rpc_tx,
         }
+    }
+
+    fn spawn(mut self) {
+        thread::spawn(||self.start_monitor());
     }
 
     fn start_monitor(mut self) {

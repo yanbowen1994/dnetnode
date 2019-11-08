@@ -113,6 +113,10 @@ impl DaemonRpcClient {
         self.call("group_join", &team_id)
     }
 
+    pub fn login(&mut self, user: String) -> Result<Response> {
+        self.call("login", &user)
+    }
+
     pub fn host_status_change(&mut self, host_status_change: String) -> Result<()> {
         self.call("host_status_change", &host_status_change)
     }

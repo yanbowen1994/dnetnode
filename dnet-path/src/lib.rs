@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 extern crate dirs;
-#[macro_use]
 extern crate log;
 
 pub fn home_dir(linux_path: Option<&str>) -> Option<PathBuf> {

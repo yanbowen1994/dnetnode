@@ -14,6 +14,7 @@ use crate::settings::get_settings;
 use crate::settings::default_settings::TINC_INTERFACE;
 use crate::info::get_info;
 use super::{Error, Result};
+use std::time::Duration;
 
 
 pub struct Mqtt {
@@ -29,8 +30,18 @@ impl Mqtt {
 
         let reconnection_options = ReconnectOptions::Always(10);
 
-        let username = get_settings().common.username.clone();
-        let password = get_settings().common.password.clone();
+        let mut username;
+        let mut password;
+        loop {
+            username = get_settings().common.username.clone();
+            password = get_settings().common.password.clone();
+            if !username.is_empty() {
+                break
+            }
+            else {
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        }
 
         let mqtt_user_opt = SecurityOptions::UsernamePassword(username.clone(), password);
 
@@ -54,6 +65,7 @@ impl Mqtt {
         let username = get_settings().common.username.clone();
         mqtt_client.subscribe(&("vlan/".to_owned() + &username), QoS::AtLeastOnce)
             .map_err(|_|Error::mqtt_client_error)?;
+//        mqtt_client.shutdown().unwrap();
 
         loop {
             if let Ok(notification) = notifications.recv() {

@@ -167,7 +167,7 @@ impl Daemon {
                     .map_err(|_| {
                         error!("DaemonInnerCmd::{:?} exec failed. error: Respones recv timeout.", cmd.clone())
                     });
-            }
+            },
             DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
             }

@@ -323,7 +323,7 @@ impl RpcClient {
         debug!("proxy_heart_beat - response code: {}",res.status().as_u16());
 
         if res.status().as_u16() == 200 {
-            let res_data = &res.text().map_err(Error::Reqwest)?;;
+            let res_data = &res.text().map_err(Error::Reqwest)?;
             debug!("proxy_heart_beat - response data: {:?}", res_data);
 
             let recv: Recv = serde_json::from_str(&res_data)

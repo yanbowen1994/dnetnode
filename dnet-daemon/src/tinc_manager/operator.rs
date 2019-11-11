@@ -6,7 +6,7 @@ use std::str::FromStr;
 use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator, TincOperatorError, TincTools, TincSettings};
 use dnet_types::settings::RunMode;
 
-use crate::info::get_info;
+use crate::info::{get_info, get_mut_info};
 use crate::settings::get_settings;
 use crate::settings::default_settings::TINC_INTERFACE;
 
@@ -52,6 +52,8 @@ impl TincOperator {
     pub fn start_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
         PluginTincOperator::mut_instance().start_tinc()?;
+        let now = chrono::Utc::now().to_string();
+        get_mut_info().lock().unwrap().tinc_info.last_runtime = Some(now);
         return Ok(());
     }
 
@@ -155,7 +157,10 @@ impl TincOperator {
 
     pub fn restart_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
-        PluginTincOperator::mut_instance().restart_tinc()
+        PluginTincOperator::mut_instance().restart_tinc()?;
+        let now = chrono::Utc::now().to_string();
+        get_mut_info().lock().unwrap().tinc_info.last_runtime = Some(now);
+        Ok(())
     }
 
     /// 添加子设备

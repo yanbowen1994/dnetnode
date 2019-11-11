@@ -11,12 +11,11 @@ use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
-use crate::settings::{get_settings, get_mut_settings};
+use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
-use std::sync::mpsc::{channel, Sender};
 use super::daemon_event_handle;
 
 pub type Result<T> = std::result::Result<T, Error>;

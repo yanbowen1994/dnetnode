@@ -17,6 +17,7 @@ pub struct TincInfo {
     pub edges:          u32,
     pub nodes:          u32,
     pub connect_to:     Vec<ConnectTo>,
+    pub last_runtime:       Option<String>,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -30,6 +31,7 @@ impl TincInfo {
             connections:    0,
             edges:          0,
             nodes:          0,
+            last_runtime:   None,
             tinc_home,
             connect_to:     vec![],
         }

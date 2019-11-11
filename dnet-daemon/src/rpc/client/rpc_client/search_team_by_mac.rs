@@ -9,7 +9,7 @@ use super::types::DeviceId;
 // if return true restart tunnel.
 pub(super) fn search_team_by_mac() -> Result<bool> {
     let url    = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/searchteambymac";;
+        + "/vppn/api/v2/client/searchteambymac";
     let device_id;
     let cookie;
     {

@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use dnet_types::response::Response;
 
-use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
@@ -12,7 +12,6 @@ use crate::info::get_mut_info;
 use super::rpc_client::Error as RpcError;
 use super::RpcClient;
 use super::rpc_client;
-use super::rpc_mqtt;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -60,10 +59,6 @@ impl RpcTrait for RpcMonitor {
 impl RpcMonitor {
     fn start_monitor(self) {
         let daemon_event_tx = self.daemon_event_tx.clone();
-        thread::spawn(move || {
-            let mqtt = rpc_mqtt::Mqtt::new(daemon_event_tx);
-            let _ = mqtt.run();
-        });
         thread::spawn(|| self.start_cmd_recv());
     }
 

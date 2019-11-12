@@ -14,8 +14,9 @@ use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
-use crate::rpc::rpc_cmd::{RpcCmd, RpcClientCmd, RpcProxyCmd};
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
+use super::daemon_event_handle;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -78,7 +79,7 @@ pub struct Daemon {
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
     status:                 State,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    rpc_command_tx:         mpsc::Sender<RpcCmd>,
+    rpc_command_tx:         mpsc::Sender<RpcEvent>,
 }
 
 impl Daemon {
@@ -93,7 +94,8 @@ impl Daemon {
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
-        Self::start_management_interface(daemon_event_tx.clone())?;
+        let event_broadcaster = Self::start_management_interface(daemon_event_tx.clone())?;
+//        event_broadcaster.
 
         TincOperator::new().init()
             .map_err(Error::TunnelInit)?;
@@ -164,7 +166,7 @@ impl Daemon {
                     .map_err(|_| {
                         error!("DaemonInnerCmd::{:?} exec failed. error: Respones recv timeout.", cmd.clone())
                     });
-            }
+            },
             DaemonEvent::ManagementCommand(cmd) => {
                 self.handle_ipc_command_event(cmd);
             }
@@ -190,7 +192,7 @@ impl Daemon {
     fn handle_tunnel_connected(&mut self) {
         self.status.tunnel = TunnelState::Connected;
         if get_settings().common.mode == RunMode::Client {
-            let _ =self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::StartHeartbeat));
+            let _ =self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
         }
     }
 
@@ -205,10 +207,11 @@ impl Daemon {
                     || self.status.tunnel == TunnelState::Connected {
                     Response::internal_error().set_msg("Invalid command. Currently connected.".to_owned())
                 }
-                else {
+                else if self.status.rpc == RpcState::Connected {
 //              TODO async
                     let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                    let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+                    let _ = self.rpc_command_tx.send(
+                        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
 
                     if let Ok(rpc_res) = rpc_response_rx.recv() {
                         if rpc_res.code == 200 {
@@ -222,7 +225,11 @@ impl Daemon {
                     else {
                         Response::internal_error().set_msg("Exec failed.".to_owned())
                     }
+                }
+                else {
+                    Response::internal_error().set_msg("NotLogIn.".to_owned())
                 };
+
                 let _ = Self::oneshot_send(tx, res, "");
             }
 
@@ -261,7 +268,7 @@ impl Daemon {
 
             ManagementCommand::GroupJoin(tx, team_id) => {
                 let (res_tx, res_rx) = mpsc::channel();
-                let _ = self.rpc_command_tx.send(RpcCmd::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
+                let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
                 thread::spawn(move || {
                     let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
                         Ok(res) => res,
@@ -269,6 +276,11 @@ impl Daemon {
                     };
                     let _ = Self::oneshot_send(tx, response, "");
                 });
+            }
+
+            ManagementCommand::Login(tx, user) => {
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(move ||daemon_event_handle::handle_login(tx, user, rpc_command_tx));
             }
 
             ManagementCommand::HostStatusChange(tx, host_status_change) => {
@@ -286,7 +298,7 @@ impl Daemon {
                 }
 
                 let _ = self.rpc_command_tx.send(
-                    RpcCmd::Proxy(
+                    RpcEvent::Proxy(
                         RpcProxyCmd::HostStatusChange(host_status_change)
                     )
                 );
@@ -327,7 +339,7 @@ impl Daemon {
         }
     }
 
-    fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
+    pub fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
         if tx.send(t).is_err() {
             warn!("Unable to send {} to management interface client", msg);
         }

@@ -44,10 +44,10 @@ impl Command for Group {
             self.group_list()?;
         } else if let Some(set_matches) = matches.subcommand_matches("info") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
-            self.group_join(team_id);
+            self.group_info(team_id)?;
         } else if let Some(set_matches) = matches.subcommand_matches("join") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
-            self.group_join(team_id);
+            self.group_join(team_id)?;
         } else {
             unreachable!("No account command given");
         }

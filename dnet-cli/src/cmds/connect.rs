@@ -16,8 +16,9 @@ impl Command for Connect {
 
     fn run(&self, _matches: &clap::ArgMatches<'_>) -> Result<()> {
         let mut ipc = new_ipc_client()?;
-        if let Err(e) = ipc.tunnel_connect() {
-            eprintln!("{:?}", e);
+        match ipc.tunnel_connect() {
+            Ok(x) => println!("{:?}", x),
+            Err(e) => println!("{:?}", e),
         }
         Ok(())
     }

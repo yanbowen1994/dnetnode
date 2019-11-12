@@ -25,6 +25,7 @@ use crate::mpsc::IntoSender;
 use crate::settings::Settings;
 use dnet_types::team::Team;
 use dnet_types::tinc_host_status_change::HostStatusChange;
+use dnet_types::user::User;
 
 /// FIXME(linus): This is here just because the futures crate has deprecated it and jsonrpc_core
 /// did not introduce their own yet (https://github.com/paritytech/jsonrpc/pull/196).
@@ -55,6 +56,9 @@ build_rpc_trait! {
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
 
+        #[rpc(meta, name = "login")]
+        fn login(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
+
         #[rpc(meta, name = "host_status_change")]
         fn host_status_change(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
     }
@@ -83,6 +87,8 @@ pub enum ManagementCommand {
     GroupJoin(OneshotSender<Response>, String),
 
     HostStatusChange(OneshotSender<()>, HostStatusChange),
+
+    Login(OneshotSender<Response>, User),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -142,13 +148,13 @@ pub struct ManagementInterfaceEventBroadcaster {
 impl EventListener for ManagementInterfaceEventBroadcaster {
     /// Sends a new state update to all `new_state` subscribers of the management interface.
     fn notify_new_state(&self, new_state: TunnelState) {
-        log::debug!("Broadcasting new state: {:?}", new_state);
+        log::info!("Broadcasting new state: {:?}", new_state);
         self.notify(DaemonBroadcast::TunnelState(new_state));
     }
 
     /// Sends settings to all `settings` subscribers of the management interface.
     fn notify_settings(&self, settings: Settings) {
-        log::debug!("Broadcasting new settings");
+        log::info!("Broadcasting new settings");
         self.notify(DaemonBroadcast::Settings(settings.into()));
     }
 }
@@ -198,7 +204,7 @@ for ManagementInterface<T>
     type Metadata = Meta;
 
     fn tunnel_connect(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("management interface tunnel connect");
+        log::info!("management interface tunnel connect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::TunnelConnect(tx))
@@ -208,7 +214,7 @@ for ManagementInterface<T>
 
     fn tunnel_disconnect(&self,
                          _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("management interface tunnel disconnect");
+        log::info!("management interface tunnel disconnect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx))
@@ -217,7 +223,7 @@ for ManagementInterface<T>
     }
 
     fn shutdown(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
-        log::debug!("management interface shutdown command.");
+        log::info!("management interface shutdown command.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::Shutdown(tx))
@@ -226,7 +232,7 @@ for ManagementInterface<T>
     }
 
     fn status(&self, _: Self::Metadata) -> BoxFuture<State, Error> {
-        log::debug!("management interface get status.");
+        log::info!("management interface get status.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::State(tx))
@@ -235,7 +241,7 @@ for ManagementInterface<T>
     }
 
     fn group_list(&self, _: Self::Metadata) -> BoxFuture<Vec<Team>, Error> {
-        log::debug!("management interface group list");
+        log::info!("management interface group list");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupList(tx))
@@ -243,9 +249,18 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
+    fn login(&self, _: Self::Metadata, user: String) -> BoxFuture<Response, Error> {
+        log::info!("management interface login");
+        let user = serde_json::from_str(&user).unwrap();
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::Login(tx, user))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
 
     fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Option<Team>, Error> {
-        log::debug!("management interface group info");
+        log::info!("management interface group info");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupInfo(tx, team_id))
@@ -254,7 +269,7 @@ for ManagementInterface<T>
     }
 
     fn group_join(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
-        log::debug!("management interface group join.");
+        log::info!("management interface group join.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupJoin(tx, team_id))
@@ -265,7 +280,7 @@ for ManagementInterface<T>
     fn host_status_change(&self, _: Self::Metadata, host_status_change: String)
         -> BoxFuture<(), Error>
     {
-        log::debug!("management interface host status change.");
+        log::info!("management interface host status change.");
 
         let host_status_change = serde_json::from_str(&host_status_change).unwrap();
         let (tx, rx) = sync::oneshot::channel();

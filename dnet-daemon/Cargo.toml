@@ -12,8 +12,8 @@ path = "src/main.rs"
 router_debug = ["router-plugin"]
 
 [dependencies]
-actix = "0.7"
-actix-web = { version = "0.7", features=["ssl"] }
+actix = "0.8.3"
+actix-web = { version = "1.0.8", features = ["ssl"] }
 bytes = "0.4"
 clap = "^2.32"
 chrono = "0.4.6"
@@ -31,14 +31,7 @@ reqwest = "0.9.22"
 serde = "^1.0"
 serde_json = "^1.0"
 serde_derive = "^1.0"
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
 simple-signal = "1.1"
-
-[target.'cfg(windows)'.dependencies]
-ctrlc = "3.0"
-
 rumqtt = "0.30"
 tokio = "0.1"
 tokio-core = "0.1"
@@ -60,15 +53,20 @@ pinger = { path = "../pinger" }
 sandbox = { path = "../sandbox" }
 tinc-plugin = { path = "../tinc-plugin" }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+simple-signal = "1.1"
+
+[target.'cfg(windows)'.dependencies]
+ctrlc = "3.0"
+ceviche = "*"
+
 [dependencies.router-plugin]
 path = "../router-plugin"
 optional = true
 
 [target.arm-unknown-linux-musleabihf.dependencies]
 router-plugin = { path = "../router-plugin" }
-
-[target.'cfg(target_os="windows")'.dependencies]
-ceviche = "*"
 
 [target.'cfg(target_os="macos")'.dependencies]
 ceviche = "*"

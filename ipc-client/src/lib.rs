@@ -89,7 +89,7 @@ impl DaemonRpcClient {
         self.call("status", &NO_ARGS)
     }
 
-    pub fn tunnel_connect(&mut self) -> Result<()> {
+    pub fn tunnel_connect(&mut self) -> Result<Response> {
         self.call("tunnel_connect", &NO_ARGS)
     }
 
@@ -111,6 +111,10 @@ impl DaemonRpcClient {
 
     pub fn group_join(&mut self, team_id: String) -> Result<Response> {
         self.call("group_join", &team_id)
+    }
+
+    pub fn login(&mut self, user: String) -> Result<Response> {
+        self.call("login", &user)
     }
 
     pub fn host_status_change(&mut self, host_status_change: String) -> Result<()> {

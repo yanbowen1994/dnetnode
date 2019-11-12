@@ -12,6 +12,9 @@ pub use self::disconnect::Disconnect;
 mod group;
 pub use self::group::Group;
 
+mod login;
+pub use self::login::Login;
+
 mod shutdown;
 pub use self::shutdown::Shutdown;
 
@@ -28,6 +31,7 @@ pub fn get_commands() -> HashMap<&'static str, Box<dyn Command>> {
         Box::new(Connect),
         Box::new(Disconnect),
         Box::new(Group),
+        Box::new(Login),
         Box::new(Shutdown),
         Box::new(Status),
     ];

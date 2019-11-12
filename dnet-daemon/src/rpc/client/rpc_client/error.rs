@@ -75,4 +75,10 @@ pub enum Error {
 
     #[error(display = "InfoError.")]
     InfoError(#[error(cause)] InfoError),
+
+    #[error(display = "Unauthorized.")]
+    Unauthorized,
+
+    #[error(display = "User Not Exist.")]
+    UserNotExist,
 }

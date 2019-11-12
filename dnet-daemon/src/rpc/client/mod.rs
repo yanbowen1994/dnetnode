@@ -1,6 +1,7 @@
 mod client_rpc_monitor;
+mod error;
 mod rpc_client;
-mod rpc_mqtt;
 
-pub use rpc_client::RpcClient;
+pub use rpc_client::{RpcClient, Error as SubError};
 pub use client_rpc_monitor::RpcMonitor;
+pub use error::Error;

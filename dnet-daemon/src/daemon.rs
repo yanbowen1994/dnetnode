@@ -94,8 +94,7 @@ impl Daemon {
 
         let _ = crate::set_shutdown_signal_handler(daemon_event_tx.clone());
 
-        let event_broadcaster = Self::start_management_interface(daemon_event_tx.clone())?;
-//        event_broadcaster.
+        let _event_broadcaster = Self::start_management_interface(daemon_event_tx.clone())?;
 
         TincOperator::new().init()
             .map_err(Error::TunnelInit)?;

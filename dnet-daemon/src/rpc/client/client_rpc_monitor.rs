@@ -10,7 +10,6 @@ use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use crate::info::get_mut_info;
 use super::RpcClient;
-use super::super::Error as RpcError;
 use super::rpc_client::{self, Error as SubError};
 use super::error::{Error as ClientError, Result};
 
@@ -49,7 +48,6 @@ impl RpcTrait for RpcMonitor {
 
 impl RpcMonitor {
     fn start_monitor(self) {
-        let daemon_event_tx = self.daemon_event_tx.clone();
         thread::spawn(|| self.start_cmd_recv());
     }
 
@@ -174,11 +172,11 @@ impl Executor {
         }
     }
 
-    fn spawn(mut self) {
+    fn spawn(self) {
         thread::spawn(||self.start_monitor());
     }
 
-    fn start_monitor(mut self) {
+    fn start_monitor(self) {
         let timeout_millis: u32 = 1000;
         let mut init_success = false;
         let mut send_heartbeat = false;
@@ -207,7 +205,7 @@ impl Executor {
                 heartbeat_start = start;
                 if send_heartbeat {
                     if init_success {
-                        if let Err(e) = self.exec_heartbeat() {
+                        if let Err(_) = self.exec_heartbeat() {
                             init_success = false;
                         }
                     }

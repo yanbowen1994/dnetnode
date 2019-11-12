@@ -8,7 +8,7 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
-use crate::info::get_mut_info;
+use crate::info::{get_mut_info, get_info};
 use super::RpcClient;
 use super::rpc_client::{self, Error as SubError};
 use super::error::{Error as ClientError, Result};
@@ -55,6 +55,7 @@ impl RpcMonitor {
     fn start_cmd_recv(mut self) {
         let mut rpc_restart_tx_cache: Option<mpsc::Sender<Response>> = None;
         while let rpc_event = self.rpc_rx.recv().unwrap() {
+            info!("rpc_event {:?}", rpc_event);
             match rpc_event {
                 RpcEvent::Client(cmd) => {
                     match cmd {
@@ -70,7 +71,6 @@ impl RpcMonitor {
                         }
 
                         RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
-                            info!("restart rpc connect");
                             self.restart_executor();
                             rpc_restart_tx_cache = Some(rpc_restart_tx);
                         },
@@ -315,6 +315,9 @@ impl Executor {
         self.client.client_key_report()?;
         self.client.binding_device()?;
         self.client.search_user_team()?;
+        let connect_to = self.client.client_get_online_proxy()?;
+        let mut info = get_mut_info().lock().unwrap();
+        info.tinc_info.connect_to = connect_to;
         Ok(())
     }
 
@@ -325,6 +328,8 @@ impl Executor {
         self.client.search_team_by_mac()?;
         self.start_team()?;
         self.client.client_get_online_proxy()?;
+        let mut info = get_mut_info().lock().unwrap();
+        info.tinc_info.connect_to = connect_to;
         self.client.connect_team_broadcast()?;
         Ok(())
     }

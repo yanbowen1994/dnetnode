@@ -7,7 +7,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[allow(non_camel_case_types)]
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
-    #[error(display = "device_select_proxy_no_usable_proxy.")]
+    #[error(display = "device select proxy no usable proxy.")]
     device_select_proxy_no_usable_proxy,
 
     #[error(display = "device_select_proxy.")]

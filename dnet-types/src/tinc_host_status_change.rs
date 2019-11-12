@@ -1,4 +1,4 @@
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum HostStatusChange {
     TincUp,
     TincDown,

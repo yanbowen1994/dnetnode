@@ -191,7 +191,7 @@ impl Daemon {
     fn handle_tunnel_connected(&mut self) {
         self.status.tunnel = TunnelState::Connected;
         if get_settings().common.mode == RunMode::Client {
-            let _ =self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
+            let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
         }
     }
 
@@ -334,6 +334,7 @@ impl Daemon {
         }
 
         if tunnel_auto_connect {
+            info!("tunnel auto connect");
             self.send_tunnel_connect();
         }
     }

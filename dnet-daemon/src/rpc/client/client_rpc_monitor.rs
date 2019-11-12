@@ -181,7 +181,7 @@ impl Executor {
         let mut init_success = false;
         let mut send_heartbeat = false;
         let mut heartbeat_start = Instant::now() - Duration::from_secs(20);
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             let mut route_not_bound_sleep = Instant::now();
         loop {
             let start = Instant::now();
@@ -243,7 +243,7 @@ impl Executor {
                         }
                     }
 
-                #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+                #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
                     {
                         if Instant::now() - route_not_bound_sleep > Duration::from_secs(10) {
                             match self.init() {
@@ -318,7 +318,7 @@ impl Executor {
         Ok(())
     }
 
-    #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+    #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
     fn init(&self) -> std::result::Result<(), SubError> {
         self.client.client_login()?;
         self.client.client_key_report()?;
@@ -385,7 +385,7 @@ impl RpcMonitor {
     }
 }
 
-#[cfg(any(target_arch = "arm", feature = "router_debug"))]
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 impl RpcMonitor {
     // init means copy info.team to info.client.running_teams
     // use for client run as muti-team.

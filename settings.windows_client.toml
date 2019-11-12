@@ -1,0 +1,6 @@
+[common]
+home_path = "E:/dnet"
+log_level = "debug"
+log_dir = "E:/dnet"
+mode = "client"
+conductor_url = "https://api.vlan.cn"

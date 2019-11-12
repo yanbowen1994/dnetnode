@@ -98,7 +98,7 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
     route_infos
 }
 
-#[cfg(any(target_arch = "arm", feature = "router_debug"))]
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 pub fn parse_routing_table() -> Vec<RouteInfo> {
     String::from_utf8(Command::new("route").output().unwrap().stdout)
         .unwrap()

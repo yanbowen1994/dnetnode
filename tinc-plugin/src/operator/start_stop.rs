@@ -14,7 +14,7 @@ impl TincOperator {
                     Err(_) => (),
                 }
             }
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 let _ = self.stop_tinc();
             }
@@ -90,7 +90,7 @@ impl TincOperator {
                 std::mem::drop(handle);
                 Ok(())
             }
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 let child = std::process::Command::new("killall").arg("tincd").spawn();
                 let _ = child.and_then(|mut child| {
@@ -119,7 +119,7 @@ impl TincOperator {
                 }
                 Ok(())
             }
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 self.stop_tinc()?;
                 self.start_tinc()

@@ -2,7 +2,7 @@
 use std::thread::sleep;
 
 use reqwest::Response;
-#[cfg(any(target_arch = "arm", feature = "router_debug"))]
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 extern crate router_plugin;
 
 use tinc_plugin::ConnectTo;

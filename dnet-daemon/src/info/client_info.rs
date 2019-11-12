@@ -5,9 +5,9 @@ use mac_address::get_mac_address;
 use super::error::{Error, Result};
 use dnet_types::team::Team;
 
-#[cfg(any(target_arch = "arm", feature = "router_debug"))]
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 use router_plugin::device_info::DeviceInfo;
-#[cfg(any(target_arch = "arm", feature = "router_debug"))]
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 use crate::settings::get_settings;
 #[cfg(target_arch = "arm")]
 use router_plugin::get_sn;
@@ -23,14 +23,14 @@ pub struct ClientInfo {
     pub wan:            String,
     pub devicename:     String,
     pub running_teams:  Vec<Team>,
-    #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+    #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
     pub device_info:    DeviceInfo,
 }
 impl ClientInfo {
     pub fn new() -> Result<Self> {
         let device_type = Self::get_device_type();
         let client_info;
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 let device_uid = Self::get_uid(&device_type)?;
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;

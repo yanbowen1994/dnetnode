@@ -88,7 +88,7 @@ impl TincOperator {
             }
         }
 
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 let info = get_info().lock().unwrap();
                 let local_vip = info.client_info.device_info.lan.clone();

@@ -1,3 +1,8 @@
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use std::net::IpAddr;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use std::str::FromStr;
+
 use super::{Error, Result};
 
 pub struct TincTools;
@@ -90,7 +95,7 @@ impl TincTools {
 
             let mut res = String::from_utf8(res)
                 .map_err(|e|Error::GetDefaultGatewayError(e.to_string()))?;
-            for i in 0..5 {
+            for _ in 0..5 {
                 res = res.replace("    ", " ").replace("  ", " ");
             }
 

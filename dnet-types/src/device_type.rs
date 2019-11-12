@@ -30,7 +30,7 @@ impl From<u32> for DeviceType {
 
 impl DeviceType {
     pub fn get_device_type() -> Self {
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             return DeviceType::Router;
         #[cfg(not(target_arch = "arm"))]
             {

@@ -41,7 +41,7 @@ impl TincOperator {
                     }
                 }
             }
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 let mut res1 = Command::new("ps")
                     .stdout(Stdio::piped())

@@ -84,7 +84,7 @@ pub struct Daemon {
 
 impl Daemon {
     pub fn start() -> Result<Self> {
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("start dnet firewall config.");
                 router_plugin::firewall::start_firewall();
@@ -180,7 +180,7 @@ impl Daemon {
         let (res_tx, res_rx) = mpsc::channel::<Response>();
         let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
         let _ = res_rx.recv_timeout(Duration::from_secs(3));
-        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("stop dnet firewall config.");
                 router_plugin::firewall::stop_firewall();

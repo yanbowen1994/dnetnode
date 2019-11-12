@@ -26,7 +26,7 @@ pub enum Error {
     ParseSetting(#[error(cause)] SettingsError),
     #[error(display = "Can not create log dir.")]
     CreateLogDir(#[error(cause)] ::std::io::Error),
-    #[error(display = "Can not create log dir.")]
+    #[error(display = "Daemon Error.")]
     DaemonError(#[error(cause)] dnet_daemon::daemon::Error)
 }
 
@@ -144,7 +144,7 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
                 std::process::exit(1);
             }
         }
-    #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+    #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
         {
             if let Err(e) = init_logger(
                 log_level,

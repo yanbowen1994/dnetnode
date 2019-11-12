@@ -4,26 +4,15 @@ use std::time::{Duration, Instant};
 
 use dnet_types::response::Response;
 
-use crate::daemon::DaemonEvent;
+use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use crate::info::get_mut_info;
-use super::rpc_client::Error as RpcError;
 use super::RpcClient;
-use super::rpc_client;
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[allow(non_camel_case_types)]
-#[derive(err_derive::Error, Debug)]
-pub enum Error {
-    #[error(display = "Connection with conductor timeout")]
-    RpcTimeout,
-
-    #[error(display = "Connection with conductor timeout")]
-    TeamNotFound,
-}
+use super::super::Error as RpcError;
+use super::rpc_client::{self, Error as SubError};
+use super::error::{Error as ClientError, Result};
 
 #[derive(Eq, PartialEq)]
 enum RunStatus {
@@ -35,9 +24,10 @@ enum RunStatus {
 pub struct RpcMonitor {
     client:                     RpcClient,
     daemon_event_tx:            mpsc::Sender<DaemonEvent>,
-    rpc_rx:                 mpsc::Receiver<RpcEvent>,
-    rpc_tx:                 mpsc::Sender<RpcEvent>,
+    rpc_rx:                     mpsc::Receiver<RpcEvent>,
+    rpc_tx:                     mpsc::Sender<RpcEvent>,
     run_status:                 RunStatus,
+    executor_tx:                Option<mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>>,
 }
 
 impl RpcTrait for RpcMonitor {
@@ -51,6 +41,7 @@ impl RpcTrait for RpcMonitor {
             rpc_rx,
             rpc_tx: rpc_tx.clone(),
             run_status: RunStatus::Stop,
+            executor_tx: None,
         }.start_monitor();
         rpc_tx
     }
@@ -64,74 +55,96 @@ impl RpcMonitor {
 
     // If return false restart rpc connect.
     fn start_cmd_recv(mut self) {
-        let mut executor_tx: Option<mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>> = None;
+        let mut rpc_restart_tx_cache: Option<mpsc::Sender<Response>> = None;
+        while let rpc_event = self.rpc_rx.recv().unwrap() {
+            match rpc_event {
+                RpcEvent::Client(cmd) => {
+                    match cmd {
+                        RpcClientCmd::HeartbeatStart => {
+                            self.run_status = RunStatus::SendHearbeat;
+                            if let Some(executor_tx) = &self.executor_tx {
+                                let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
+                            }
+                        },
 
-        match self.rpc_rx.recv().unwrap() {
-            RpcEvent::Client(cmd) => {
-                match cmd {
-                    RpcClientCmd::HeartbeatStart => {
-                        self.run_status = RunStatus::SendHearbeat;
-                        if let Some(executor_tx) = executor_tx {
-                            let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
+                        RpcClientCmd::Stop => {
+                            self.stop_executor();
                         }
-                    },
 
-                    RpcClientCmd::Stop => {
-                        Self::stop_executor(executor_tx);
-                        executor_tx = None;
+                        RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
+                            info!("restart rpc connect");
+                            self.restart_executor();
+                            rpc_restart_tx_cache = Some(rpc_restart_tx);
+                        },
+
+                        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+                        RpcClientCmd::JoinTeam(team_id, res_tx) => {
+                            let response = self.handle_join_team(team_id);
+                            let _ = res_tx.send(response);
+                        },
+
+                        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+                        RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
+                            let response = self.handle_select_proxy();
+                            let _ = response_tx.send(response);
+                        },
                     }
-
-                    RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
-                        info!("restart rpc connect");
-                        executor_tx = Some(Self::restart_executor(
-                            self.rpc_tx.clone(), executor_tx));
-                        let _ = rpc_restart_tx.send(true);
-                    },
-
-                    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-                    RpcClientCmd::JoinTeam(team_id, res_tx) => {
-                        let response = self.handle_join_team(team_id);
-                        let _ = res_tx.send(response);
-                    },
-
-                    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-                    RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
-                        let response = self.handle_select_proxy();
-                        let _ = response_tx.send(response);
-                    },
                 }
+                RpcEvent::Executor(event) => {
+                    match event {
+                        ExecutorEvent::InitFinish => {
+                            if let Some(rpc_restart_tx) = &rpc_restart_tx_cache {
+                                let _ = rpc_restart_tx.send(Response::success());
+                            }
+                            let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
+                        },
+                        ExecutorEvent::InitFailed(e) => {
+                            let mut response = Response::internal_error();
+                            response = response.set_msg(e.to_string());
+                            if let Some(rpc_restart_tx) = &rpc_restart_tx_cache {
+                                let _ = rpc_restart_tx.send(response);
+                            }
+                            rpc_restart_tx_cache = None;
+                        },
+                        ExecutorEvent::NeedRestartTunnel => {
+                            if let Err(e) = self.daemon_event_tx.send(
+                                DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect))
+                            {
+                                error!("self.daemon_event_tx.send(\
+                                DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect)) {:?}", e)
+                            }
+                        }
+                    }
+                }
+                _ => ()
             }
-            _ => ()
         }
     }
 
-    fn restart_executor(rpc_tx: mpsc::Sender<RpcEvent>,
-                        executor_tx: Option<mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>>
-    ) -> mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)> {
-        if let Some(tx) = executor_tx {
-            let (stop_tx, stop_rx) = mpsc::channel();
-            let _ = tx.send((ExecutorCmd::Stop, Some(stop_tx)));
-            let _ = stop_rx.recv();
-        }
-        Self::start_executor(rpc_tx)
-    }
-
-    fn start_executor(rpc_tx: mpsc::Sender<RpcEvent>)
-        -> mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>
-    {
-        let executor = Executor::new(rpc_tx.clone());
-        let executor_tx = executor.executor_tx.clone();
-        executor.spawn();
-        executor_tx
-    }
-
-    fn stop_executor(
-        executor_tx: Option<mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>>
-    ) {
-        if let Some(tx) = executor_tx {
+    fn restart_executor(&mut self) {
+        if let Some(tx) = &self.executor_tx {
             let (stop_tx, stop_rx) = mpsc::channel();
             if let Ok(_) = tx.send((ExecutorCmd::Stop, Some(stop_tx))) {
                 let _ = stop_rx.recv();
+            }
+        }
+        self.start_executor()
+    }
+
+    fn start_executor(&mut self)
+    {
+        let executor = Executor::new(self.rpc_tx.clone());
+        let executor_tx = executor.executor_tx.clone();
+        executor.spawn();
+        self.executor_tx= Some(executor_tx);
+    }
+
+    fn stop_executor(&mut self) {
+        if let Some(tx) = &self.executor_tx {
+            let (stop_tx, stop_rx) = mpsc::channel();
+            if let Ok(_) = tx.send((ExecutorCmd::Stop, Some(stop_tx))) {
+                let _ = stop_rx.recv();
+                self.executor_tx = None;
             }
         }
     }
@@ -166,9 +179,10 @@ impl Executor {
     }
 
     fn start_monitor(mut self) {
-        let timeout_millis: u32 = HEARTBEAT_FREQUENCY_SEC * 1000;
+        let timeout_millis: u32 = 1000;
         let mut init_success = false;
         let mut send_heartbeat = false;
+        let mut heartbeat_start = Instant::now() - Duration::from_secs(20);
         #[cfg(any(target_arch = "arm", feature = "router_debug"))]
             let mut route_not_bound_sleep = Instant::now();
         loop {
@@ -189,26 +203,45 @@ impl Executor {
                     },
                 }
             }
+            if start - heartbeat_start > Duration::from_secs(HEARTBEAT_FREQUENCY_SEC as u64) {
+                heartbeat_start = start;
+                if send_heartbeat {
+                    if init_success {
+                        if let Err(e) = self.exec_heartbeat() {
+                            init_success = false;
+                        }
+                    }
 
-            if send_heartbeat {
-                if init_success {
-                    if let Err(e) = self.exec_heartbeat() {
-                        init_success = false;
+                    if init_success {
+                        if let Err(_) = self.exec_online_proxy() {
+                            init_success = false;
+                        }
                     }
                 }
-
-                if init_success {
-                    if let Err(_) = self.exec_online_proxy() {
-                        init_success = false;
-                    }
-                }
+                info!("Rpc Executor heartbeat.");
             }
 
             if !init_success {
                 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                     {
-                        if let Ok(_) = self.init() {
-                            init_success = true;
+                        match self.init() {
+                            Ok(_) => init_success = true,
+                            Err(e) => {
+                                let need_return = match &e {
+                                    SubError::Unauthorized => true,
+                                    SubError::UserNotExist => true,
+                                    _ => false,
+                                };
+                                if let Err(send_err) = self.rpc_tx.send(
+                                    RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {
+                                    error!("self.rpc_tx.send(\
+                                    RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
+                                    return;
+                                }
+                                if need_return {
+                                    return;
+                                }
+                            }
                         }
                     }
 
@@ -222,6 +255,12 @@ impl Executor {
                             }
                         }
                     }
+                if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
+                    return;
+                }
+                if init_success {
+                    info!("rpc init success");
+                }
             }
 
             if let Some(remaining) = Duration::from_millis(
@@ -243,7 +282,7 @@ impl Executor {
                 error!("Heart beat send failed.");
             }
             if Instant::now().duration_since(start) > Duration::from_secs(5) {
-                return Err(Error::RpcTimeout);
+                return Err(ClientError::RpcTimeout);
             }
             thread::sleep(Duration::from_millis(1000));
         }
@@ -266,14 +305,14 @@ impl Executor {
             }
 
             if Instant::now().duration_since(start) > Duration::from_secs(5) {
-                return Err(Error::RpcTimeout);
+                return Err(ClientError::RpcTimeout);
             }
             thread::sleep(Duration::from_millis(1000));
         }
     }
 
     #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-    fn init(&self) -> std::result::Result<(), RpcError> {
+    fn init(&self) -> std::result::Result<(), SubError> {
         self.client.client_login()?;
         self.client.client_key_report()?;
         self.client.binding_device()?;
@@ -282,7 +321,7 @@ impl Executor {
     }
 
     #[cfg(any(target_arch = "arm", feature = "router_debug"))]
-    fn init(&self) -> std::result::Result<(), RpcError> {
+    fn init(&self) -> std::result::Result<(), SubError> {
         self.client.client_login()?;
         self.client.client_key_report()?;
         self.client.search_team_by_mac()?;
@@ -333,7 +372,7 @@ impl RpcMonitor {
             Ok(())
         }
         else {
-            return Err(Error::TeamNotFound);
+            return Err(ClientError::TeamNotFound);
         }
     }
 

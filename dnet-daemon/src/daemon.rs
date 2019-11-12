@@ -207,10 +207,11 @@ impl Daemon {
                     || self.status.tunnel == TunnelState::Connected {
                     Response::internal_error().set_msg("Invalid command. Currently connected.".to_owned())
                 }
-                else {
+                else if self.status.rpc == RpcState::Connected {
 //              TODO async
                     let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                    let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+                    let _ = self.rpc_command_tx.send(
+                        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
 
                     if let Ok(rpc_res) = rpc_response_rx.recv() {
                         if rpc_res.code == 200 {
@@ -224,7 +225,11 @@ impl Daemon {
                     else {
                         Response::internal_error().set_msg("Exec failed.".to_owned())
                     }
+                }
+                else {
+                    Response::internal_error().set_msg("NotLogIn.".to_owned())
                 };
+
                 let _ = Self::oneshot_send(tx, res, "");
             }
 

@@ -14,15 +14,16 @@ pub fn handle_login(tx: oneshot::Sender<Response>, user: User, rpc_command_tx: m
     settings.common.username = user.name;
     settings.common.password = user.password;
 
-    info!("handle_login");
+    info!("handle_login send rpc cmd.");
     let response;
-    let (rpc_restart_tx, rpc_restart_rx) = mpsc::channel::<bool>();
+    let (rpc_restart_tx, rpc_restart_rx) = mpsc::channel::<Response>();
     if let Ok(_) = rpc_command_tx.send(
         RpcEvent::Client(RpcClientCmd::RestartRpcConnect(rpc_restart_tx))
     ) {
         response =
-            if let Ok(_) = rpc_restart_rx.recv_timeout(Duration::from_secs(10)) {
-                Response::success()
+            if let Ok(res) = rpc_restart_rx.recv_timeout(Duration::from_secs(10)) {
+                info!("handle_login {:?}", res);
+                res
             }
             else {
                 Response::exec_timeout()
@@ -31,7 +32,6 @@ pub fn handle_login(tx: oneshot::Sender<Response>, user: User, rpc_command_tx: m
     else {
         response = Response::internal_error();
     }
-
 
     let _ = Daemon::oneshot_send(tx, response, "");
 }

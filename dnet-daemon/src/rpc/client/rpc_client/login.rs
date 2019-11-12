@@ -25,11 +25,8 @@ pub(super) fn login() -> Result<()> {
                 error!("client_login - response data: {:?}", res_data);
                 Error::LoginParseJsonStr(e)
             })?;
-        if login.code != 200 {
-            error!("client_login - response data: {:?}", login.msg);
-            return Err(Error::LoginFailed(format!("{:?}", login.msg)));
-        }
-        else {
+
+        if login.code == 200 {
             let cookie = match res.cookies().next() {
                 Some(cookie) => cookie,
                 None => {
@@ -40,6 +37,18 @@ pub(super) fn login() -> Result<()> {
             let cookie_str = &("Set-Cookie=".to_string() + cookie_str);
             debug!("proxy_login - response cookie: {}", cookie_str);
             get_mut_info().lock().unwrap().client_info.cookie = cookie_str.to_string();
+        }
+        else if login.code == 401 {
+            error!("client_login - Unauthorized");
+            return Err(Error::Unauthorized);
+        }
+        else if login.code == 919 {
+            error!("client_login - Unauthorized");
+            return Err(Error::UserNotExist);
+        }
+        else {
+            error!("client_login - response data: code: {:?} msg:{:?}", login.code, login.msg);
+            return Err(Error::LoginFailed(format!("{:?}", login.msg)));
         }
 
         return Ok(());

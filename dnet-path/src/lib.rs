@@ -15,8 +15,6 @@ pub fn home_dir(linux_path: Option<&str>) -> Option<PathBuf> {
         {
             return dirs::home_dir();
         }
-
-    return Some(PathBuf::from("/opt/dnet"));
 }
 
 pub fn ipc_path() -> String {

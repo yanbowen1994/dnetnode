@@ -2,6 +2,9 @@ use std::sync::mpsc::Sender;
 use dnet_types::response::Response;
 use dnet_types::tinc_host_status_change::HostStatusChange;
 
+use super::error::Error;
+use super::client::SubError;
+
 pub enum RpcEvent {
     Client(RpcClientCmd),
     Proxy(RpcProxyCmd),
@@ -11,7 +14,7 @@ pub enum RpcEvent {
 pub enum RpcClientCmd {
     HeartbeatStart,
     Stop,
-    RestartRpcConnect(Sender<bool>),
+    RestartRpcConnect(Sender<Response>),
     JoinTeam(String, Sender<Response>),
     ReportDeviceSelectProxy(Sender<Response>),
 }
@@ -21,5 +24,7 @@ pub enum RpcProxyCmd {
 }
 
 pub enum ExecutorEvent {
+    InitFinish,
+    InitFailed(SubError),
     NeedRestartTunnel,
 }

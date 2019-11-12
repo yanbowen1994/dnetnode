@@ -7,8 +7,10 @@ extern crate bytes;
 
 pub mod client;
 pub mod proxy;
+pub mod error;
 mod http_post;
 mod rpc_monitor;
 pub mod rpc_cmd;
 
+pub use error::Error;
 pub use self::rpc_monitor::RpcMonitor;

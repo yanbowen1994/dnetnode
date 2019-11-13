@@ -89,12 +89,12 @@ impl DaemonRpcClient {
         self.call("status", &NO_ARGS)
     }
 
-    pub fn tunnel_connect(&mut self) -> Result<Response> {
-        self.call("tunnel_connect", &NO_ARGS)
+    pub fn tunnel_connect(&mut self, team_id: String) -> Result<Response> {
+        self.call("tunnel_connect", &team_id)
     }
 
-    pub fn tunnel_disconnect(&mut self) -> Result<()> {
-        self.call("tunnel_disconnect", &NO_ARGS)
+    pub fn tunnel_disconnect(&mut self, team_id: String) -> Result<()> {
+        self.call("tunnel_disconnect", &team_id)
     }
 
     pub fn shutdown(&mut self) -> Result<Response> {

@@ -2,7 +2,7 @@ use crate::settings::{get_settings, Settings};
 
 use super::{Error, Result};
 use super::post;
-use crate::info::get_mut_info;
+use crate::info::{get_mut_info, UserInfo};
 
 pub(super) fn login() -> Result<()> {
     let settings = get_settings();
@@ -36,7 +36,25 @@ pub(super) fn login() -> Result<()> {
             let cookie_str = cookie.value();
             let cookie_str = &("Set-Cookie=".to_string() + cookie_str);
             debug!("proxy_login - response cookie: {}", cookie_str);
-            get_mut_info().lock().unwrap().client_info.cookie = cookie_str.to_string();
+
+            info!("{:?}", login.data);
+
+            let mut info = get_mut_info().lock().unwrap();
+            if let Some(login_user) = login.data {
+                let name = Some(login_user.username);
+                let email = Some(login_user.useremail);
+                let photo = login_user.photo;
+
+                let user = UserInfo {
+                    name,
+                    email,
+                    photo,
+                };
+                info.user = user;
+            }
+
+            info.client_info.cookie = cookie_str.to_string();
+            std::mem::drop(info);
         }
         else if login.code == 401 {
             error!("client_login - Unauthorized");
@@ -93,7 +111,7 @@ pub struct LoginUser {
     pub userid:                         String,
     pub username:                       String,
     pub useremail:                      String,
-//    pub photo:                          Option<String>,
+    pub photo:                          Option<String>,
 //    pub devices:                        Option<Vec<Device>>,
     pub enable_autogroup:               bool,
     pub enable_autoothergroup:          bool,

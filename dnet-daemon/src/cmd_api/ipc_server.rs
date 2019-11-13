@@ -36,10 +36,10 @@ build_rpc_trait! {
     pub trait ManagementInterfaceApi {
         type Metadata;
         #[rpc(meta, name = "tunnel_connect")]
-        fn tunnel_connect(&self, Self::Metadata) -> BoxFuture<Response, Error>;
+        fn tunnel_connect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "tunnel_disconnect")]
-        fn tunnel_disconnect(&self, Self::Metadata) -> BoxFuture<Response, Error>;
+        fn tunnel_disconnect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "shutdown")]
         fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
@@ -66,13 +66,9 @@ build_rpc_trait! {
 
 /// Enum representing commands coming in on the management interface.
 pub enum ManagementCommand {
-    TunnelConnect(
-        OneshotSender<Response>,
-    ),
+    TunnelConnect(OneshotSender<Response>, String),
 
-    TunnelDisconnect(
-        OneshotSender<Response>,
-    ),
+    TunnelDisconnect(OneshotSender<Response>, String),
 
     /// Request the current state.
     State(OneshotSender<State>),
@@ -203,21 +199,24 @@ for ManagementInterface<T>
 {
     type Metadata = Meta;
 
-    fn tunnel_connect(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
+    fn tunnel_connect(&self, _: Self::Metadata, team_id: String)
+        -> BoxFuture<Response, Error>
+    {
         log::info!("management interface tunnel connect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelConnect(tx))
+            .send_command_to_daemon(ManagementCommand::TunnelConnect(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }
 
-    fn tunnel_disconnect(&self,
-                         _: Self::Metadata) -> BoxFuture<Response, Error> {
+    fn tunnel_disconnect(&self, _: Self::Metadata, team_id: String)
+        -> BoxFuture<Response, Error>
+    {
         log::info!("management interface tunnel disconnect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx))
+            .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

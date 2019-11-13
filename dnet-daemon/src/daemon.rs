@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::TunnelTrait;
-use crate::info::{self, Info, get_info};
+use crate::info::{self, Info, get_info, get_mut_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -17,6 +17,7 @@ use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
 use super::daemon_event_handle;
+use dnet_types::team::Team;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -153,7 +154,7 @@ impl Daemon {
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
-            DaemonEvent::DaemonInnerCmd(cmd) =>  {
+            DaemonEvent::DaemonInnerCmd(cmd) => {
                 let (res_tx, res_rx) = mpsc::channel::<Response>();
                 let _ = self.tunnel_command_tx.send((cmd.clone(), res_tx));
                 let _ = res_rx.recv_timeout(Duration::from_secs(3))
@@ -197,42 +198,11 @@ impl Daemon {
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
-            ManagementCommand::TunnelConnect(tx) => {
-                let run_mode = get_settings().common.mode.clone();
-                let res = if run_mode == RunMode::Proxy {
-                    Response::internal_error().set_msg("Invalid command in proxy mode".to_owned())
-                }
-                else if self.status.tunnel == TunnelState::Connecting
-                    || self.status.tunnel == TunnelState::Connected {
-                    Response::internal_error().set_msg("Invalid command. Currently connected.".to_owned())
-                }
-                else if self.status.rpc == RpcState::Connected {
-//              TODO async
-                    let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                    let _ = self.rpc_command_tx.send(
-                        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
-
-                    if let Ok(rpc_res) = rpc_response_rx.recv() {
-                        if rpc_res.code == 200 {
-                            let tunnel_res = self.send_tunnel_connect();
-                            tunnel_res
-                        }
-                        else {
-                            Response::internal_error().set_msg(rpc_res.msg)
-                        }
-                    }
-                    else {
-                        Response::internal_error().set_msg("Exec failed.".to_owned())
-                    }
-                }
-                else {
-                    Response::internal_error().set_msg("NotLogIn.".to_owned())
-                };
-
-                let _ = Self::oneshot_send(tx, res, "");
+            ManagementCommand::TunnelConnect(tx, team_id) => {
+                self.handle_connect_cmd(tx, team_id);
             }
 
-            ManagementCommand::TunnelDisconnect(tx) => {
+            ManagementCommand::TunnelDisconnect(tx, team_id) => {
                 let (res_tx, res_rx) = mpsc::channel::<Response>();
                 let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
                 let res = match res_rx.recv_timeout(Duration::from_secs(3)) {
@@ -377,6 +347,57 @@ impl Daemon {
             info!("Management interface shut down");
 //            let _ = exit_tx.send(DaemonEvent::ManagementInterfaceExited);
         });
+    }
+
+    fn handle_connect_cmd(&self, tx: oneshot::Sender<Response>, team_id: String) {
+        let run_mode = get_settings().common.mode.clone();
+        let res = if run_mode == RunMode::Proxy {
+            Response::internal_error().set_msg("Invalid command in proxy mode".to_owned())
+        }
+        else if self.status.rpc == RpcState::Connected {
+            let info = get_info().lock().unwrap();
+            let mut run_team: Option<Team> = None;
+            for team in &info.teams {
+                if team.team_id == team_id {
+                    run_team = Some(team.clone())
+                }
+            };
+            std::mem::drop(info);
+            if let Some(team) = run_team {
+                get_mut_info().lock().unwrap()
+                    .client_info.running_teams.push(team.clone());
+
+                if self.status.tunnel == TunnelState::Connecting ||
+                    self.status.tunnel == TunnelState::Connected {
+                    Response::success()
+                }
+//              TODO async
+                else {
+                    let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
+                    let _ = self.rpc_command_tx.send(
+                        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
+
+                    if let Ok(rpc_res) = rpc_response_rx.recv() {
+                        if rpc_res.code == 200 {
+                            let tunnel_res = self.send_tunnel_connect();
+                            tunnel_res
+                        } else {
+                            Response::internal_error().set_msg(rpc_res.msg)
+                        }
+                    } else {
+                        Response::internal_error().set_msg("Exec failed.".to_owned())
+                    }
+                }
+            }
+            else {
+                Response::internal_error().set_msg("TeamNotExist.".to_owned())
+            }
+        }
+        else {
+            Response::internal_error().set_msg("NotLogIn.".to_owned())
+        };
+
+        let _ = Self::oneshot_send(tx, res, "");
     }
 
     fn send_tunnel_connect(&self) -> Response {

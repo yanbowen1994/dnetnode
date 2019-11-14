@@ -48,6 +48,9 @@ impl Command for Group {
         } else if let Some(set_matches) = matches.subcommand_matches("join") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
             self.group_join(team_id)?;
+        } else if let Some(set_matches) = matches.subcommand_matches("out") {
+            let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
+            self.group_out(team_id)?;
         } else {
             unreachable!("No account command given");
         }
@@ -75,6 +78,14 @@ impl Group {
     fn group_join(&self, team_id: String) -> Result<()> {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_join(team_id)
+            .map_err(Error::ipc_connect_failed)?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+
+    fn group_out(&self, team_id: String) -> Result<()> {
+        let mut ipc = new_ipc_client()?;
+        let res = ipc.group_out(team_id)
             .map_err(Error::ipc_connect_failed)?;
         println!("{:#?}", res);
         Ok(())

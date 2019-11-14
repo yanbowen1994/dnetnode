@@ -66,7 +66,7 @@ pub(super) fn login() -> Result<()> {
         }
         else {
             error!("client_login - response data: code: {:?} msg:{:?}", login.code, login.msg);
-            return Err(Error::LoginFailed(format!("{:?}", login.msg)));
+            return Err(Error::http(login.code));
         }
 
         return Ok(());

@@ -29,11 +29,15 @@ pub(super) fn join_team(team_id: &str) -> Result<()> {
                         if recv.code == 200 {
                             return Ok(());
                         }
+                        else if recv.code == 911 {
+                            return Err(Error::too_more_device);
+                        }
                         else {
                             if recv.msg == Some("The device has been bound by other users.".to_owned()) {
                                 return Ok(());
                             }
-                            error!("join_team response msg: {:?}", recv.msg);
+                            error!("key_report response code: {} msg: {:?}", recv.code, recv.msg);
+                            return Err(Error::http(recv.code));
                         }
                     }
                     else if let Ok(recv) = serde_json::from_str(res_data) {
@@ -54,7 +58,7 @@ pub(super) fn join_team(team_id: &str) -> Result<()> {
                 error!("{:?}", res);
             }
 
-            return Err(Error::search_team_by_mac);
+            return Err(Error::join_team);
         })
 }
 

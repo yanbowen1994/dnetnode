@@ -1,12 +1,12 @@
 use crate::info::get_info;
-use super::types::DeviceId;
+use crate::settings::get_settings;
+use crate::rpc::client::rpc_client::types::teams::{JavaResponseTeamMember, JavaResponseDeviceProxy};
 use super::post;
 use super::{Error, Result};
-use crate::settings::get_settings;
 
-pub(super) fn binding_device() -> Result<()> {
+pub(super) fn out_team(team_id: &str) -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/bindingdevice";
+        + "/vppn/api/v2/client/outteam";
 
     let device_id;
     let cookie;
@@ -15,7 +15,8 @@ pub(super) fn binding_device() -> Result<()> {
         device_id = info.client_info.uid.clone();
         cookie = info.client_info.cookie.clone();
     }
-    let data = DeviceId {
+    let data = RequestJoinTeam {
+        teamid:   team_id.to_owned(),
         deviceid: device_id,
     }.to_json();
 
@@ -28,16 +29,25 @@ pub(super) fn binding_device() -> Result<()> {
                         if recv.code == 200 {
                             return Ok(());
                         }
+                        else if recv.code == 911 {
+                            return Err(Error::too_more_device);
+                        }
                         else {
                             if recv.msg == Some("The device has been bound by other users.".to_owned()) {
                                 return Ok(());
                             }
-                            error!("binding_device response msg: {:?}", recv.msg);
+                            error!("key_report response code: {} msg: {:?}", recv.code, recv.msg);
                             return Err(Error::http(recv.code));
                         }
                     }
+                    else if let Ok(recv) = serde_json::from_str(res_data) {
+                        let recv: JavaResponseAlreadyIn = recv;
+                        if recv.code == 931 {
+                            return Ok(());
+                        }
+                    }
                     else {
-                        error!("binding_device - response can't parse: {:?}", res_data);
+                        error!("out_team - response can't parse: {:?}", res_data);
                     }
                 }
                 else {
@@ -48,13 +58,32 @@ pub(super) fn binding_device() -> Result<()> {
                 error!("{:?}", res);
             }
 
-            return Err(Error::search_team_by_mac);
+            return Err(Error::out_team);
         })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct RequestJoinTeam {
+    teamid:   String,
+    deviceid: String,
+}
+
+impl RequestJoinTeam {
+    fn to_json(&self) -> String {
+        return serde_json::to_string(self).unwrap();
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct JavaResponse {
     code: i32,
-    data: Option<String>,
+    data: Option<JavaResponseTeamMember>,
+    msg:  Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct JavaResponseAlreadyIn {
+    code: i32,
+    data: Option<Vec<JavaResponseDeviceProxy>>,
     msg:  Option<String>,
 }

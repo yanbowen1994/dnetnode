@@ -76,6 +76,7 @@ fn heartbeat_inner(url: &str, data: &str, cookie: &str) -> Result<()> {
         }
         else {
             error!("client_heart_beat - code:{:?} error:{:?}", recv.code, recv.msg);
+            return Err(Error::http(recv.code));
         }
     }
     return Err(Error::HeartbeatFailed);

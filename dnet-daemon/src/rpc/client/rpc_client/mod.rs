@@ -7,6 +7,7 @@ mod heartbeat;
 mod join_team;
 mod login;
 mod key_report;
+mod out_team;
 mod rpc_client;
 mod search_team_by_mac;
 mod search_team_handle;

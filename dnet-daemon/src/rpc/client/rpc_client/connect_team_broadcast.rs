@@ -47,6 +47,7 @@ fn connect_team_broadcast_inner(url: &str, data: &str, cookie: &str) -> Result<(
                         }
                         else {
                             error!("connect_team_broadcast response msg: {:?}", recv.msg);
+                            return Err(Error::http(recv.code));
                         }
                     }
                     else {

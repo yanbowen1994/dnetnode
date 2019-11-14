@@ -37,7 +37,12 @@ pub(super) fn search_user_team() -> Result<bool> {
             }
             else {
                 warn!("No team in current user.");
-                return Err(Error::no_team_in_search_condition);
+                if let Some(code) = recv.code {
+                    return Err(Error::http(code as i32));
+                }
+                else {
+                    return Err(Error::http(0));
+                }
             }
         }
         else {

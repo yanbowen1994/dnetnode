@@ -26,6 +26,7 @@ pub(super) fn client_key_report() -> Result<()> {
                         }
                         else {
                             error!("key_report response msg: {:?}", recv.msg);
+                            return Err(Error::http(recv.code));
                         }
                     }
                     else {

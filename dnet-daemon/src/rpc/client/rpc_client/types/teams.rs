@@ -2,6 +2,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use dnet_types::team::{Team, TeamMember, NetSegment};
 use dnet_types::device_type::DeviceType;
+use crate::info::get_info;
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -132,6 +133,15 @@ impl JavaResponseTeamMember {
             return None;
         }
 
+        let info = get_info().lock().unwrap();
+
+        let is_self = if self.mac.as_ref() == Some(&info.client_info.devicename) {
+            true
+        }
+        else {
+            false
+        };
+
         Some(TeamMember {
             device_id:      self.mac.clone().unwrap_or("".to_owned()),
             device_name:    self.labelName.unwrap_or(self.mac.unwrap_or("".to_owned())),
@@ -141,6 +151,7 @@ impl JavaResponseTeamMember {
             wan:            self.wan.unwrap_or("".to_string()),
             proxy_ip,
             status:         self.status.unwrap_or(0),
+            is_self,
         })
     }
 }

@@ -64,9 +64,7 @@ pub(super) fn client_get_online_proxy() -> Result<Vec<ConnectTo>> {
             return Ok(connect_to_vec);
         }
         else {
-            if let Some(msg) = recv.msg {
-                return Err(Error::GetOnlineProxy(msg));
-            }
+            return Err(Error::http(recv.code));
         }
     }
     else {

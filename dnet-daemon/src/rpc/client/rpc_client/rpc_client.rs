@@ -17,6 +17,7 @@ use super::heartbeat::client_heartbeat;
 use super::key_report::client_key_report;
 use super::search_user_team::search_user_team;
 use super::join_team::join_team;
+use super::out_team::out_team;
 use super::get_online_proxy::client_get_online_proxy;
 use super::device_select_proxy::device_select_proxy;
 use super::connect_team_broadcast::connect_team_broadcast;
@@ -87,6 +88,10 @@ impl RpcClient {
 impl RpcClient {
     pub fn join_team(&self, team_id: &str) -> Result<()> {
         join_team(team_id)
+    }
+
+    pub fn out_team(&self, team_id: &str) -> Result<()> {
+        out_team(team_id)
     }
 
     pub fn search_user_team(&self) -> Result<bool> {

@@ -38,6 +38,7 @@ pub(super) fn device_select_proxy() -> Result<()> {
                         }
                         else {
                             error!("device_select_proxy response msg: {:?}", recv.msg);
+                            return Err(Error::http(recv.code));
                         }
                     }
                     else {

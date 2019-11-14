@@ -198,63 +198,50 @@ impl Daemon {
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
-            ManagementCommand::TunnelConnect(tx, team_id) => {
-                self.handle_connect_cmd(tx, team_id);
-            }
-
-            ManagementCommand::TunnelDisconnect(tx, team_id) => {
-                let (res_tx, res_rx) = mpsc::channel::<Response>();
-                let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-                let res = match res_rx.recv_timeout(Duration::from_secs(3)) {
-                    Ok(res) => res,
-                    Err(_) => Response::internal_error(),
-                };
-
-                let _ = Self::oneshot_send(tx, res, "");
-            }
-
-            ManagementCommand::State(tx) => {
+            ManagementCommand::State(ipc_tx) => {
 //                let mut response = CommandResponse::success();
 //                response.data = Some(to_value(&self.status.rpc).unwrap());
                 let state = self.status.clone();
-                let _ = Self::oneshot_send(tx, state, "");
+                let _ = Self::oneshot_send(ipc_tx, state, "");
             }
 
-            ManagementCommand::GroupInfo(tx, team_id) => {
-                let mut team = None;
-                for team_info in &get_info().lock().unwrap().teams {
-                    if team_info.team_id == team_id {
-                        team = Some(team_info.clone());
-                    }
-                }
-                let _ = Self::oneshot_send(tx, team, "");
+            ManagementCommand::GroupInfo(ipc_tx, team_id) => {
+                let team = get_info().lock().unwrap()
+                    .teams
+                    .all_teams
+                    .get(&team_id)
+                    .cloned();
+                let _ = Self::oneshot_send(ipc_tx, team, "");
             }
 
-            ManagementCommand::GroupList(tx) => {
-                let team =  get_info().lock().unwrap().teams.clone();
-                let _ = Self::oneshot_send(tx, team, "");
+            ManagementCommand::GroupList(ipc_tx) => {
+                let team =  get_info().lock().unwrap()
+                    .teams
+                    .all_teams
+                    .values()
+                    .cloned()
+                    .collect::<Vec<Team>>();
+                let _ = Self::oneshot_send(ipc_tx, team, "");
             }
 
-            ManagementCommand::GroupJoin(tx, team_id) => {
-                let (res_tx, res_rx) = mpsc::channel();
-                let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::JoinTeam(team_id, res_tx)));
-                thread::spawn(move || {
-                    let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
-                        Ok(res) => res,
-                        Err(_) => Response::exec_timeout(),
-                    };
-                    let _ = Self::oneshot_send(tx, response, "");
-                });
+            ManagementCommand::GroupJoin(ipc_tx, team_id) => {
+                self.handle_group_join(ipc_tx, team_id);
             }
 
-            ManagementCommand::Login(tx, user) => {
+            ManagementCommand::GroupOut(ipc_tx, team_id) => {
+                self.handle_group_out(ipc_tx, team_id);
+            }
+
+            ManagementCommand::Login(ipc_tx, user) => {
                 let rpc_command_tx = self.rpc_command_tx.clone();
-                thread::spawn(move ||daemon_event_handle::handle_login(tx, user, rpc_command_tx));
+                thread::spawn(move ||
+                    daemon_event_handle::login::handle_login(
+                        ipc_tx, user, rpc_command_tx));
             }
 
-            ManagementCommand::HostStatusChange(tx, host_status_change) => {
+            ManagementCommand::HostStatusChange(ipc_tx, host_status_change) => {
                 // No call back.
-                let _ = Self::oneshot_send(tx, (), "");
+                let _ = Self::oneshot_send(ipc_tx, (), "");
 
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
@@ -273,14 +260,14 @@ impl Daemon {
                 );
             }
 
-            ManagementCommand::Shutdown(tx) => {
+            ManagementCommand::Shutdown(ipc_tx) => {
                 let _ = self.daemon_event_tx.send(DaemonEvent::ShutDown);
 
                 let command_response = Response::success();
 
                 info!("Shutdown by cli command.");
 
-                let _ = Self::oneshot_send(tx, command_response, "");
+                let _ = Self::oneshot_send(ipc_tx, command_response, "");
             }
         }
     }
@@ -305,12 +292,15 @@ impl Daemon {
 
         if tunnel_auto_connect {
             info!("tunnel auto connect");
-            self.send_tunnel_connect();
+            daemon_event_handle::tunnel::send_tunnel_connect(
+                self.tunnel_command_tx.clone(),
+                self.daemon_event_tx.clone(),
+            );
         }
     }
 
-    pub fn oneshot_send<T>(tx: oneshot::Sender<T>, t: T, msg: &'static str) {
-        if tx.send(t).is_err() {
+    pub fn oneshot_send<T>(ipc_tx: oneshot::Sender<T>, t: T, msg: &'static str) {
+        if ipc_tx.send(t).is_err() {
             warn!("Unable to send {} to management interface client", msg);
         }
     }
@@ -349,74 +339,43 @@ impl Daemon {
         });
     }
 
-    fn handle_connect_cmd(&self, tx: oneshot::Sender<Response>, team_id: String) {
-        let run_mode = get_settings().common.mode.clone();
-        let res = if run_mode == RunMode::Proxy {
-            Response::internal_error().set_msg("Invalid command in proxy mode".to_owned())
-        }
-        else if self.status.rpc == RpcState::Connected {
-            let info = get_info().lock().unwrap();
-            let mut run_team: Option<Team> = None;
-            for team in &info.teams {
-                if team.team_id == team_id {
-                    run_team = Some(team.clone())
-                }
-            };
-            std::mem::drop(info);
-            if let Some(team) = run_team {
-                get_mut_info().lock().unwrap()
-                    .client_info.running_teams.push(team.clone());
-
-                if self.status.tunnel == TunnelState::Connecting ||
-                    self.status.tunnel == TunnelState::Connected {
-                    Response::success()
-                }
-//              TODO async
-                else {
-                    let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-                    let _ = self.rpc_command_tx.send(
-                        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
-
-                    if let Ok(rpc_res) = rpc_response_rx.recv() {
-                        if rpc_res.code == 200 {
-                            let tunnel_res = self.send_tunnel_connect();
-                            tunnel_res
-                        } else {
-                            Response::internal_error().set_msg(rpc_res.msg)
-                        }
-                    } else {
-                        Response::internal_error().set_msg("Exec failed.".to_owned())
-                    }
-                }
-            }
-            else {
-                Response::internal_error().set_msg("TeamNotExist.".to_owned())
-            }
-        }
-        else {
-            Response::internal_error().set_msg("NotLogIn.".to_owned())
-        };
-
-        let _ = Self::oneshot_send(tx, res, "");
+    fn handle_group_join(&self,
+                         ipc_tx:        oneshot::Sender<Response>,
+                         team_id:       String,
+    ) {
+        let status = self.status.clone();
+        let rpc_command_tx = self.rpc_command_tx.clone();
+        let tunnel_command_tx = self.tunnel_command_tx.clone();
+        let daemon_event_tx = self.daemon_event_tx.clone();
+        thread::spawn( ||
+            daemon_event_handle::group_join::group_join(
+                ipc_tx,
+                team_id,
+                status,
+                rpc_command_tx,
+                tunnel_command_tx,
+                daemon_event_tx,
+            )
+        );
     }
 
-    fn send_tunnel_connect(&self) -> Response {
-        let (res_tx, res_rx) = mpsc::channel::<Response>();
-        let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
-        let res = res_rx.recv_timeout(Duration::from_secs(3))
-            .map(|res|{
-                if res.code == 200 {
-                    let _ = self.daemon_event_tx.send(DaemonEvent::TunnelConnected);
-                }
-                else {
-                    error!("Tunnel connect failed. error: {:?}", res.msg);
-                }
-                res
-            })
-            .map_err(|_| {
-                error!("Tunnel connect failed. error: Respones recv timeout.")
-            })
-            .unwrap_or(Response::exec_timeout());
-        res
+    fn handle_group_out(&self,
+                         ipc_tx:        oneshot::Sender<Response>,
+                         team_id:       String,
+    ) {
+        let status = self.status.clone();
+        let rpc_command_tx = self.rpc_command_tx.clone();
+        let tunnel_command_tx = self.tunnel_command_tx.clone();
+        let daemon_event_tx = self.daemon_event_tx.clone();
+        thread::spawn( ||
+            daemon_event_handle::group_out::group_out(
+                ipc_tx,
+                team_id,
+                status,
+                rpc_command_tx,
+                tunnel_command_tx,
+                daemon_event_tx,
+            )
+        );
     }
 }

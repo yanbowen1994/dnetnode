@@ -11,6 +11,7 @@ use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use dnet_types::settings::RunMode;
 use crate::settings::get_settings;
 use crate::info::user::UserInfo;
+use crate::info::TeamInfo;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -19,7 +20,7 @@ pub struct Info {
     pub client_info:        ClientInfo,
     pub proxy_info:         ProxyInfo,
     pub tinc_info:          TincInfo,
-    pub teams:              Vec<Team>,
+    pub teams:              TeamInfo,
     pub user:               UserInfo,
 }
 
@@ -39,7 +40,7 @@ impl Info {
             client_info,
             proxy_info,
             tinc_info,
-            teams:  vec![],
+            teams:  TeamInfo::new(),
             user:   UserInfo::new(),
         };
 
@@ -67,21 +68,6 @@ impl Info {
             })
         }
         return Err(Error::TincInfoVipNotFound);
-    }
-
-    pub fn add_start_team(&mut self, team_id: String) -> bool {
-        let mut run_team = None;
-        for team in &self.teams {
-            if &team.team_id == &team_id {
-                run_team = Some(team)
-            }
-        }
-
-        if let Some(run_team) = run_team {
-            self.client_info.running_teams.push(run_team.to_owned());
-            return true;
-        }
-        return false;
     }
 }
 

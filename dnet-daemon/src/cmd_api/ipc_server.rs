@@ -35,12 +35,6 @@ pub type BoxFuture<T, E> = Box<dyn Future<Item = T, Error = E> + Send>;
 build_rpc_trait! {
     pub trait ManagementInterfaceApi {
         type Metadata;
-        #[rpc(meta, name = "tunnel_connect")]
-        fn tunnel_connect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
-
-        #[rpc(meta, name = "tunnel_disconnect")]
-        fn tunnel_disconnect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
-
         #[rpc(meta, name = "shutdown")]
         fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
@@ -52,6 +46,9 @@ build_rpc_trait! {
 
         #[rpc(meta, name = "group_join")]
         fn group_join(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
+
+        #[rpc(meta, name = "group_out")]
+        fn group_out(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
@@ -66,10 +63,6 @@ build_rpc_trait! {
 
 /// Enum representing commands coming in on the management interface.
 pub enum ManagementCommand {
-    TunnelConnect(OneshotSender<Response>, String),
-
-    TunnelDisconnect(OneshotSender<Response>, String),
-
     /// Request the current state.
     State(OneshotSender<State>),
 
@@ -81,6 +74,9 @@ pub enum ManagementCommand {
 
     /// Get the current geographical location.
     GroupJoin(OneshotSender<Response>, String),
+
+    /// Get the current geographical location.
+    GroupOut(OneshotSender<Response>, String),
 
     HostStatusChange(OneshotSender<()>, HostStatusChange),
 
@@ -198,29 +194,6 @@ impl<T: From<ManagementCommand> + 'static + Send> ManagementInterfaceApi
 for ManagementInterface<T>
 {
     type Metadata = Meta;
-
-    fn tunnel_connect(&self, _: Self::Metadata, team_id: String)
-        -> BoxFuture<Response, Error>
-    {
-        log::info!("management interface tunnel connect");
-        let (tx, rx) = sync::oneshot::channel();
-        let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelConnect(tx, team_id))
-            .and_then(|_| rx.map_err(|_| Error::internal_error()));
-        Box::new(future)
-    }
-
-    fn tunnel_disconnect(&self, _: Self::Metadata, team_id: String)
-        -> BoxFuture<Response, Error>
-    {
-        log::info!("management interface tunnel disconnect");
-        let (tx, rx) = sync::oneshot::channel();
-        let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx, team_id))
-            .and_then(|_| rx.map_err(|_| Error::internal_error()));
-        Box::new(future)
-    }
-
     fn shutdown(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
         log::info!("management interface shutdown command.");
         let (tx, rx) = sync::oneshot::channel();
@@ -272,6 +245,15 @@ for ManagementInterface<T>
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupJoin(tx, team_id))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn group_out(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
+        log::info!("management interface group join.");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::GroupOut(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

@@ -4,13 +4,18 @@ use futures::sync::oneshot;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use dnet_types::user::User;
-use crate::settings::get_mut_settings;
+use crate::settings::{get_mut_settings, get_settings};
 use dnet_types::response::Response;
 use std::time::Duration;
-use crate::daemon::Daemon;
-use crate::info::get_info;
+use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::info::{get_info, get_mut_info};
+use dnet_types::states::{TunnelState, RpcState, State};
+use dnet_types::settings::RunMode;
 
-pub fn handle_login(tx: oneshot::Sender<Response>, user: User, rpc_command_tx: mpsc::Sender<RpcEvent>) {
+pub fn handle_login(ipc_tx: oneshot::Sender<Response>,
+                    user: User,
+                    rpc_command_tx: mpsc::Sender<RpcEvent>
+) {
     {
         let settings = get_mut_settings();
         settings.common.username = user.name;
@@ -41,5 +46,5 @@ pub fn handle_login(tx: oneshot::Sender<Response>, user: User, rpc_command_tx: m
         response = Response::internal_error();
     }
 
-    let _ = Daemon::oneshot_send(tx, response, "");
+    let _ = Daemon::oneshot_send(ipc_tx, response, "");
 }

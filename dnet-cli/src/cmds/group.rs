@@ -34,6 +34,15 @@ impl Command for Group {
                     ),
             )
             .subcommand(
+                clap::SubCommand::with_name("out")
+                    .about("This device out group.")
+                    .arg(
+                        clap::Arg::with_name("team_id")
+                            .help("Dnet team id.")
+                            .required(true),
+                    ),
+            )
+            .subcommand(
                 clap::SubCommand::with_name("list")
                     .about("List of all the group infos."),
             )

@@ -29,9 +29,6 @@ pub(super) fn join_team(team_id: &str) -> Result<()> {
                         if recv.code == 200 {
                             return Ok(());
                         }
-                        else if recv.code == 911 {
-                            return Err(Error::too_more_device);
-                        }
                         else {
                             if recv.msg == Some("The device has been bound by other users.".to_owned()) {
                                 return Ok(());

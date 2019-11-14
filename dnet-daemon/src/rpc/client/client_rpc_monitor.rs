@@ -8,7 +8,7 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
-use crate::info::{get_mut_info, get_info};
+use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client::{self, Error as SubError};
 use super::error::{Error as ClientError, Result};
@@ -82,6 +82,12 @@ impl RpcMonitor {
                         },
 
                         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+                        RpcClientCmd::OutTeam(team_id, res_tx) => {
+                            let response = self.handle_out_team(team_id);
+                            let _ = res_tx.send(response);
+                        },
+
+                        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                         RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
                             let response = self.handle_select_proxy();
                             let _ = response_tx.send(response);
@@ -96,9 +102,7 @@ impl RpcMonitor {
                             }
                             let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
                         },
-                        ExecutorEvent::InitFailed(e) => {
-                            let mut response = Response::internal_error();
-                            response = response.set_msg(e.to_string());
+                        ExecutorEvent::InitFailed(response) => {
                             if let Some(rpc_restart_tx) = &rpc_restart_tx_cache {
                                 let _ = rpc_restart_tx.send(response);
                             }
@@ -225,13 +229,23 @@ impl Executor {
                         match self.init() {
                             Ok(_) => init_success = true,
                             Err(e) => {
-                                let need_return = match &e {
-                                    SubError::Unauthorized => true,
-                                    SubError::UserNotExist => true,
-                                    _ => false,
+                                let (need_return, res) = match &e {
+                                    SubError::Unauthorized => {
+                                        let res = Response::unauthorized();
+                                        (true, res)
+                                    },
+                                    SubError::UserNotExist => {
+                                        let res = Response::user_not_exist();
+                                        (true, res)
+                                    },
+                                    _ => {
+                                        let res = Response::internal_error();
+                                        (false, res)
+                                    },
                                 };
+
                                 if let Err(send_err) = self.rpc_tx.send(
-                                    RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {
+                                    RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
                                     error!("self.rpc_tx.send(\
                                     RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
                                     return;
@@ -340,43 +354,33 @@ impl RpcMonitor {
     fn handle_join_team(&self, team_id: String) -> Response {
         info!("handle_join_team");
         if let Err(error) = self.client.join_team(&team_id) {
-            return Response::internal_error().set_msg(error.to_string());
+            let response = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string()),
+            };
+            return response;
         } else {
             if let Err(error) = self.client.search_user_team() {
-                return Response::internal_error().set_msg(error.to_string());
-            }
-
-            if let Err(error) = self.start_team(&team_id) {
                 return Response::internal_error().set_msg(error.to_string());
             }
         }
         Response::success()
     }
 
-    fn start_team(&self, team_id: &str) -> Result<()> {
-        let mut info = get_mut_info().lock().unwrap();
-        let mut add_running_team = vec![];
-
-        let _ = info.teams
-            .iter()
-            .filter_map(|team| {
-                if &team.team_id == team_id {
-                    add_running_team.push(team.clone());
-                    Some(())
-                }
-                else {
-                    None
-                }
-            })
-            .collect::<Vec<()>>();
-
-        if add_running_team.len() > 0 {
-            info.client_info.running_teams.append(&mut add_running_team);
-            Ok(())
+    fn handle_out_team(&self, team_id: String) -> Response {
+        info!("handle_out_team");
+        if let Err(error) = self.client.out_team(&team_id) {
+            let response = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string()),
+            };
+            return response;
+        } else {
+            if let Err(error) = self.client.search_user_team() {
+                return Response::internal_error().set_msg(error.to_string());
+            }
         }
-        else {
-            return Err(ClientError::TeamNotFound);
-        }
+        Response::success()
     }
 
     fn handle_select_proxy(&self) -> Response {

@@ -23,9 +23,6 @@ impl TincOperator {
                 if let Some(out) = out {
                     if let Some(code) = out.status.code() {
                         let error = String::from_utf8_lossy(&out.stderr).to_string();
-                        if error.contains("Ready") {
-                            return Ok(());
-                        }
 
                         if error.contains("Address already in use") {
                             error!("port 50069 already in use");
@@ -35,6 +32,14 @@ impl TincOperator {
                         if error.contains("Device or resource busy") {
                             error!("Device or resource busy");
                             return Err(Error::AnotherTincRunning);
+                        }
+
+                        if error.contains("Terminating") {
+                            return Err(Error::TincNotExist);
+                        }
+
+                        if error.contains("Ready") {
+                            return Ok(());
                         }
                         error!("code:{} error:{:?}", code, error);
                         return Err(Error::TincNotExist);

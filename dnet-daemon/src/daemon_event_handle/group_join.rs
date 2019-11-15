@@ -33,14 +33,8 @@ pub fn group_join(
             is_rpc_connected(ipc_tx, &status)
         })
         .and_then(|ipc_tx|{
-            info!("is_joined");
-            if is_joined(&team_id) {
-                Some(ipc_tx)
-            }
-            else {
-                info!("send_rpc_join_group");
-                send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
-            }
+            info!("send_rpc_join_group");
+            send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
         })
         .and_then(|ipc_tx| {
             info!("add_start_team");
@@ -90,18 +84,6 @@ fn is_rpc_connected(
         let response = Response::internal_error().set_msg("NotLogIn.".to_owned());
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
         return None;
-    }
-}
-
-fn is_joined(team_id: &str) -> bool {
-    let info = get_info().lock().unwrap();
-    let is_joined = info.teams.all_teams.contains_key(team_id);
-
-    if is_joined {
-        return true;
-    }
-    else {
-        return false;
     }
 }
 

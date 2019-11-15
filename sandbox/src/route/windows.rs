@@ -8,7 +8,13 @@ pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
             let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let _ = Command::new("ip").args(vec!["route", "add", &ip_mask, "dev", dev]).spawn();
+            let mut res = Command::new("ip")
+                .args(vec!["route", "add", &ip_mask, "dev", dev])
+                .spawn();
+            if let Ok(mut res) = res {
+                res.wait();
+                let _ = res.wait();
+            }
         }
 }
 
@@ -16,7 +22,13 @@ pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
             let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let _ = Command::new("ip").args(vec!["route", "del", &ip_mask, "dev", dev]).spawn();
+            let mut res = Command::new("ip")
+                .args(vec!["route", "del", &ip_mask, "dev", dev])
+                .spawn();
+            if let Ok(mut res) = res {
+                res.wait();
+                let _ = res.wait();
+            }
         }
 }
 
@@ -55,7 +67,11 @@ pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
 
 #[cfg(not(target_arch = "arm"))]
 pub fn parse_routing_table() -> Vec<RouteInfo> {
-    let output = String::from_utf8(Command::new("ip").args(vec!["route"]).output().unwrap().stdout).unwrap();
+    let output = String::from_utf8(Command::new("ip")
+            .args(vec!["route"])
+            .output()
+            .unwrap().stdout)
+        .unwrap();
     let route_infos = output
         .split("\n")
         .collect::<Vec<&str>>()

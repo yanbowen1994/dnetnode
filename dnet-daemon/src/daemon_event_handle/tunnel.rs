@@ -1,16 +1,16 @@
 use std::sync::{mpsc};
+use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use dnet_types::user::User;
-use crate::settings::{get_mut_settings, get_settings};
 use dnet_types::response::Response;
-use std::time::Duration;
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
 use dnet_types::states::{TunnelState, RpcState, State};
 use dnet_types::settings::RunMode;
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+use crate::settings::{get_mut_settings, get_settings};
+use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::info::{get_info, get_mut_info};
 
 pub fn send_tunnel_connect(
     tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
@@ -41,7 +41,7 @@ pub fn send_tunnel_disconnect(
 ) -> Response {
     let (res_tx, res_rx) = mpsc::channel::<Response>();
     let _ = tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-    let res = res_rx.recv_timeout(Duration::from_secs(3))
+    let res = res_rx.recv_timeout(Duration::from_secs(5))
         .map(|res|{
             if res.code == 200 {
                 let _ = daemon_event_tx.send(DaemonEvent::TunnelDisconnected);

@@ -1,17 +1,18 @@
 use std::sync::{mpsc};
+use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use dnet_types::user::User;
-use crate::settings::{get_mut_settings, get_settings};
 use dnet_types::response::Response;
-use std::time::Duration;
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
 use dnet_types::states::{TunnelState, RpcState, State};
 use dnet_types::settings::RunMode;
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+use crate::settings::{get_mut_settings, get_settings};
+use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::info::{get_info, get_mut_info};
 use super::tunnel::send_tunnel_connect;
+use super::handle_settings;
 
 pub fn group_join(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -23,19 +24,23 @@ pub fn group_join(
 ) {
     info!("is_not_proxy");
     let _ = is_not_proxy(ipc_tx)
+        .and_then(|ipc_tx| {
+            info!("check_conductor_url");
+            handle_settings::check_conductor_url(ipc_tx)
+        })
         .and_then(|ipc_tx|{
             info!("is_rpc_connected");
             is_rpc_connected(ipc_tx, &status)
         })
         .and_then(|ipc_tx|{
-//            info!("is_joined");
-//            if is_joined(&team_id) {
-//                Some(ipc_tx)
-//            }
-//            else {
-            info!("send_rpc_join_group");
-            send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
-//            }
+            info!("is_joined");
+            if is_joined(&team_id) {
+                Some(ipc_tx)
+            }
+            else {
+                info!("send_rpc_join_group");
+                send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
+            }
         })
         .and_then(|ipc_tx| {
             info!("add_start_team");

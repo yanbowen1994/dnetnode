@@ -1,50 +1,53 @@
 use std::sync::{mpsc};
+use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use dnet_types::user::User;
-use crate::settings::{get_mut_settings, get_settings};
 use dnet_types::response::Response;
-use std::time::Duration;
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
 use dnet_types::states::{TunnelState, RpcState, State};
 use dnet_types::settings::RunMode;
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+use crate::settings::{get_mut_settings, get_settings};
+use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::info::{get_info, get_mut_info};
+use super::handle_settings;
 
 pub fn handle_login(ipc_tx: oneshot::Sender<Response>,
                     user: User,
                     rpc_command_tx: mpsc::Sender<RpcEvent>
 ) {
-    {
-        let settings = get_mut_settings();
-        settings.common.username = user.name;
-        settings.common.password = user.password;
-    }
+    if let Some(ipc_tx) = handle_settings::check_conductor_url(ipc_tx) {
+        {
+            let settings = get_mut_settings();
+            settings.common.username = user.name;
+            settings.common.password = user.password;
+        }
 
-    info!("handle_login send rpc cmd.");
-    let response;
-    let (rpc_restart_tx, rpc_restart_rx) = mpsc::channel::<Response>();
-    if let Ok(_) = rpc_command_tx.send(
-        RpcEvent::Client(RpcClientCmd::RestartRpcConnect(rpc_restart_tx))
-    ) {
-        response =
-            if let Ok(mut res) = rpc_restart_rx.recv_timeout(Duration::from_secs(10)) {
-                info!("handle_login {:?}", res);
-                let info = get_info().lock().unwrap();
-                let user = info.user.clone();
-                std::mem::drop(info);
-                let value = user.to_json();
-                res.data = Some(value);
-                res
-            }
-            else {
-                Response::exec_timeout()
-            };
-    }
-    else {
-        response = Response::internal_error();
-    }
+        info!("handle_login send rpc cmd.");
+        let response;
+        let (rpc_restart_tx, rpc_restart_rx) = mpsc::channel::<Response>();
+        if let Ok(_) = rpc_command_tx.send(
+            RpcEvent::Client(RpcClientCmd::RestartRpcConnect(rpc_restart_tx))
+        ) {
+            response =
+                if let Ok(mut res) = rpc_restart_rx.recv_timeout(Duration::from_secs(10)) {
+                    info!("handle_login {:?}", res);
+                    let info = get_info().lock().unwrap();
+                    let user = info.user.clone();
+                    std::mem::drop(info);
+                    let value = user.to_json();
+                    res.data = Some(value);
+                    res
+                }
+                else {
+                    Response::exec_timeout()
+                };
+        }
+        else {
+            response = Response::internal_error();
+        }
 
-    let _ = Daemon::oneshot_send(ipc_tx, response, "");
+        let _ = Daemon::oneshot_send(ipc_tx, response, "");
+    }
 }

@@ -40,6 +40,7 @@ impl TunnelTrait for TincMonitor {
 impl TincMonitor {
     fn run(self) {
         while let Ok((event, res_tx)) = self.tunnel_command_rx.recv() {
+            info!("TincMonitor event {:?}", event);
             match event {
                 TunnelCommand::Connect => {
                     let inner = get_monitor_inner();
@@ -80,7 +81,7 @@ impl TincMonitor {
 struct MonitorInner {
     stop_sign_tx:          mpsc::Sender<mpsc::Sender<bool>>,
     stop_sign_rx:          mpsc::Receiver<mpsc::Sender<bool>>,
-    is_tunnel_connect:        Arc<Mutex<bool>>,
+    is_running:            Arc<Mutex<bool>>,
 }
 
 impl MonitorInner {
@@ -98,9 +99,9 @@ impl MonitorInner {
         let (tx, rx) = mpsc::channel();
 
         let inner = Self {
-            stop_sign_tx: tx,
-            stop_sign_rx: rx,
-            is_tunnel_connect: Arc::new(Mutex::new(false)),
+            stop_sign_tx:   tx,
+            stop_sign_rx:   rx,
+            is_running:     Arc::new(Mutex::new(false)),
         };
 
         unsafe {
@@ -112,24 +113,42 @@ impl MonitorInner {
     fn connect(&mut self) -> Result<()> {
         TincOperator::new().start_tinc()?;
         info!("tinc_monitor start tinc");
-        *self.is_tunnel_connect.lock().unwrap() = true;
 
         Ok(())
     }
 
     fn run(&mut self) {
+        let mut is_running = self.is_running.lock().unwrap();
+        if *is_running {
+            return;
+        }
+        else {
+            *is_running = true;
+        }
+        std::mem::drop(is_running);
+
+        let mut check_time = Instant::now();
+
+        info!("tinc check start.");
         loop {
             if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
                 let _ = res_tx.send(true);
+                let mut is_running = self.is_running.lock().unwrap();
+                *is_running = false;
+                break
             }
-            let start = Instant::now();
-            self.exec_tinc_check();
-
-            if let Some(remaining) =
-            Duration::from_secs(TINC_FREQUENCY.into()).checked_sub(start.elapsed()) {
-                thread::sleep(remaining);
+            if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
+                info!("exec_tinc_check");
+                if let Err(_) = self.exec_tinc_check() {
+                    self.exec_restart();
+                }
+                check_time = Instant::now();
+            }
+            else {
+                thread::sleep(Duration::from_millis(500));
             }
         }
+        info!("tinc check stop.");
     }
 
     fn disconnect(&mut self) -> Result<()> {
@@ -140,7 +159,7 @@ impl MonitorInner {
             tinc.stop_tinc()?;
         }
         else {
-            let _ = rx.recv_timeout(Duration::from_secs(1));
+            let _ = rx.recv_timeout(Duration::from_secs(5));
             let mut tinc = TincOperator::new();
             tinc.stop_tinc()?;
         }
@@ -152,7 +171,7 @@ impl MonitorInner {
         let (tx, rx) = mpsc::channel();
         match self.stop_sign_tx.send(tx) {
             Ok(_) => {
-                let _ = rx.recv_timeout(Duration::from_secs(1));
+                let _ = rx.recv_timeout(Duration::from_secs(5));
                 ()
             },
             Err(_) => (),
@@ -163,25 +182,28 @@ impl MonitorInner {
         Ok(())
     }
 
-    fn exec_tinc_check(&mut self) {
+    fn exec_tinc_check(&mut self) -> Result<()> {
         let mut tinc = TincOperator::new();
 
         match tinc.check_tinc_status() {
             Ok(_) => {
-                trace!("check tinc process: tinc exist.");
-                return ();
+                info!("check tinc process: tinc exist.");
+                return Ok(());
             }
 
             Err(TincOperatorError::OutOfMemory) => {
                 error!("check tinc process: tinc out of memory.");
+                return Err(TincOperatorError::OutOfMemory);
             }
 
             Err(TincOperatorError::TincNotExist) => {
                 error!("check tinc process: tinc not exist.");
+                return Err(TincOperatorError::TincNotExist);
             }
 
             Err(err) => {
                 error!("check tinc process: check failed. error:{:?}", err);
+                return Err(err);
             }
         }
     }

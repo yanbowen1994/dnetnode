@@ -1,18 +1,17 @@
 use std::sync::{mpsc};
+use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use dnet_types::user::User;
-use crate::settings::{get_mut_settings, get_settings};
 use dnet_types::response::Response;
-use std::time::Duration;
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
 use dnet_types::states::{TunnelState, RpcState, State};
 use dnet_types::settings::RunMode;
-use super::tunnel::send_tunnel_connect;
-use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
+use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+use crate::settings::{get_mut_settings, get_settings};
+use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::info::{get_info, get_mut_info};
+use super::tunnel::send_tunnel_disconnect;
 
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -40,7 +39,7 @@ pub fn group_out(
         })
         .and_then(|ipc_tx| {
             info!("del_start_team");
-            del_start_team(&team_id);
+            del_local_team(&team_id);
             info!("need_tunnel_disconnect");
             if need_tunnel_disconnect(&status) {
                 info!("handle_tunnel_disconnect");
@@ -49,6 +48,10 @@ pub fn group_out(
             else {
                 Some(ipc_tx)
             }
+        })
+        .and_then(|ipc_tx| {
+            info!("handle_rpc_stop_heartbeat");
+            handle_rpc_stop_heartbeat(ipc_tx, rpc_command_tx)
         })
         .and_then(|ipc_tx| {
             info!("success");
@@ -101,7 +104,7 @@ fn is_joined(team_id: &str) -> bool {
 fn send_rpc_out_group(
     team_id: &str,
     ipc_tx: oneshot::Sender<Response>,
-    rpc_command_tx: mpsc::Sender<RpcEvent>
+    rpc_command_tx: mpsc::Sender<RpcEvent>,
 ) -> Option<oneshot::Sender<Response>> {
     let (res_tx, res_rx) = mpsc::channel();
     let _ = rpc_command_tx.send(
@@ -119,8 +122,9 @@ fn send_rpc_out_group(
     }
 }
 
-fn del_start_team(team_id: &str) {
+fn del_local_team(team_id: &str) {
     let mut info = get_mut_info().lock().unwrap();
+    info.teams.all_teams.remove(team_id);
     info.teams.del_start_team(team_id);
 }
 
@@ -150,6 +154,22 @@ fn handle_tunnel_disconnect(
         return Some(ipc_tx);
     }
     else {
+        let _ = Daemon::oneshot_send(ipc_tx, response, "");
+        return None;
+    }
+}
+
+fn handle_rpc_stop_heartbeat(
+    ipc_tx:             oneshot::Sender<Response>,
+    rpc_command_tx:     mpsc::Sender<RpcEvent>,
+) -> Option<oneshot::Sender<Response>> {
+    let (res_tx, res_rx) = mpsc::channel();
+    let _ = rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::Stop(res_tx)));
+    if let Ok(_) = res_rx.recv_timeout(Duration::from_secs(3)) {
+        return Some(ipc_tx);
+    }
+    else {
+        let response = Response::exec_timeout();
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
         return None;
     }

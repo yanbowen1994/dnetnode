@@ -66,8 +66,9 @@ impl RpcMonitor {
                             }
                         },
 
-                        RpcClientCmd::Stop => {
+                        RpcClientCmd::Stop(res_tx) => {
                             self.stop_executor();
+                            let _ = res_tx.send(true);
                         }
 
                         RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
@@ -361,7 +362,11 @@ impl RpcMonitor {
             return response;
         } else {
             if let Err(error) = self.client.search_user_team() {
-                return Response::internal_error().set_msg(error.to_string());
+                let response = match error {
+                    SubError::http(code) => Response::new_from_code(code),
+                    _ => Response::internal_error().set_msg(error.to_string()),
+                };
+                return response;
             }
         }
         Response::success()

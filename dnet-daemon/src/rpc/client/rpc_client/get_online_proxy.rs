@@ -18,7 +18,7 @@ pub(super) fn client_get_online_proxy() -> Result<Vec<ConnectTo>> {
     {
         cookie = get_info().lock().unwrap().client_info.cookie.clone();
     }
-    debug!("client_get_online_proxy - request url: {}",url);
+    debug!("client_get_online_proxy - request url: {}", url);
 
     let mut res = post(&url, "", &cookie)?;
 

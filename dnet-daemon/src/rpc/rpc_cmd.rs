@@ -11,8 +11,8 @@ pub enum RpcEvent {
 
 #[derive(Debug)]
 pub enum RpcClientCmd {
+    Stop(Sender<bool>),
     HeartbeatStart,
-    Stop,
     RestartRpcConnect(Sender<Response>),
     JoinTeam(String, Sender<Response>),
     OutTeam(String, Sender<Response>),

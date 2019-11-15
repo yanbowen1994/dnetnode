@@ -30,10 +30,7 @@ pub(super) fn join_team(team_id: &str) -> Result<()> {
                             return Ok(());
                         }
                         else {
-                            if recv.msg == Some("The device has been bound by other users.".to_owned()) {
-                                return Ok(());
-                            }
-                            error!("key_report response code: {} msg: {:?}", recv.code, recv.msg);
+                            warn!("join_team response code: {} msg: {:?}", recv.code, recv.msg);
                             return Err(Error::http(recv.code));
                         }
                     }
@@ -42,20 +39,24 @@ pub(super) fn join_team(team_id: &str) -> Result<()> {
                         if recv.code == 931 {
                             return Ok(());
                         }
+                        else {
+                            warn!("join_team response code: {} msg: {:?}", recv.code, recv.msg);
+                            return Err(Error::http(recv.code));
+                        }
                     }
                     else {
-                        error!("join_team - response can't parse: {:?}", res_data);
+                        warn!("join_team - response can't parse: {:?}", res_data);
+                        return Ok(());
                     }
                 }
                 else {
-                    error!("{:?}", res);
+                    warn!("{:?}", res);
+                    return Ok(());
                 }
             }
             else {
-                error!("{:?}", res);
-            }
-
-            return Err(Error::join_team);
+                return Err(Error::join_team);
+            };
         })
 }
 

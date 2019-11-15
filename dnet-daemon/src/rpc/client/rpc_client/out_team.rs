@@ -33,7 +33,7 @@ pub(super) fn out_team(team_id: &str) -> Result<()> {
                             if recv.msg == Some("The device has been bound by other users.".to_owned()) {
                                 return Ok(());
                             }
-                            error!("key_report response code: {} msg: {:?}", recv.code, recv.msg);
+                            error!("out_team response code: {} msg: {:?}", recv.code, recv.msg);
                             return Err(Error::http(recv.code));
                         }
                     }

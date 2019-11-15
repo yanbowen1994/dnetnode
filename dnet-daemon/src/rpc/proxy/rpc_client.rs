@@ -8,7 +8,7 @@ use tinc_plugin::{TincOperatorError, ConnectTo};
 use crate::settings::{Settings, get_settings};
 use crate::info::{get_info, get_mut_info};
 use crate::tinc_manager;
-use crate::rpc::http_post::url_post;
+use crate::rpc::http_post::{self, url_post};
 use super::post::post;
 
 const HEART_BEAT_TIMEOUT: u64 = 10;
@@ -46,6 +46,9 @@ pub enum Error {
 
     #[error(display = "Heartbeat failed.")]
     HeartbeatFailed,
+
+    #[error(display = "http_post::Error.")]
+    PostError(#[error(cause)] http_post::Error),
 
     #[error(display = "reqwest::Error.")]
     Reqwest(#[error(cause)] reqwest::Error),

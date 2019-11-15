@@ -1,6 +1,7 @@
 use std::net::AddrParseError;
 use tinc_plugin::TincOperatorError;
 use crate::info::Error as InfoError;
+use crate::rpc::http_post;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -9,6 +10,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(display = "Out team.")]
     http(i32),
+
+    #[error(display = "Conductor not set.")]
+    conductor_not_set,
 
     #[error(display = "Out team.")]
     out_team,
@@ -78,6 +82,9 @@ pub enum Error {
 
     #[error(display = "Heartbeat failed.")]
     HeartbeatFailed,
+
+    #[error(display = "http_post::Error.")]
+    PostError(#[error(cause)] http_post::Error),
 
     #[error(display = "reqwest::Error.")]
     Reqwest(#[error(cause)] reqwest::Error),

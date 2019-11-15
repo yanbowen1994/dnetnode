@@ -17,7 +17,7 @@ pub fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
                     wait_sec += 1;
                 }
                 else {
-                    return Err(Error::Reqwest(e));
+                    return Err(Error::PostError(e));
                 }
                 continue;
             }

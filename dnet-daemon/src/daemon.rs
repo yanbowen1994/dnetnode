@@ -219,22 +219,21 @@ impl Daemon {
             }
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {
-                let team = get_info().lock().unwrap()
-                    .teams
-                    .all_teams
-                    .get(&team_id)
-                    .cloned();
-                let _ = Self::oneshot_send(ipc_tx, team, "");
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
+                    ipc_tx,
+                    rpc_command_tx,
+                    Some(team_id))
+                );
             }
 
             ManagementCommand::GroupList(ipc_tx) => {
-                let team =  get_info().lock().unwrap()
-                    .teams
-                    .all_teams
-                    .values()
-                    .cloned()
-                    .collect::<Vec<Team>>();
-                let _ = Self::oneshot_send(ipc_tx, team, "");
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
+                    ipc_tx,
+                    rpc_command_tx,
+                    None)
+                );
             }
 
             ManagementCommand::GroupJoin(ipc_tx, team_id) => {

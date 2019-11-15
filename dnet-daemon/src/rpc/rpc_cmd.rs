@@ -16,6 +16,7 @@ pub enum RpcClientCmd {
     RestartRpcConnect(Sender<Response>),
     JoinTeam(String, Sender<Response>),
     OutTeam(String, Sender<Response>),
+    FreshTeam(Sender<Response>),
     ReportDeviceSelectProxy(Sender<Response>),
 }
 

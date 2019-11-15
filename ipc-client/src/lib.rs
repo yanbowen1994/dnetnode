@@ -105,7 +105,7 @@ impl DaemonRpcClient {
         self.call("group_list", &NO_ARGS)
     }
 
-    pub fn group_info(&mut self, team_id: String) -> Result<Option<Team>> {
+    pub fn group_info(&mut self, team_id: String) -> Result<Vec<Team>> {
         self.call("group_info", &team_id)
     }
 

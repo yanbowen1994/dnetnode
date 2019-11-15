@@ -66,6 +66,11 @@ impl RpcMonitor {
                             }
                         },
 
+                        RpcClientCmd::FreshTeam(res_tx) => {
+                            let response = self.handle_fresh_team();
+                            let _ = res_tx.send(response);
+                        }
+
                         RpcClientCmd::Stop(res_tx) => {
                             self.stop_executor();
                             let _ = res_tx.send(true);
@@ -386,6 +391,19 @@ impl RpcMonitor {
             }
         }
         Response::success()
+    }
+
+    fn handle_fresh_team(&self) -> Response {
+        if let Err(error) = self.client.search_user_team() {
+            let res = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string())
+            };
+            return res;
+        }
+        else {
+            return Response::success();
+        }
     }
 
     fn handle_select_proxy(&self) -> Response {

@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::TunnelTrait;
-use crate::info::{self, Info, get_info, get_mut_info};
+use crate::info::{self, Info, get_mut_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -17,7 +17,6 @@ use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
 use std::time::Duration;
 use super::daemon_event_handle;
-use dnet_types::team::Team;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -198,7 +197,7 @@ impl Daemon {
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
-            ManagementCommand::TunnelConnect(tx, team_id) => {
+            ManagementCommand::TunnelConnect(tx, _team_id) => {
                 let res = Response::internal_error()
                     .set_msg("Command not support.".to_owned());
                 let _ = Self::oneshot_send(tx, res, "");
@@ -224,6 +223,15 @@ impl Daemon {
                     ipc_tx,
                     rpc_command_tx,
                     Some(team_id))
+                );
+            }
+
+            ManagementCommand::GroupUsers(ipc_tx, team_id) => {
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(|| daemon_event_handle::group_users::handle_group_users(
+                    ipc_tx,
+                    rpc_command_tx,
+                    team_id)
                 );
             }
 

@@ -1,16 +1,8 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use futures::sync::oneshot;
-
-use dnet_types::user::User;
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, RpcState, State};
-use dnet_types::settings::RunMode;
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::{get_mut_settings, get_settings};
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
+use crate::daemon::{TunnelCommand, DaemonEvent};
 
 pub fn send_tunnel_connect(
     tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,

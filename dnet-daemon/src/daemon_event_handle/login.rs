@@ -5,12 +5,10 @@ use futures::sync::oneshot;
 
 use dnet_types::user::User;
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, RpcState, State};
-use dnet_types::settings::RunMode;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::{get_mut_settings, get_settings};
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
+use crate::settings::get_mut_settings;
+use crate::daemon::Daemon;
+use crate::info::get_info;
 use super::handle_settings;
 
 pub fn handle_login(ipc_tx: oneshot::Sender<Response>,

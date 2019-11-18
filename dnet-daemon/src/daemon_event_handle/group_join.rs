@@ -3,12 +3,9 @@ use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use dnet_types::user::User;
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, RpcState, State};
-use dnet_types::settings::RunMode;
+use dnet_types::states::State;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
 use crate::info::{get_info, get_mut_info};
 use super::tunnel::send_tunnel_connect;

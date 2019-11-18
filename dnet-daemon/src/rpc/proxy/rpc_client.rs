@@ -465,7 +465,7 @@ pub struct LoginUser {
     pub userid:                         String,
     pub username:                       String,
     pub useremail:                      String,
-//    pub photo:                          Option<String>,
+    pub photo:                          Option<String>,
 //    pub devices:                        Option<Vec<Device>>,
     pub enable_autogroup:               bool,
     pub enable_autoothergroup:          bool,

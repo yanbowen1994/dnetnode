@@ -3,8 +3,6 @@ use std::time::Duration;
 
 use reqwest;
 
-use crate::rpc::http_post;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[allow(non_camel_case_types)]

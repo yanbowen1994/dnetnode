@@ -4,13 +4,10 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, RpcState, State};
-use dnet_types::settings::RunMode;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::{get_mut_settings, get_settings};
+use crate::settings::get_mut_settings;
 use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info, UserInfo};
-use super::handle_settings;
+use crate::info::{get_mut_info, UserInfo};
 use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
 
 pub fn handle_logout(
@@ -57,7 +54,7 @@ fn clean_settings_user() {
 fn clean_info_user() {
     let mut info = get_mut_info().lock().unwrap();
     info.user = UserInfo::new();
-    info.client_info.cookie == "".to_owned();
+    info.client_info.cookie = "".to_owned();
 }
 
 fn send_rpc_disconnect(
@@ -69,7 +66,7 @@ fn send_rpc_disconnect(
     if let Ok(_) = rpc_command_tx.send(
         RpcEvent::Client(RpcClientCmd::Stop(rpc_stop_tx))
     ) {
-        if let Ok(mut res) = rpc_stop_rx.recv_timeout(Duration::from_secs(10)) {
+        if let Ok(res) = rpc_stop_rx.recv_timeout(Duration::from_secs(10)) {
             return Some(ipc_tx);
         }
         else {

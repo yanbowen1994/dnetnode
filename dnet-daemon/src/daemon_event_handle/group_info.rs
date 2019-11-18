@@ -3,15 +3,10 @@ use std::time::Duration;
 
 use futures::sync::oneshot;
 
-use dnet_types::user::User;
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, RpcState, State};
-use dnet_types::settings::RunMode;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::{get_mut_settings, get_settings};
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
-use crate::info::{get_info, get_mut_info};
-use super::handle_settings;
+use crate::daemon::Daemon;
+use crate::info::get_info;
 use dnet_types::team::Team;
 
 pub fn handle_group_info(

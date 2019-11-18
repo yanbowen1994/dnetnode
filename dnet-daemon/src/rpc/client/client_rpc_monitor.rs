@@ -12,6 +12,7 @@ use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client::{self, Error as SubError};
 use super::error::{Error as ClientError, Result};
+use serde_json::Value;
 
 #[derive(Eq, PartialEq)]
 enum RunStatus {
@@ -68,6 +69,11 @@ impl RpcMonitor {
 
                         RpcClientCmd::FreshTeam(res_tx) => {
                             let response = self.handle_fresh_team();
+                            let _ = res_tx.send(response);
+                        }
+
+                        RpcClientCmd::TeamUsers(team_id, res_tx) => {
+                            let response = self.handle_get_users_by_team(team_id);
                             let _ = res_tx.send(response);
                         }
 
@@ -155,6 +161,95 @@ impl RpcMonitor {
                 self.executor_tx = None;
             }
         }
+    }
+}
+
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+impl RpcMonitor {
+    fn handle_join_team(&self, team_id: String) -> Response {
+        info!("handle_join_team");
+        if let Err(error) = self.client.join_team(&team_id) {
+            let response = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string()),
+            };
+            return response;
+        } else {
+            if let Err(error) = self.client.search_user_team() {
+                let response = match error {
+                    SubError::http(code) => Response::new_from_code(code),
+                    _ => Response::internal_error().set_msg(error.to_string()),
+                };
+                return response;
+            }
+        }
+        Response::success()
+    }
+
+    fn handle_out_team(&self, team_id: String) -> Response {
+        info!("handle_out_team");
+        if let Err(error) = self.client.out_team(&team_id) {
+            let response = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string()),
+            };
+            return response;
+        } else {
+            if let Err(error) = self.client.search_user_team() {
+                return Response::internal_error().set_msg(error.to_string());
+            }
+        }
+        Response::success()
+    }
+
+    fn handle_fresh_team(&self) -> Response {
+        if let Err(error) = self.client.search_user_team() {
+            let res = match error {
+                SubError::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string())
+            };
+            return res;
+        }
+        else {
+            return Response::success();
+        }
+    }
+
+    fn handle_get_users_by_team(&self, team_id: String) -> Response {
+        info!("handle_get_users_by_team");
+        match self.client.get_users_by_team(&team_id) {
+            Ok(res) => {
+                let data: Vec<Value> = res.iter()
+                    .map(|user| {
+                        user.to_json()
+                    })
+                    .collect();
+                let data = serde_json::Value::Array(data);
+                Response::success().set_data(Some(data))
+            },
+            Err(SubError::http(code)) => Response::new_from_code(code),
+            Err(e) => Response::internal_error().set_msg(e.to_string()),
+        }
+    }
+
+    fn handle_select_proxy(&self) -> Response {
+        info!("handle_select_proxy");
+        let response;
+        match self.client.device_select_proxy() {
+            Ok(_) => response = Response::success(),
+            Err(e) => response = Response::internal_error().set_msg(e.to_string())
+        }
+        response
+    }
+}
+
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+impl RpcMonitor {
+    // init means copy info.team to info.client.running_teams
+    // use for client run as muti-team.
+    fn start_team(&self) {
+        let mut info = get_mut_info().lock().unwrap();
+        info.client_info.running_teams = info.teams.clone();
     }
 }
 
@@ -352,77 +447,5 @@ impl Executor {
         info.tinc_info.connect_to = connect_to;
         self.client.connect_team_broadcast()?;
         Ok(())
-    }
-}
-
-#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-impl RpcMonitor {
-    fn handle_join_team(&self, team_id: String) -> Response {
-        info!("handle_join_team");
-        if let Err(error) = self.client.join_team(&team_id) {
-            let response = match error {
-                SubError::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string()),
-            };
-            return response;
-        } else {
-            if let Err(error) = self.client.search_user_team() {
-                let response = match error {
-                    SubError::http(code) => Response::new_from_code(code),
-                    _ => Response::internal_error().set_msg(error.to_string()),
-                };
-                return response;
-            }
-        }
-        Response::success()
-    }
-
-    fn handle_out_team(&self, team_id: String) -> Response {
-        info!("handle_out_team");
-        if let Err(error) = self.client.out_team(&team_id) {
-            let response = match error {
-                SubError::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string()),
-            };
-            return response;
-        } else {
-            if let Err(error) = self.client.search_user_team() {
-                return Response::internal_error().set_msg(error.to_string());
-            }
-        }
-        Response::success()
-    }
-
-    fn handle_fresh_team(&self) -> Response {
-        if let Err(error) = self.client.search_user_team() {
-            let res = match error {
-                SubError::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string())
-            };
-            return res;
-        }
-        else {
-            return Response::success();
-        }
-    }
-
-    fn handle_select_proxy(&self) -> Response {
-        info!("handle_select_proxy");
-        let response;
-        match self.client.device_select_proxy() {
-            Ok(_) => response = Response::success(),
-            Err(e) => response = Response::internal_error().set_msg(e.to_string())
-        }
-        response
-    }
-}
-
-#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-impl RpcMonitor {
-    // init means copy info.team to info.client.running_teams
-    // use for client run as muti-team.
-    fn start_team(&self) {
-        let mut info = get_mut_info().lock().unwrap();
-        info.client_info.running_teams = info.teams.clone();
     }
 }

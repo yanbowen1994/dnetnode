@@ -19,8 +19,10 @@ use super::search_user_team::search_user_team;
 use super::join_team::join_team;
 use super::out_team::out_team;
 use super::get_online_proxy::client_get_online_proxy;
+use super::get_users_by_team::get_users_by_team;
 use super::device_select_proxy::device_select_proxy;
 use super::connect_team_broadcast::connect_team_broadcast;
+use crate::info::UserInfo;
 
 pub(super) fn post(url: &str, data: &str, uid: &str) -> Result<Response> {
     let mut wait_sec = 0;
@@ -81,6 +83,10 @@ impl RpcClient {
 
     pub fn binding_device(&self) -> Result<()> {
         binding_device()
+    }
+
+    pub fn get_users_by_team(&self, team_id: &str) -> Result<Vec<UserInfo>> {
+        get_users_by_team(team_id)
     }
 }
 

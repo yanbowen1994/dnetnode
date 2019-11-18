@@ -3,6 +3,7 @@ mod connect_team_broadcast;
 mod device_select_proxy;
 mod error;
 mod get_online_proxy;
+mod get_users_by_team;
 mod heartbeat;
 mod join_team;
 mod login;

@@ -50,6 +50,9 @@ build_rpc_trait! {
         #[rpc(meta, name = "group_info")]
         fn group_info(&self, Self::Metadata, String) -> BoxFuture<Vec<Team>, Error>;
 
+        #[rpc(meta, name = "group_users")]
+        fn group_users(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
+
         #[rpc(meta, name = "group_join")]
         fn group_join(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
@@ -84,6 +87,9 @@ pub enum ManagementCommand {
 
     /// Get the current geographical location.
     GroupInfo(OneshotSender<Vec<Team>>, String),
+
+    /// Get the current geographical location.
+    GroupUsers(OneshotSender<Response>, String),
 
     /// Get the current geographical location.
     GroupJoin(OneshotSender<Response>, String),
@@ -283,6 +289,15 @@ for ManagementInterface<T>
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::GroupInfo(tx, team_id))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn group_users(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
+        log::info!("management interface group info");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::GroupUsers(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

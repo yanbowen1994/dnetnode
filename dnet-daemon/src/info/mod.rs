@@ -1,4 +1,3 @@
-mod auth;
 mod client_info;
 mod error;
 mod info;

@@ -1,7 +1,5 @@
 use std::sync::Mutex;
 
-use dnet_types::team::Team;
-
 use super::ClientInfo;
 use super::ProxyInfo;
 use super::TincInfo;

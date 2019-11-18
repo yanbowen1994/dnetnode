@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use url;
 use futures::sync::oneshot;
 

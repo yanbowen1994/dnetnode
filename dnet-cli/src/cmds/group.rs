@@ -25,6 +25,15 @@ impl Command for Group {
                     ),
             )
             .subcommand(
+                clap::SubCommand::with_name("users")
+                    .about("Display information about the currently of group users.")
+                    .arg(
+                        clap::Arg::with_name("team_id")
+                            .help("Dnet team id.")
+                            .required(true),
+                    ),
+            )
+            .subcommand(
                 clap::SubCommand::with_name("join")
                     .about("This device join group.")
                     .arg(
@@ -54,6 +63,9 @@ impl Command for Group {
         } else if let Some(set_matches) = matches.subcommand_matches("info") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
             self.group_info(team_id)?;
+        } else if let Some(set_matches) = matches.subcommand_matches("users") {
+            let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
+            self.group_users(team_id)?;
         } else if let Some(set_matches) = matches.subcommand_matches("join") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
             self.group_join(team_id)?;
@@ -79,6 +91,14 @@ impl Group {
     fn group_info(&self, team_id: String) -> Result<()> {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_info(team_id)
+            .map_err(Error::ipc_connect_failed)?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+
+    fn group_users(&self, team_id: String) -> Result<()> {
+        let mut ipc = new_ipc_client()?;
+        let res = ipc.group_users(team_id)
             .map_err(Error::ipc_connect_failed)?;
         println!("{:#?}", res);
         Ok(())

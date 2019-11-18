@@ -59,6 +59,14 @@ impl Response {
         }
     }
 
+    pub fn not_login() -> Self {
+        Self {
+            code:   500,
+            msg:    "NotLogIn.".to_owned(),
+            data:   None,
+        }
+    }
+
     pub fn exec_timeout() -> Self {
         Self {
             code: 500,

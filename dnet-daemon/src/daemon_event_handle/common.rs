@@ -35,7 +35,7 @@ pub fn is_rpc_connected(
         return Some(ipc_tx)
     }
     else {
-        let response = Response::internal_error().set_msg("NotLogIn.".to_owned());
+        let response = Response::not_login();
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
         return None;
     }

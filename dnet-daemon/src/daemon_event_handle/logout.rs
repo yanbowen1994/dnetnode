@@ -35,7 +35,7 @@ fn need_logout(
 ) -> Option<oneshot::Sender<Response>> {
     let settings = get_mut_settings();
     if settings.common.username.is_empty(){
-        let response = Response::internal_error().set_msg("Not logged in".to_owned());
+        let response = Response::not_login();
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
         None
     }
@@ -57,6 +57,7 @@ fn clean_settings_user() {
 fn clean_info_user() {
     let mut info = get_mut_info().lock().unwrap();
     info.user = UserInfo::new();
+    info.client_info.cookie == "".to_owned();
 }
 
 fn send_rpc_disconnect(

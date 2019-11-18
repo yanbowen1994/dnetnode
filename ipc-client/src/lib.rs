@@ -121,6 +121,10 @@ impl DaemonRpcClient {
         self.call("login", &user)
     }
 
+    pub fn logout(&mut self) -> Result<Response> {
+        self.call("logout", &NO_ARGS)
+    }
+
     pub fn host_status_change(&mut self, host_status_change: String) -> Result<()> {
         self.call("host_status_change", &host_status_change)
     }

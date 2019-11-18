@@ -1,4 +1,4 @@
-use std::sync::{mpsc};
+use std::sync::mpsc;
 
 use url;
 use futures::sync::oneshot;

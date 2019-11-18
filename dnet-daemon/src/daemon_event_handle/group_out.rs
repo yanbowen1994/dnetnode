@@ -1,4 +1,4 @@
-use std::sync::{mpsc};
+use std::sync::mpsc;
 use std::time::Duration;
 
 use futures::sync::oneshot;
@@ -12,6 +12,8 @@ use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
 use crate::info::{get_info, get_mut_info};
 use super::tunnel::send_tunnel_disconnect;
+use super::common::is_not_proxy;
+use crate::daemon_event_handle::common::is_rpc_connected;
 
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -59,34 +61,6 @@ pub fn group_out(
             let _ = Daemon::oneshot_send(ipc_tx, response, "");
             Some(())
         });
-}
-
-
-fn is_not_proxy(ipc_tx: oneshot::Sender<Response>) -> Option<oneshot::Sender<Response>> {
-    let run_mode = get_settings().common.mode.clone();
-    if run_mode == RunMode::Proxy {
-        let response = Response::internal_error()
-            .set_msg("Invalid command in proxy mode".to_owned());
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
-    }
-    else {
-        return Some(ipc_tx);
-    }
-}
-
-fn is_rpc_connected(
-    ipc_tx:   oneshot::Sender<Response>,
-    status:   &State,
-) -> Option<oneshot::Sender<Response>> {
-    if status.rpc == RpcState::Connected {
-        return Some(ipc_tx)
-    }
-    else {
-        let response = Response::internal_error().set_msg("NotLogIn.".to_owned());
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
-    }
 }
 
 fn is_joined(team_id: &str) -> bool {

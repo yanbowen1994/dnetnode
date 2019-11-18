@@ -325,7 +325,7 @@ impl Response {
     pub fn http_923() -> Self {
         Self {
             code: 923,
-            msg: "Loginlog not exist".to_owned(),
+            msg: "Login log not exist".to_owned(),
             data: None,
         }
     }
@@ -548,7 +548,7 @@ impl Response {
             920 => "Can't invite yourself".to_owned(),
             921 => "Can't remove yourself".to_owned(),
             922 => "No virtual IP can be assigned".to_owned(),
-            923 => "Loginlog not exist".to_owned(),
+            923 => "Login log not exist".to_owned(),
             924 => "Update publickey fail".to_owned(),
             925 => "The mac address corresponding device is not reported".to_owned(),
             926 => "The device corresponding to the mac address does not have public key information".to_owned(),

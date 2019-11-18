@@ -138,7 +138,7 @@ impl MonitorInner {
                 break
             }
             if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
-                info!("exec_tinc_check");
+                debug!("exec_tinc_check");
                 if let Err(_) = self.exec_tinc_check() {
                     self.exec_restart();
                 }
@@ -152,33 +152,37 @@ impl MonitorInner {
     }
 
     fn disconnect(&mut self) -> Result<()> {
-        let (tx, rx) = mpsc::channel();
-        if let Err(err) = self.stop_sign_tx.send(tx) {
-            error!("disconnect {:?}", err);
-            let mut tinc = TincOperator::new();
-            tinc.stop_tinc()?;
+        if *self.is_running.lock().unwrap() {
+            let (tx, rx) = mpsc::channel();
+            if let Err(err) = self.stop_sign_tx.send(tx) {
+                error!("disconnect {:?}", err);
+                let mut tinc = TincOperator::new();
+                tinc.stop_tinc()?;
+            }
+            else {
+                let _ = rx.recv_timeout(Duration::from_secs(5));
+                let mut tinc = TincOperator::new();
+                tinc.stop_tinc()?;
+            }
+            info!("tinc_monitor stop tinc");
         }
-        else {
-            let _ = rx.recv_timeout(Duration::from_secs(5));
-            let mut tinc = TincOperator::new();
-            tinc.stop_tinc()?;
-        }
-        info!("tinc_monitor stop tinc");
         Ok(())
     }
 
     fn reconnect(&mut self) -> Result<()> {
-        let (tx, rx) = mpsc::channel();
-        match self.stop_sign_tx.send(tx) {
-            Ok(_) => {
-                let _ = rx.recv_timeout(Duration::from_secs(5));
-                ()
-            },
-            Err(_) => (),
+        if *self.is_running.lock().unwrap() {
+            let (tx, rx) = mpsc::channel();
+            match self.stop_sign_tx.send(tx) {
+                Ok(_) => {
+                    let _ = rx.recv_timeout(Duration::from_secs(5));
+                    ()
+                },
+                Err(_) => (),
+            }
+            let mut tinc = TincOperator::new();
+            tinc.restart_tinc()?;
+            info!("tinc_monitor restart tinc");
         }
-        let mut tinc = TincOperator::new();
-        tinc.restart_tinc()?;
-        info!("tinc_monitor restart tinc");
         Ok(())
     }
 
@@ -187,7 +191,7 @@ impl MonitorInner {
 
         match tinc.check_tinc_status() {
             Ok(_) => {
-                info!("check tinc process: tinc exist.");
+                debug!("check tinc process: tinc exist.");
                 return Ok(());
             }
 

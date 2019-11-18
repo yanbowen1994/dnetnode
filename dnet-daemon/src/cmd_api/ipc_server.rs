@@ -62,6 +62,9 @@ build_rpc_trait! {
         #[rpc(meta, name = "login")]
         fn login(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
+        #[rpc(meta, name = "logout")]
+        fn logout(&self, Self::Metadata) -> BoxFuture<Response, Error>;
+
         #[rpc(meta, name = "host_status_change")]
         fn host_status_change(&self, Self::Metadata, String) -> BoxFuture<(), Error>;
     }
@@ -91,6 +94,8 @@ pub enum ManagementCommand {
     HostStatusChange(OneshotSender<()>, HostStatusChange),
 
     Login(OneshotSender<Response>, User),
+
+    Logout(OneshotSender<Response>),
 
     Shutdown(OneshotSender<Response>),
 }
@@ -260,6 +265,15 @@ for ManagementInterface<T>
         let (tx, rx) = sync::oneshot::channel();
         let future = self
             .send_command_to_daemon(ManagementCommand::Login(tx, user))
+            .and_then(|_| rx.map_err(|_| Error::internal_error()));
+        Box::new(future)
+    }
+
+    fn logout(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
+        log::info!("management interface logout");
+        let (tx, rx) = sync::oneshot::channel();
+        let future = self
+            .send_command_to_daemon(ManagementCommand::Logout(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

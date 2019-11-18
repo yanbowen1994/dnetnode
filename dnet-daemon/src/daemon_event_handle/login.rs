@@ -1,4 +1,4 @@
-use std::sync::{mpsc};
+use std::sync::mpsc;
 use std::time::Duration;
 
 use futures::sync::oneshot;

@@ -251,6 +251,10 @@ impl Daemon {
                         ipc_tx, user, rpc_command_tx));
             }
 
+            ManagementCommand::Logout(ipc_tx) => {
+                self.handle_logout(ipc_tx);
+            }
+
             ManagementCommand::HostStatusChange(ipc_tx, host_status_change) => {
                 // No call back.
                 let _ = Self::oneshot_send(ipc_tx, (), "");
@@ -384,6 +388,22 @@ impl Daemon {
                 ipc_tx,
                 team_id,
                 status,
+                rpc_command_tx,
+                tunnel_command_tx,
+                daemon_event_tx,
+            )
+        );
+    }
+
+    fn handle_logout(&self,
+                     ipc_tx:        oneshot::Sender<Response>,
+    ) {
+        let rpc_command_tx = self.rpc_command_tx.clone();
+        let tunnel_command_tx = self.tunnel_command_tx.clone();
+        let daemon_event_tx = self.daemon_event_tx.clone();
+        thread::spawn(move ||
+            daemon_event_handle::logout::handle_logout(
+                ipc_tx,
                 rpc_command_tx,
                 tunnel_command_tx,
                 daemon_event_tx,

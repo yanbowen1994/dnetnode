@@ -93,7 +93,6 @@ fn get_config(matches: &ArgMatches) -> Result<()> {
     Settings::new(config_dir)
         .map_err(|e|{
             let err = Error::ParseSetting(e);
-            println!("{:?}\n{}", err, err);
             err
         })?;
     return Ok(());

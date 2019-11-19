@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use dnet_types::settings::{
     Settings as TypeSettings,
@@ -11,6 +12,8 @@ use dnet_types::settings::{
 use super::parse_file::FileSettings;
 use super::default_settings::{DEFAULT_LINUX_DEFAULT_HOME_PATH, DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
 use super::error::*;
+use std::net::IpAddr;
+use crate::settings::error::Error::Config;
 
 static mut EL: *mut Settings = 0 as *mut _;
 
@@ -65,6 +68,7 @@ impl Common {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proxy {
+    pub local_ip:                               Option<IpAddr>,
     pub local_port:                             String,
     pub local_https_server_certificate_file:    String,
     pub local_https_server_privkey_file:        String,
@@ -74,6 +78,7 @@ pub struct Proxy {
 impl Proxy {
     fn empty() -> Self {
         Proxy {
+            local_ip:                              None,
             local_port:                            String::new(),
             local_https_server_certificate_file:   String::new(),
             local_https_server_privkey_file:       String::new(),
@@ -128,8 +133,7 @@ impl Settings {
         let mut settings = FileSettings::load_config(config_dir)
             .and_then(|file_seting| {
                 Self::parse_file_settings(file_seting)
-            })
-            .unwrap_or(Settings::default()?);
+            })?;
 
         let now = chrono::Utc::now().to_string();
         settings.last_runtime = now;
@@ -214,6 +218,15 @@ impl Settings {
                 file_settings.proxy
                     .ok_or(Error::NoneError)
                     .and_then(|file_proxy| {
+                        let local_ip = match file_proxy.local_ip {
+                            Some(ip_str) => {
+                                let ip = IpAddr::from_str(&ip_str)
+                                    .map_err(|_|Error::Config("local_ip".to_string()))?;
+                                Some(ip)
+                            },
+                            None => None,
+                        };
+
                         let local_port = file_proxy.local_port
                             .unwrap_or(DEFAULT_PROXY_LOCAL_SERVER_PORT.to_owned());
 
@@ -232,6 +245,7 @@ impl Settings {
                         );
 
                         Ok(Proxy {
+                            local_ip,
                             local_port,
                             local_https_server_privkey_file,
                             local_https_server_certificate_file,

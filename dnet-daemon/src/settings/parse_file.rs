@@ -17,6 +17,7 @@ pub struct Common {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Proxy {
+    pub local_ip:                               Option<String>,
     pub local_port:                             Option<String>,
     pub local_https_server_certificate_file:    Option<String>,
     pub local_https_server_privkey_file:        Option<String>,

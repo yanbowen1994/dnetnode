@@ -45,15 +45,16 @@ impl TincMonitor {
                 TunnelCommand::Connect => {
                     let inner = get_monitor_inner();
                     let res = match inner.connect() {
-                        Ok(_) => Response::success(),
+                        Ok(_) => {
+                            thread::spawn(move || {
+                                // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
+                                thread::sleep(Duration::from_secs(3));
+                                inner.run();
+                            });
+                            Response::success()
+                        },
                         Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
-
-                    thread::spawn(move || {
-                        // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
-                        thread::sleep(Duration::from_secs(3));
-                        inner.run();
-                    });
 
                     let _ = res_tx.send(res);
                 }
@@ -177,12 +178,11 @@ impl MonitorInner {
                     let _ = rx.recv_timeout(Duration::from_secs(5));
                     ()
                 },
-                Err(_) => (),
+                Err(_) => return Err(TincOperatorError::StopTincError),
             }
-            let mut tinc = TincOperator::new();
-            tinc.restart_tinc()?;
-            info!("tinc_monitor restart tinc");
         }
+        self.connect()?;
+        info!("tinc_monitor restart tinc");
         Ok(())
     }
 

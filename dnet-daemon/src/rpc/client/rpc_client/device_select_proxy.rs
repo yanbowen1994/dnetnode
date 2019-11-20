@@ -1,79 +1,35 @@
+use serde_json::json;
+
 use crate::info::get_info;
 use crate::settings::get_settings;
-use super::post;
-use super::{Error, Result};
+use crate::rpc::http_request::post;
+use crate::rpc::{Error, Result};
 
 pub(super) fn device_select_proxy() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/deviceselectproxy";
+        + "/vlan/device/proxy/selectDeviceByProxy";
 
-    let data;
-    let cookie;
-    {
-        let info = get_info().lock().unwrap();
-        if info.tinc_info.connect_to.len() > 0 {
-            let proxy_ip = info.tinc_info.connect_to[0].ip.to_string();
-            let device_id = info.client_info.uid.clone();
-            let pubkey = info.tinc_info.pub_key.clone();
-            cookie = info.client_info.cookie.clone();
-            data = DeviceSelectProxy {
-                proxyip:    proxy_ip,
-                deviceid:   device_id,
-                pubkey,
-            }.to_json();
-        }
-        else {
-            return Err(Error::device_select_proxy_no_usable_proxy);
-        }
+    let info = get_info().lock().unwrap();
+
+    if info.tinc_info.connect_to.len() == 0 {
+        return Err(Error::http(511));
     }
 
-    post(&url, &data, &cookie)
-        .and_then(|mut res| {
-            if res.status().as_u16() == 200 {
-                if let Ok(res_data) = &res.text() {
-                    if let Ok(recv) = serde_json::from_str(res_data) {
-                        let recv: JavaResponse = recv;
-                        if recv.code == 200 {
-                            return Ok(());
-                        }
-                        else {
-                            error!("device_select_proxy response msg: {:?}", recv.msg);
-                            return Err(Error::http(recv.code));
-                        }
-                    }
-                    else {
-                        error!("device_select_proxy - response can't parse: {:?}", res_data);
-                    }
-                }
-                else {
-                    error!("device_select_proxy - {:?}", res);
-                }
-            }
-            else {
-                error!("device_select_proxy - {:?}", res);
-            }
+    let device_serial = info.client_info.uid.clone();
+    let proxy_ip = info.tinc_info.connect_to[0].ip.clone().to_string();
+    let proxy_port = info.tinc_info.connect_to[0].port;
+    let pubkey = info.tinc_info.connect_to[0].pubkey.clone();
 
-            return Err(Error::device_select_proxy);
-        })
-}
+    std::mem::drop(info);
 
-#[allow(non_snake_case)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct DeviceSelectProxy {
-    deviceid:   String,
-    proxyip:    String,
-    pubkey:     String,
-}
+    let data = json!({
+        "deviceSerial":         device_serial,
+        "proxyIp":              proxy_ip,
+        "proxyPort":            proxy_port,
+        "pubKey":               pubkey,
+    }).to_string();
 
-impl DeviceSelectProxy {
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
-}
+    let _ = post(&url, &data)?;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct JavaResponse {
-    code: i32,
-    data: Option<String>,
-    msg:  Option<String>,
+    Ok(())
 }

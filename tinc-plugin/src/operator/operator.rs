@@ -4,10 +4,10 @@ use crate::TincRunMode;
 
 static mut EL: *mut TincOperator = 0 as *mut _;
 
-
 pub struct TincSettings {
     pub tinc_home:                          String,
     pub mode:                               TincRunMode,
+    pub port:                               u16,
     pub tinc_memory_limit:                  f64,
     pub tinc_allowed_out_memory_times:      u32,
     pub tinc_allowed_tcp_failed_times:      u32,

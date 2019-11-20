@@ -2,7 +2,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME};
+use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME, DEFAULT_TINC_PORT};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
@@ -13,11 +13,12 @@ use super::error::{Error, Result};
 pub struct TincInfo {
     pub vip:            Option<IpAddr>,
     pub pub_key:        String,
+    pub port:           u16,
     pub connections:    u32,
     pub edges:          u32,
     pub nodes:          u32,
     pub connect_to:     Vec<ConnectTo>,
-    pub last_runtime:       Option<String>,
+    pub last_runtime:   Option<String>,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -28,6 +29,7 @@ impl TincInfo {
         TincInfo {
             vip:            None,
             pub_key,
+            port:           DEFAULT_TINC_PORT,
             connections:    0,
             edges:          0,
             nodes:          0,

@@ -2,28 +2,27 @@
 #[repr(i8)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum  DeviceType {
+    Cloud                   = -1,
     Router                  = 0,
     Android                 = 1,
     IOS                     = 2,
     Windows                 = 3,
     MAC                     = 4,
-    Vrouter                 = 5,
-    Linux                   = 6,
-    Other                   = 7,
+    Linux                   = 5,
+    Other                   = 6,
 }
 
-impl From<u32> for DeviceType {
-    fn from(type_code: u32) -> Self {
+impl From<i8> for DeviceType {
+    fn from(type_code: i8) -> Self {
         match type_code {
+            -1 => DeviceType::Cloud,
             0 => DeviceType::Router,
             1 => DeviceType::Android,
             2 => DeviceType::IOS,
             3 => DeviceType::Windows,
             4 => DeviceType::MAC,
-            5 => DeviceType::Vrouter,
-            6 => DeviceType::Linux,
-            7 => DeviceType::Other,
-            _ => DeviceType::Other
+            5 => DeviceType::Linux,
+            _ => DeviceType::Other,
         }
     }
 }
@@ -45,12 +44,12 @@ impl DeviceType {
 
     pub fn to_string(&self) -> String {
         match self {
+            DeviceType::Cloud     => "Cloud".to_owned(),
             DeviceType::Router    => "Router".to_owned(),
             DeviceType::Android   => "Android".to_owned(),
             DeviceType::IOS       => "IOS".to_owned(),
             DeviceType::Windows   => "Windows".to_owned(),
             DeviceType::MAC       => "MAC".to_owned(),
-            DeviceType::Vrouter   => "Vrouter".to_owned(),
             DeviceType::Linux     => "Linux".to_owned(),
             DeviceType::Other     => "Other".to_owned(),
         }

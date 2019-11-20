@@ -9,7 +9,7 @@ pub struct TincTools;
 
 impl TincTools {
     /// 根据IP地址获取文件名
-    pub fn get_filename_by_ip(is_proxy: bool, ip: &str) -> String {
+    pub fn get_filename_by_vip(is_proxy: bool, ip: &str) -> String {
         let splits = ip.split(".").collect::<Vec<&str>>();
         let mut filename = String::new();
         if is_proxy {

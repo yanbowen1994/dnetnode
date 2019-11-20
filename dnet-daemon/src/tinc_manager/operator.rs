@@ -24,10 +24,13 @@ impl TincOperator {
             let tinc_run_model = match &settings.common.mode {
                 RunMode::Proxy => TincRunMode::Proxy,
                 RunMode::Client => TincRunMode::Client,
+                RunMode::Center => TincRunMode::Center,
             };
+            let port = settings.tinc.port;
             let tinc_settings = TincSettings {
                 tinc_home,
                 mode: tinc_run_model,
+                port,
                 tinc_memory_limit: settings.tinc.tinc_memory_limit,
                 tinc_allowed_out_memory_times: settings.tinc.tinc_allowed_out_memory_times,
                 tinc_allowed_tcp_failed_times: settings.tinc.tinc_allowed_tcp_failed_times,
@@ -163,9 +166,16 @@ impl TincOperator {
         Ok(())
     }
 
-    /// 添加子设备
-    pub fn set_hosts(&self, is_proxy: bool, ip: &str, pubkey: &str) -> Result<()> {
-        PluginTincOperator::instance().set_hosts(is_proxy, ip, pubkey)
+    pub fn set_hosts(&self,
+                     ip_port: Option<(IpAddr, u16)>,
+                     vip:     IpAddr,
+                     pubkey:  &str,
+    ) -> Result<()> {
+        PluginTincOperator::instance().set_hosts(
+            ip_port,
+            vip,
+            pubkey,
+        )
     }
 
     /// 获取子设备公钥
@@ -196,10 +206,10 @@ impl TincOperator {
     }
 
     pub fn get_client_filename_by_virtual_ip(&self, vip: &str) -> String {
-        TincTools::get_filename_by_ip(false, vip)
+        TincTools::get_filename_by_vip(false, vip)
     }
 
     pub fn get_proxy_filename_by_virtual_ip(&self, vip: &str) -> String {
-        TincTools::get_filename_by_ip(true, vip)
+        TincTools::get_filename_by_vip(true, vip)
     }
 }

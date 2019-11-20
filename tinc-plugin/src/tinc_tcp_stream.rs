@@ -1,4 +1,4 @@
-use std::net::TcpStream;
+use std::net::{TcpStream, Shutdown};
 use std::io::Write;
 use std::net::SocketAddr;
 use std::fs::File;
@@ -57,6 +57,9 @@ pub enum RequestType {
     ReqDumpTraffic           = 13,
     ReqPcap                  = 14,
     ReqLog                   = 15,
+    ReqDumpEvents            = 16,
+    ReqDumpGroups            = 17,
+    ReqGroup                 = 18,
 }
 
 pub struct TincStream {
@@ -296,24 +299,73 @@ impl TincStream {
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
+    pub fn del_group(&mut self, group_id: &str) -> Result<()> {
+        let cmd = format!("{} {} delg {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          group_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("{:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    pub fn add_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
+        let cmd = format!("{} {} addn {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          node_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("add_group_node {:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    pub fn del_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
+        let cmd = format!("{} {} deln {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          node_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("{:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
     fn recv(&mut self) -> Result<String> {
         let mut output = String::new();
         loop {
-            let res = &mut [0; 1024];
+            let res = &mut [0; 128];
             let _len = match self.stream.read(res) {
                 Ok(x) => x,
                 Err(_) => 0,
             };
+
             if _len == 0 {
                 break
             }
             else {
-                let this = String::from_utf8_lossy(res).to_string().replace("\u{0}", "");
-                if this.len() == 0 {
-                    break
-                }
-                else {
-                    output += &this;
+                if let Ok(res) = String::from_utf8(res.to_vec()) {
+                    if res.contains("\u{0}") {
+                        output += &res.replace("\u{0}", "");
+                        break
+                    }
+                    output += &res;
                 }
             }
         }
@@ -322,7 +374,7 @@ impl TincStream {
 
     fn check_res(res: &str, req: i8, req_type: i8) -> bool {
         let iter: Vec<&str> = res.split_whitespace().collect();
-        if iter.is_empty() {
+        if iter.len() < 2 {
             return false;
         }
         let control: i8 = match iter[0].parse() {
@@ -338,6 +390,12 @@ impl TincStream {
             return true;
         }
         false
+    }
+}
+
+impl Drop for TincStream {
+    fn drop(&mut self) {
+        let _ = self.stream.shutdown(Shutdown::Both);
     }
 }
 
@@ -365,8 +423,8 @@ pub struct SourceNode {
 impl SourceNode {
     pub fn from(source_str: &str) -> Result<Self> {
         let source_str = source_str.to_string();
-        let node_str:Vec<&str> = source_str.split(" ").collect();
-        if node_str.len() == 20 {
+        let node_str:Vec<&str> = source_str.split_ascii_whitespace().collect();
+        if node_str.len() >= 20 {
             let node: String = node_str[2].to_string();
             let id: String = node_str[3].to_string();
             let host: String = node_str[4].to_string();

@@ -87,7 +87,8 @@ impl Daemon {
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("start dnet firewall config.");
-                router_plugin::firewall::start_firewall();
+                let tunnel_port = get_settings().tinc.port;
+                router_plugin::firewall::start_firewall(tunnel_port);
             }
 
         let (daemon_event_tx, daemon_event_rx) = mpsc::channel();
@@ -104,12 +105,13 @@ impl Daemon {
 
         let run_mode = &get_settings().common.mode;
         let rpc_command_tx;
-        if run_mode == &RunMode::Proxy {
+        if run_mode == &RunMode::Proxy || run_mode == &RunMode::Center {
             rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone());
         }
         else {
             rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
         }
+
 
         let (tinc, tunnel_command_tx) =
             TincMonitor::new(daemon_event_tx.clone());
@@ -183,7 +185,8 @@ impl Daemon {
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("stop dnet firewall config.");
-                router_plugin::firewall::stop_firewall();
+                let tunnel_port = get_settings().tinc.port;
+                router_plugin::firewall::stop_firewall(tunnel_port);
             }
         self.status.daemon = DaemonExecutionState::Finished;
     }
@@ -301,7 +304,7 @@ impl Daemon {
         self.status.rpc = RpcState::Connected;
         let run_mode = get_settings().common.mode.clone();
 
-        if run_mode == RunMode::Proxy {
+        if run_mode == RunMode::Proxy || run_mode == RunMode::Center {
             tunnel_auto_connect = true;
         }
         else {
@@ -316,7 +319,7 @@ impl Daemon {
 
         if tunnel_auto_connect {
             info!("tunnel auto connect");
-            daemon_event_handle::tunnel::send_tunnel_connect(
+            let _response = daemon_event_handle::tunnel::send_tunnel_connect(
                 self.tunnel_command_tx.clone(),
                 self.daemon_event_tx.clone(),
             );

@@ -2,6 +2,7 @@ use std::fs;
 use std::path;
 use std::io::Write;
 use std::time::SystemTime;
+use std::net::IpAddr;
 
 extern crate openssl;
 use openssl::rsa::Rsa;
@@ -17,6 +18,7 @@ impl TincOperator {
         self.set_tinc_conf_file(info)?;
         let is_proxy = match self.tinc_settings.mode {
             TincRunMode::Proxy => true,
+            TincRunMode::Center => true,
             TincRunMode::Client => false,
         };
 
@@ -28,21 +30,23 @@ impl TincOperator {
         }
 
         for online_proxy in info.connect_to.clone() {
-            self.set_hosts(true,
-                           &online_proxy.ip.to_string(),
-                           &online_proxy.pubkey)?;
+            self.set_hosts(Some((online_proxy.ip.clone(), online_proxy.port)),
+                           online_proxy.vip,
+                           &online_proxy.pubkey,
+            )?;
         };
 
-        let ip;
-        if is_proxy {
-            ip = info.ip
-                .ok_or(Error::TincInfoProxyIpNotFound)?
-                .to_string();
+        let ip_port = if is_proxy {
+            let ip = info.ip.ok_or(Error::IpNotFound)?;
+            Some((ip, info.port))
         }
         else {
-            ip = info.vip.to_string();
-        }
-        self.set_hosts(is_proxy, &ip, &info.pub_key)
+            None
+        };
+        self.set_hosts(
+            ip_port,
+            info.vip,
+            &info.pub_key)
     }
 
     fn set_tinc_up(&self, tinc_info: &TincInfo) -> Result<()> {
@@ -50,6 +54,7 @@ impl TincOperator {
 
         let netmask = match self.tinc_settings.mode {
             TincRunMode::Proxy => "255.0.0.0",
+            TincRunMode::Center => "255.0.0.0",
             TincRunMode::Client => "255.255.255.255",
         };
 
@@ -295,31 +300,29 @@ impl TincOperator {
     fn set_tinc_conf_file(&self, tinc_info: &TincInfo) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
 
-        let (is_proxy, name_ip) = match self.tinc_settings.mode {
-            TincRunMode::Proxy => {
-                let name_ip = tinc_info.ip.clone()
-                    .ok_or(Error::TincInfoProxyIpNotFound)?;
-                (true, name_ip)
-            },
-            TincRunMode::Client => (false, tinc_info.vip.clone()),
+        let is_proxy = match self.tinc_settings.mode {
+            TincRunMode::Proxy => true,
+            TincRunMode::Center => true,
+            TincRunMode::Client => false,
         };
 
-        let name = TincTools::get_filename_by_ip(is_proxy,
-                                            &name_ip.to_string());
+        let name = TincTools::get_filename_by_vip(is_proxy,
+                                            &tinc_info.vip.clone().to_string());
 
         let mut connect_to: Vec<String> = vec![];
         for online_proxy in tinc_info.connect_to.clone() {
-            let online_proxy_name = TincTools::get_filename_by_ip(true,
-                                                             &online_proxy.ip.to_string());
+            let online_proxy_name = TincTools::get_filename_by_vip(true,
+                &online_proxy.vip.to_string());
             connect_to.push(online_proxy_name);
         }
-
 
         let mut buf_connect_to = String::new();
         for other in connect_to {
             let buf = "ConnectTo = ".to_string() + &other + "\n";
             buf_connect_to += &buf;
         }
+
+        let port = self.tinc_settings.port;
 
         let buf;
         #[cfg(target_os = "linux")]
@@ -329,11 +332,11 @@ impl TincOperator {
                     + "DeviceType=tap\n\
                    Mode=switch\n\
                    Interface=dnet\n\
-                   BindToAddress = * 50069\n\
+                   BindToAddress = * "  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    Device = /dev/net/tun\n\
-                   AutoConnect=no\n\
+                   AutoConnect = no\n\
                    MaxConnectionBurst=1000\n";
             }
         #[cfg(target_os = "macos")]
@@ -343,7 +346,7 @@ impl TincOperator {
                     + "DeviceType=tap\n\
                    Mode=switch\n\
                    Interface=dnet\n\
-                   BindToAddress = * 50069\n\
+                   BindToAddress = *"  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    Device = /dev/tap0\n\
@@ -357,7 +360,7 @@ impl TincOperator {
                     + "DeviceType=tap\n\
                    Mode=switch\n\
                    Interface=dnet\n\
-                   BindToAddress = * 50069\n\
+                   BindToAddress = *"  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    AutoConnect=no\n\
@@ -376,30 +379,33 @@ impl TincOperator {
     /// if is_proxy{ 文件名=proxy_10_253_x_x }
     /// else { 文件名=虚拟ip后三位b_c_d }
     pub fn set_hosts(&self,
-                     is_proxy: bool,
-                     ip: &str,
-                     pubkey: &str)
-                     -> Result<()> {
+                     ip_port: Option<(IpAddr, u16)>,
+                     vip:     IpAddr,
+                     pubkey:  &str,
+    ) -> Result<()> {
+        let vip = vip.to_string();
         let _guard = self.mutex.lock().unwrap();
-        {
-            let buf;
-            if is_proxy {
-                buf = "Address=".to_string() + ip + "\n"
-                    + "Port=50069\n"
-                    + pubkey;
-            }
-            else {
-                buf = pubkey.to_string();
-            }
-            let file_name = TincTools::get_filename_by_ip(is_proxy, ip);
 
-            let path = self.tinc_settings.tinc_home.clone() + "hosts/" + &file_name;
-            let mut file = fs::File::create(path.clone())
-                .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
-            file.write(buf.as_bytes())
-                .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        let buf;
+        let file_name = if let Some((ip, port)) = ip_port {
+            let ip = ip.to_string();
+            let port = format!("{}", port);
+            buf = "Address=".to_string() + &ip + "\n"
+                + "Port=" + &port +"\n"
+                + pubkey;
+            TincTools::get_filename_by_vip(true, &vip)
         }
+        else {
+            buf = pubkey.to_string();
+            TincTools::get_filename_by_vip(false, &vip)
+        };
+
+        let path = self.tinc_settings.tinc_home.clone() + "hosts/" + &file_name;
+        let mut file = fs::File::create(path.clone())
+            .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
+        file.write(buf.as_bytes())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+
         Ok(())
     }
-
 }

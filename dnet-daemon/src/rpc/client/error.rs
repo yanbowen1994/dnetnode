@@ -1,5 +1,3 @@
-use super::rpc_client;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[allow(non_camel_case_types)]
@@ -10,8 +8,4 @@ pub enum Error {
 
     #[error(display = "Connection with conductor timeout")]
     TeamNotFound,
-
-
-    #[error(display = "Parse Ip failed.")]
-    ClientError(#[error(cause)] rpc_client::Error),
 }

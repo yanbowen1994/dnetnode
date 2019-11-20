@@ -1,73 +1,48 @@
-use crate::info::get_info;
+use dnet_types::team::Team;
 
-use super::error::{Error, Result};
+use crate::info::get_mut_info;
 use crate::settings::get_settings;
-use super::post;
-use crate::rpc::client::rpc_client::types::teams::JavaResponseTeamSearch;
-use crate::rpc::client::rpc_client::search_team_handle::search_team_handle;
+use crate::rpc::http_request::get;
+use crate::rpc::{Error, Result};
+use crate::rpc::client::rpc_client::types::ResponseTeam;
+use std::collections::HashMap;
 
 // if return true restart tunnel.
 pub(super) fn search_user_team() -> Result<bool> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/searchuserteam";
-    let cookie;
-    {
-        let info = get_info().lock().unwrap();
-        cookie = info.client_info.cookie.clone();
+        + "/vlan/team/queryMyAll?pageNum=1&pageSize=10";
+
+    let res_data = get(&url)?;
+
+    let teams_vec = res_data.get("records")
+        .and_then(|records| {
+            records.as_array()
+        })
+        .and_then(|team_vec| {
+            let team_vec = team_vec.clone();
+            Some(team_vec
+                .into_iter()
+                .filter_map(|team| {
+                    let res_team = serde_json::from_value::<ResponseTeam>(team.clone())
+                        .map_err(|err| {
+                            error!("parse team info failed.err: {:?} {:?}", err, team);
+                        })
+                        .ok()?;
+                    Some(res_team.parse_to_team())
+                })
+                .collect::<Vec<Team>>())
+        })
+        .ok_or(Error::ResponseParse(res_data.to_string()))?;
+
+    info!("{:?}", teams_vec);
+
+    let mut teams = HashMap::new();
+    for team in teams_vec {
+        teams.insert(team.team_id.clone(), team);
     }
 
-    let data = RequestStatus {
-        status: 0,
-    }.to_json();
+    let mut info = get_mut_info().lock().unwrap();
+    info.teams.all_teams = teams;
 
-    let mut res = post(&url, &data, &cookie)?;
-
-    if res.status().as_u16() == 200 {
-        let res_data = &res.text().map_err(Error::Reqwest)?;
-        let recv: JavaResponseTeamSearch = serde_json::from_str(res_data)
-            .map_err(|e|{
-                error!("search_user_team - response data: {}", res_data);
-                Error::ParseJsonStr(e)
-            })?;
-
-        if recv.code == Some(200) {
-            if let Some(teams) = recv.data {
-                let restart = search_team_handle(teams)?;
-                return Ok(restart);
-            }
-            else {
-                warn!("No team in current user.");
-                if let Some(code) = recv.code {
-                    return Err(Error::http(code as i32));
-                }
-                else {
-                    return Err(Error::http(0));
-                }
-            }
-        }
-        else {
-            if let Some(msg) = recv.msg {
-                return Err(Error::SearchUserTeam(msg));
-            }
-        }
-    }
-    else {
-        let mut err_msg = "Unknown reason.".to_string();
-        if let Ok(msg) = res.text() {
-            err_msg = msg;
-        }
-        return Err(Error::SearchUserTeam(
-            format!("Code:{} Msg:{}", res.status().as_u16(), err_msg).to_string()));
-    }
-    return Err(Error::SearchUserTeam("Unknown reason.".to_string()));
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct RequestStatus {
-    status: u32,
-}
-impl RequestStatus {
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
+    Ok(true)
 }

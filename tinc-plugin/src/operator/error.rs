@@ -15,7 +15,10 @@ pub enum Error {
     TincInfo_connect_to_is_empty,
 
     #[error(display = "Tinc Info Proxy Ip Not Found")]
-    TincInfoProxyIpNotFound,
+    IpNotFound,
+
+    #[error(display = "Tinc Info Proxy Vip Not Found")]
+    TincInfoProxyVipNotFound,
 
     #[error(display = "Get local ip before Rpc get_online_proxy")]
     GetLocalIpBeforeRpcGetOnlineProxy,

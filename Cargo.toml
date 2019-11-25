@@ -8,7 +8,7 @@ members = [
     "dnet-daemon",
     "dnet-path",
     "dnet-types",
-    "ipc-client",
+    "management-client",
     "ipc-server",
     "pinger",
     "sandbox",

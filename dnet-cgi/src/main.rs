@@ -7,7 +7,7 @@ extern crate ipc_server;
 #[macro_use]
 extern crate serde_derive;
 
-use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+use management_client::{new_standalone_ipc_client, DaemonRpcClient};
 use dnet_types::team::Team;
 use router_plugin::team_status_response::TeamStatusResponse;
 

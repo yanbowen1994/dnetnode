@@ -1,7 +1,7 @@
 [package]
-name = "ipc-client"
+name = "management-client"
 version = "0.1.0"
-authors = ["Mullvad VPN <admin@mullvad.net>"]
+authors = ["bowen.yan <bowen.yan@siteview.com>"]
 description = "IPC client and server for talpid"
 license = "GPL-3.0"
 edition = "2018"

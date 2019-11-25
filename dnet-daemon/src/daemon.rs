@@ -9,7 +9,7 @@ use crate::traits::TunnelTrait;
 use crate::info::{self, Info, get_mut_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
-use crate::cmd_api::ipc_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
+use crate::cmd_api::management_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;

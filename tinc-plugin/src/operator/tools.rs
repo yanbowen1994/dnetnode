@@ -1,6 +1,4 @@
 #[cfg(any(target_os = "windows", target_os = "macos"))]
-use std::net::IpAddr;
-#[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::str::FromStr;
 
 use super::{Error, Result};

@@ -7,10 +7,23 @@ use super::{PID_FILENAME, TINC_MEMORY_LIMIT, TINC_ALLOWED_OUT_MEMORY_TIMES};
 
 impl TincOperator {
     pub fn check_tinc_status(&self) -> Result<()> {
-        let mut res1 = Command::new("ps")
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
+        let mut res1;
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                res1 = Command::new("ps")
+                    .arg("-aux")
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+            }
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+            {
+                res1 = Command::new("ps")
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+            }
+
         let res2 = Command::new("grep")
             .arg("tincd")
             .stdin(res1.stdout.take().unwrap())

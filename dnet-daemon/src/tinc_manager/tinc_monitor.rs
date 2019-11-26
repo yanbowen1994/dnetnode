@@ -8,6 +8,7 @@ use tinc_plugin::TincOperatorError;
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::tinc_manager::tinc_event_handle::tinc_event_recv;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -33,6 +34,8 @@ impl TunnelTrait for TincMonitor {
     }
 
     fn start_monitor(self) {
+        thread::spawn(|| tinc_event_recv());
+
         thread::spawn(move ||self.run());
     }
 }

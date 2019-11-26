@@ -4,6 +4,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 
 use super::{Error, Result};
+use std::net::{IpAddr, Ipv4Addr};
 
 pub struct TincTools;
 
@@ -37,6 +38,29 @@ impl TincTools {
         filename
     }
 
+    pub fn get_vip_by_filename(name: &str) -> Option<IpAddr> {
+        let segment: Vec<&str> = name.split("_").collect();
+        let mut vip_segment = vec![];
+
+        if segment.len() == 3 {
+            for x in segment {
+                vip_segment.push(x.parse::<u8>().ok()?);
+            }
+            Some(IpAddr::from(Ipv4Addr::new(
+                10, vip_segment[0], vip_segment[1], vip_segment[2])))
+        }
+        else if segment.len() == 5 {
+            let segment = segment[1..].to_vec();
+            for x in segment {
+                vip_segment.push(x.parse::<u8>().ok()?);
+            }
+            Some(IpAddr::from(Ipv4Addr::new(
+                10, vip_segment[1], vip_segment[2], vip_segment[3])))
+        }
+        else {
+            None
+        }
+    }
 
     #[cfg(unix)]
     pub fn set_script_permissions(path: &str) -> Result<()>{

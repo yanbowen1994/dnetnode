@@ -1,10 +1,11 @@
-use std::net::{TcpStream, Shutdown};
 use std::io::Write;
-use std::net::SocketAddr;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Result, Read};
 use std::time::Duration;
 use std::str::FromStr;
+use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream};
+
+use socket2::{Domain, Protocol, Type};
 
 #[allow(dead_code)]
 #[repr(i8)]
@@ -60,6 +61,7 @@ pub enum RequestType {
     ReqDumpEvents            = 16,
     ReqDumpGroups            = 17,
     ReqGroup                 = 18,
+    SubScribe                = 19,
 }
 
 pub struct TincStream {
@@ -87,7 +89,13 @@ impl TincStream {
     }
 
     fn parse_control_cookie(path: &str) -> Result<(String, String, String)> {
-        let mut file = File::open(path)?;
+        let mut file = File::open(path)
+            .map_err(|e|
+                Error::new(
+                    ErrorKind::NotFound,
+                    "tinc pid file ".to_owned() + &(e.to_string()
+                    )))?;
+
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let iter: Vec<&str> = contents.split_whitespace().collect();
@@ -346,6 +354,57 @@ impl TincStream {
         }
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
+
+    pub fn subscribe<F>(pid_path: &str, recv_parse: F) -> Result<()>
+        where F: (Fn(&str) -> ()),
+    {
+        let (control_cookie, tinc_ip, tinc_port) =
+            Self::parse_control_cookie(pid_path)?;
+
+        let addr = socket2::SockAddr::from(
+            SocketAddrV4::new(
+                Ipv4Addr::from_str(&tinc_ip)
+                    .map_err(|e|Error::new(
+                        ErrorKind::InvalidData,
+                        e.to_string()))?,
+                tinc_port.parse::<u16>()
+                    .map_err(|e|Error::new(
+                        ErrorKind::InvalidData,
+                        e.to_string()))?));
+
+        let mut socket = socket2::Socket::new(
+            Domain::ipv4(),
+            Type::stream(),
+            Some(Protocol::tcp())
+        ).unwrap();
+        if let Ok(_) = socket.connect(&addr) {
+
+            let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
+            socket.write_all(buf.as_bytes())?;
+
+            let cmd = format!("{} {} subscribe true\n",
+                              Request::Control as i8,
+                              RequestType::SubScribe as i8,
+            );
+
+            socket.write_all(cmd.as_bytes())?;
+
+            loop {
+                let mut buffer: [u8; 2048] = [0; 2048];
+                if let Err(_) = socket.recv_from(&mut buffer) {
+                    break
+                }
+                let buffer = String::from_utf8(buffer.to_vec()).unwrap();
+                recv_parse(&buffer);
+            }
+        }
+        else {
+            let _ = socket.shutdown(Shutdown::Both);
+        }
+        Ok(())
+    }
+
+
 
     fn recv(&mut self) -> Result<String> {
         let mut output = String::new();

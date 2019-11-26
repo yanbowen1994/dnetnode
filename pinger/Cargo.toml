@@ -5,6 +5,6 @@ authors = ["yanbowen1994 <511838976@qq.com>"]
 edition = "2018"
 
 [dependencies]
-socket2 = "0.3"
+socket2 = "0.3.11"
 failure = "0.1"
 rand = "0.7"

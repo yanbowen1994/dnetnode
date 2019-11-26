@@ -1,4 +1,5 @@
 mod center_get_team_info;
+mod center_update_tinc_status;
 mod heartbeat;
 use heartbeat::proxy_heartbeat;
 mod proxy_add;
@@ -10,6 +11,7 @@ use crate::rpc::common::get_online_proxy;
 use crate::rpc::Result;
 use crate::info::get_mut_info;
 use crate::tinc_manager::TincOperator;
+use dnet_types::tinc_host_status_change::HostStatusChange;
 
 #[derive(Debug)]
 pub struct RpcClient;
@@ -21,6 +23,10 @@ impl RpcClient {
 
     pub fn center_get_team_info(&self) -> Result<()> {
         center_get_team_info::center_get_team_info()
+    }
+
+    pub fn center_update_tinc_status(&self, host_status_change: HostStatusChange) -> Result<()> {
+        center_update_tinc_status::center_update_tinc_status(host_status_change)
     }
 
     pub fn proxy_heartbeat(&self) -> Result<()> {

@@ -9,8 +9,7 @@ use openssl::rsa::Rsa;
 
 use crate::info::{TincRunMode, TincInfo};
 use super::{Error, Result, TincOperator,
-            PUB_KEY_FILENAME, TINC_UP_FILENAME, TINC_DOWN_FILENAME,
-            HOST_UP_FILENAME, HOST_DOWN_FILENAME, PRIV_KEY_FILENAME};
+            PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME};
 use crate::operator::TincTools;
 
 impl TincOperator {
@@ -23,11 +22,6 @@ impl TincOperator {
         };
 
         self.set_tinc_up(&info)?;
-        self.set_tinc_down(info)?;
-        if is_proxy {
-            self.set_host_up()?;
-            self.set_host_down()?;
-        }
 
         for online_proxy in info.connect_to.clone() {
             self.set_hosts(Some((online_proxy.ip.clone(), online_proxy.port)),
@@ -58,7 +52,7 @@ impl TincOperator {
             TincRunMode::Client => "255.255.255.255",
         };
 
-        let mut buf;
+        let buf;
 
         #[cfg(target_arch = "arm")]
             {
@@ -93,8 +87,6 @@ impl TincOperator {
 //                    + "route add default gw " + &tinc_info.connect_to[0].vip.to_string();
 //            }
 // ```
-
-                buf = buf + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
             }
         #[cfg(target_os = "macos")]
             {
@@ -117,7 +109,6 @@ impl TincOperator {
 //  }
 // ```
 
-                buf = buf + &self.tinc_settings.tinc_home + "tinc-report -u\n";
             }
         #[cfg(windows)]
             {
@@ -137,87 +128,11 @@ impl TincOperator {
 //                    + "route add 0.0.0.0 mask 0.0.0.0 10.255.255.254 if "
 //                        + &vnic_index + "\r\n";
 //            }
-                buf = buf + &self.tinc_settings.tinc_home + "tinc-report.exe -u";
             }
 
         let path = self.tinc_settings.tinc_home.clone() + TINC_UP_FILENAME;
         let mut file = fs::File::create(path.clone())
             .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        #[cfg(unix)]
-            TincTools::set_script_permissions(&path)?;
-        Ok(())
-    }
-
-    fn set_tinc_down(&self, _tinc_info: &TincInfo) -> Result<()> {
-        let _guard = self.mutex.lock().unwrap();
-        let buf;
-        #[cfg(target_arch = "arm")]
-            {
-                buf = "#!/bin/sh\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
-            }
-        #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
-            {
-                buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
-            }
-        #[cfg(target_os = "macos")]
-            {
-                let default_gateway = get_default_gateway()?.to_string();
-                buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
-
-//              Example for global proxy
-//                    + "route -n -q delete -host " + &tinc_info.connect_to[0].ip.to_string() + "\n"
-//                    + "route -n -q delete -net 0.0.0.0 \n\
-//                       route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
-            }
-        #[cfg(windows)]
-            {
-                buf = self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
-//              Example for global proxy
-//                let vnic_index = format!("{}", TincTools::get_vnic_index()?);
-//                buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
-//                    + &vnic_index + "\r\n"
-//                    + &self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
-            }
-
-        let path = self.tinc_settings.tinc_home.clone() + TINC_DOWN_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        #[cfg(unix)]
-             TincTools::set_script_permissions(&path)?;
-        Ok(())
-    }
-
-    fn set_host_up(&self) -> Result<()> {
-        let _guard = self.mutex.lock().unwrap();
-        #[cfg(windows)]
-            let buf = &(self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -hu ${NODE}");
-        #[cfg(unix)]
-            let buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -hu ${NODE}";
-
-        let path = self.tinc_settings.tinc_home.clone() + HOST_UP_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        file.write(buf.as_bytes())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
-        #[cfg(unix)]
-            TincTools::set_script_permissions(&path)?;
-        Ok(())
-    }
-
-    fn set_host_down(&self) -> Result<()> {
-        let _guard = self.mutex.lock().unwrap();
-        #[cfg(windows)]
-            let buf = &(self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -hd ${NODE}");
-        #[cfg(unix)]
-            let buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -hd ${NODE}";
-
-        let path = self.tinc_settings.tinc_home.clone() + HOST_DOWN_FILENAME;
-        let mut file = fs::File::create(path.clone())
-            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         file.write(buf.as_bytes())
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         #[cfg(unix)]

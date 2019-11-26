@@ -67,10 +67,10 @@ impl TincInfo {
 
     fn load_local_pubkey(&self) -> Result<String> {
         let settings = get_settings();
-        let tinc_home = settings.common.home_path.clone()
+        let pubkey_file = settings.common.home_path.clone()
             .join("tinc").join(PUB_KEY_FILENAME).to_str().unwrap().to_string();
         let mut res = String::new();
-        let mut _file = File::open(tinc_home)
+        let mut _file = File::open(pubkey_file)
             .map_err(Error::FileNotExit)?;
         _file.read_to_string(&mut res)
             .map_err(Error::FileNotExit)?;

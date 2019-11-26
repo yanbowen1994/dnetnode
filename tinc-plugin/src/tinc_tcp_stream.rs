@@ -355,9 +355,7 @@ impl TincStream {
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
-    pub fn subscribe<F>(pid_path: &str, recv_parse: F) -> Result<()>
-        where F: (Fn(&str) -> ()),
-    {
+    pub fn subscribe(pid_path: &str) -> Result<socket2::Socket> {
         let (control_cookie, tinc_ip, tinc_port) =
             Self::parse_control_cookie(pid_path)?;
 
@@ -378,33 +376,31 @@ impl TincStream {
             Some(Protocol::tcp())
         ).unwrap();
         if let Ok(_) = socket.connect(&addr) {
-
             let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
             socket.write_all(buf.as_bytes())?;
 
             let cmd = format!("{} {} subscribe true\n",
-                              Request::Control as i8,
-                              RequestType::SubScribe as i8,
+                             Request::Control as i8,
+                             RequestType::SubScribe as i8,
             );
 
             socket.write_all(cmd.as_bytes())?;
-
-            loop {
-                let mut buffer: [u8; 2048] = [0; 2048];
-                if let Err(_) = socket.recv_from(&mut buffer) {
-                    break
-                }
-                let buffer = String::from_utf8(buffer.to_vec()).unwrap();
-                recv_parse(&buffer);
-            }
+            socket.set_read_timeout(Some(Duration::from_millis(400)))?;
+            return Ok(socket);
         }
         else {
             let _ = socket.shutdown(Shutdown::Both);
         }
-        Ok(())
+        Err(Error::new(ErrorKind::NotConnected, "Connect failed."))
     }
 
-
+    pub fn recv_from_subscribe(socket: &socket2::Socket) -> Result<String> {
+        let mut buffer: [u8; 2048] = [0; 2048];
+        match socket.recv_from(&mut buffer) {
+            Ok(_) => return Ok(String::from_utf8(buffer.to_vec()).unwrap()),
+            Err(e) => return Err(e),
+        }
+    }
 
     fn recv(&mut self) -> Result<String> {
         let mut output = String::new();

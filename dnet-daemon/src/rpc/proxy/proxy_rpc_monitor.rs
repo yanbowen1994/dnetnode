@@ -154,7 +154,7 @@ impl RpcMonitor {
                 let settings = get_settings();
                 if settings.common.mode == RunMode::Center {
                     if let Ok(_) = self.client.center_get_team_info() {
-                        info!("exec conductor_get_team_info ok");
+                        info!("exec conductor_get_team_info success.");
                     } else {
                         error!("conductor update connections failed.");
                     }

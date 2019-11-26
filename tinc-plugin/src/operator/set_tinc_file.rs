@@ -215,10 +215,10 @@ impl TincOperator {
     fn set_tinc_conf_file(&self, tinc_info: &TincInfo) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
 
-        let is_proxy = match self.tinc_settings.mode {
-            TincRunMode::Proxy => true,
-            TincRunMode::Center => true,
-            TincRunMode::Client => false,
+        let (is_proxy, tinc_type) = match self.tinc_settings.mode {
+            TincRunMode::Proxy => (true, "Proxy"),
+            TincRunMode::Center => (true, "Centre"),
+            TincRunMode::Client => (false, "Client"),
         };
 
         let name = TincTools::get_filename_by_vip(is_proxy,
@@ -252,6 +252,7 @@ impl TincOperator {
                    PingTimeout=3\n\
                    Device = /dev/net/tun\n\
                    AutoConnect = no\n\
+                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
             }
         #[cfg(target_os = "macos")]
@@ -266,6 +267,7 @@ impl TincOperator {
                    PingTimeout=3\n\
                    Device = /dev/tap0\n\
                    AutoConnect=no\n\
+                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
             }
         #[cfg(windows)]
@@ -279,6 +281,7 @@ impl TincOperator {
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    AutoConnect=no\n\
+                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
             }
 

@@ -187,7 +187,7 @@ fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
                     Ok(tinc_team) => {
                         let tinc_pid = get_settings().common.home_path
                             .join("tinc").join(PID_FILENAME)
-                            .to_str().unwrap().to_string() + "/";
+                            .to_str().unwrap().to_string();
                         match tinc_team.send_to_tinc(&tinc_pid) {
                             Ok(_) => response = Response::success(),
                             Err(failed_team) => {

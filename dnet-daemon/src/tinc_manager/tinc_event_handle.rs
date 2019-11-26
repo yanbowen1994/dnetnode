@@ -1,22 +1,63 @@
-use std::time::Duration;
+use std::io;
 
 use tinc_plugin::{PID_FILENAME, TincStream};
 
+use dnet_types::tinc_host_status_change::HostStatusChange;
 use crate::settings::get_settings;
 use crate::rpc::proxy::RpcClient;
-use dnet_types::tinc_host_status_change::HostStatusChange;
+use std::net::Shutdown;
 
-pub fn tinc_event_recv() {
-    let tinc_pid = get_settings().common.home_path
-        .join("tinc").join(PID_FILENAME)
-        .to_str().unwrap().to_string();
+pub struct TincEventHandle {
+    socket: Option<socket2::Socket>,
+    tinc_pid: String,
+}
 
-    loop {
-        if let Err(e) = TincStream::subscribe(&tinc_pid, recv_parse) {
-            error!("{:?}", e);
+impl TincEventHandle {
+    pub fn new() -> Self {
+        let tinc_pid = get_settings().common.home_path
+            .join("tinc").join(PID_FILENAME)
+            .to_str().unwrap().to_string();
+
+        let mut tinc_event_handle = Self {
+            socket:  None,
+            tinc_pid,
+        };
+        tinc_event_handle.subscribe();
+        tinc_event_handle
+    }
+
+    fn subscribe(&mut self) {
+        self.socket = TincStream::subscribe(&self.tinc_pid).ok();
+    }
+
+    pub fn recv(&mut self) {
+        if let None = self.socket {
+            self.subscribe();
         }
 
-        std::thread::sleep(Duration::from_secs(1));
+        if let Some(socket) = &self.socket {
+            match TincStream::recv_from_subscribe(socket) {
+                Ok(res) => {
+                    recv_parse(&res);
+                }
+                Err(e) => {
+                    if e.kind() == io::ErrorKind::TimedOut {
+                        return;
+                    }
+                    else {
+                        self.socket = None;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Drop for TincEventHandle {
+    fn drop(&mut self) {
+        if let Some(socket) = &self.socket {
+            let _ = socket.shutdown(Shutdown::Both);
+        }
     }
 }
 
@@ -32,13 +73,15 @@ fn recv_parse(res: &str) {
             _ => return,
         };
 
-        let rpc_client = RpcClient::new();
+        std::thread::spawn(move || {
+            let rpc_client = RpcClient::new();
 
-        info!("{:?}", host_status_change);
+            info!("{:?}", host_status_change);
 
-        if let Err(e) = rpc_client.center_update_tinc_status(host_status_change) {
-            error!("{:?}", e);
-        }
+            if let Err(e) = rpc_client.center_update_tinc_status(host_status_change) {
+                error!("{:?}", e);
+            }
+        });
     }
     else {
         return;

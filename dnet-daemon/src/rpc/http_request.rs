@@ -20,7 +20,7 @@ fn loop_post(url: &str, data: &str) -> Result<reqwest::Response> {
         match url_post(&url, &data) {
             Ok(x) => return Ok(x),
             Err(e) => {
-                error!("post - response {:?}", e);
+                error!("{:?}", e);
                 sleep(std::time::Duration::from_secs(wait_sec));
                 if wait_sec < 5 {
                     wait_sec += 1;

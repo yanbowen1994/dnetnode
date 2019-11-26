@@ -22,7 +22,7 @@ pub fn center_get_team_info() -> Result<()> {
     };
     let tinc_pid = get_settings().common.home_path
         .join("tinc").join(PID_FILENAME)
-        .to_str().unwrap().to_string() + "/";
+        .to_str().unwrap().to_string();
 
     if let Err(tinc_team) = tinc_team.send_to_tinc(&tinc_pid) {
         error!("Send team info failed {:?}", tinc_team);

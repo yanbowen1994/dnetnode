@@ -152,6 +152,7 @@ impl JavaResponseTeamMember {
             proxy_ip,
             status:         self.status.unwrap_or(0),
             is_self,
+            user_name:      self.userName.unwrap_or("".to_owned()),
         })
     }
 }

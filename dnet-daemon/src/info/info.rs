@@ -1,15 +1,12 @@
 use std::sync::Mutex;
 
-use super::ClientInfo;
-use super::ProxyInfo;
-use super::TincInfo;
 use super::error::{Error, Result};
 
 use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use dnet_types::settings::RunMode;
+use dnet_types::proxy::ProxyInfo;
 use crate::settings::get_settings;
-use crate::info::user::UserInfo;
-use crate::info::TeamInfo;
+use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -20,12 +17,16 @@ pub struct Info {
     pub tinc_info:          TincInfo,
     pub teams:              TeamInfo,
     pub user:               UserInfo,
+    pub node:               NodeInfo,
 }
 
 impl Info {
     pub fn new() -> Result<()> {
         let client_info = ClientInfo::new()?;
-        let proxy_info = ProxyInfo::new();
+        let mut proxy_info = ProxyInfo::new();
+        proxy_info.auth_id = Some(uuid::Uuid::new_v4().to_string());
+
+        println!("{:?}", proxy_info.auth_id);
 
         let mut tinc_info = TincInfo::new();
         tinc_info.load_local();
@@ -40,6 +41,7 @@ impl Info {
             tinc_info,
             teams:  TeamInfo::new(),
             user:   UserInfo::new(),
+            node:   NodeInfo::new(),
         };
 
         unsafe {
@@ -54,18 +56,34 @@ impl Info {
         let tinc_run_model = match &settings.common.mode {
             RunMode::Proxy => TincRunMode::Proxy,
             RunMode::Client => TincRunMode::Client,
+            RunMode::Center => TincRunMode::Center,
         };
 
         if let Some(vip) = &self.tinc_info.vip {
             return Ok(PluginTincInfo {
                 ip:             self.proxy_info.ip,
                 vip:            vip.clone(),
+                port:           settings.tinc.port,
                 pub_key:        self.tinc_info.pub_key.clone(),
                 mode:           tinc_run_model,
                 connect_to:     self.tinc_info.connect_to.clone(),
             })
         }
         return Err(Error::TincInfoVipNotFound);
+    }
+
+    pub fn flush_self_from_plugin_info(&mut self, new_info: &PluginTincInfo) -> Result<bool> {
+        let old_info = self.to_plugin_tinc_info()?;
+        if old_info != *new_info {
+            self.tinc_info.vip = Some(new_info.vip.clone());
+            self.tinc_info.pub_key = new_info.pub_key.clone();
+            self.tinc_info.connect_to = new_info.connect_to.clone();
+            self.proxy_info.ip = new_info.ip.clone();
+            return Ok(true)
+        }
+        else {
+            Ok(false)
+        }
     }
 }
 

@@ -10,9 +10,10 @@ use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
 use crate::info::get_mut_info;
 use super::RpcClient;
-use super::rpc_client::{self, Error as SubError};
+use super::rpc_client;
 use super::error::{Error as ClientError, Result};
 use serde_json::Value;
+use crate::rpc::Error;
 
 #[derive(Eq, PartialEq)]
 enum RunStatus {
@@ -89,7 +90,7 @@ impl RpcMonitor {
 
                         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                         RpcClientCmd::JoinTeam(team_id, res_tx) => {
-                            let response = self.handle_join_team(team_id);
+                            let response = self.handle_connect_team(team_id);
                             let _ = res_tx.send(response);
                         },
 
@@ -145,8 +146,7 @@ impl RpcMonitor {
         self.start_executor()
     }
 
-    fn start_executor(&mut self)
-    {
+    fn start_executor(&mut self) {
         let executor = Executor::new(self.rpc_tx.clone());
         let executor_tx = executor.executor_tx.clone();
         executor.spawn();
@@ -166,18 +166,18 @@ impl RpcMonitor {
 
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 impl RpcMonitor {
-    fn handle_join_team(&self, team_id: String) -> Response {
-        info!("handle_join_team");
+    fn handle_connect_team(&self, team_id: String) -> Response {
+        info!("handle_connect_team");
         if let Err(error) = self.client.join_team(&team_id) {
             let response = match error {
-                SubError::http(code) => Response::new_from_code(code),
+                Error::http(code) => Response::new_from_code(code),
                 _ => Response::internal_error().set_msg(error.to_string()),
             };
             return response;
         } else {
             if let Err(error) = self.client.search_user_team() {
                 let response = match error {
-                    SubError::http(code) => Response::new_from_code(code),
+                    Error::http(code) => Response::new_from_code(code),
                     _ => Response::internal_error().set_msg(error.to_string()),
                 };
                 return response;
@@ -190,7 +190,7 @@ impl RpcMonitor {
         info!("handle_out_team");
         if let Err(error) = self.client.out_team(&team_id) {
             let response = match error {
-                SubError::http(code) => Response::new_from_code(code),
+                Error::http(code) => Response::new_from_code(code),
                 _ => Response::internal_error().set_msg(error.to_string()),
             };
             return response;
@@ -205,7 +205,7 @@ impl RpcMonitor {
     fn handle_fresh_team(&self) -> Response {
         if let Err(error) = self.client.search_user_team() {
             let res = match error {
-                SubError::http(code) => Response::new_from_code(code),
+                Error::http(code) => Response::new_from_code(code),
                 _ => Response::internal_error().set_msg(error.to_string())
             };
             return res;
@@ -227,7 +227,7 @@ impl RpcMonitor {
                 let data = serde_json::Value::Array(data);
                 Response::success().set_data(Some(data))
             },
-            Err(SubError::http(code)) => Response::new_from_code(code),
+            Err(Error::http(code)) => Response::new_from_code(code),
             Err(e) => Response::internal_error().set_msg(e.to_string()),
         }
     }
@@ -310,12 +310,6 @@ impl Executor {
                 heartbeat_start = start;
                 if send_heartbeat {
                     if init_success {
-                        if let Err(_) = self.exec_heartbeat() {
-                            init_success = false;
-                        }
-                    }
-
-                    if init_success {
                         if let Err(_) = self.exec_online_proxy() {
                             init_success = false;
                         }
@@ -331,17 +325,14 @@ impl Executor {
                             Ok(_) => init_success = true,
                             Err(e) => {
                                 let (need_return, res) = match &e {
-                                    SubError::Unauthorized => {
-                                        let res = Response::unauthorized();
-                                        (true, res)
-                                    },
-                                    SubError::UserNotExist => {
-                                        let res = Response::user_not_exist();
+                                    Error::http(code) => {
+                                        let res = Response::new_from_code(*code);
                                         (true, res)
                                     },
                                     _ => {
+                                        error!("rpc init unknown error {:?}", e);
                                         let res = Response::internal_error();
-                                        (false, res)
+                                        (true, res)
                                     },
                                 };
 
@@ -358,16 +349,16 @@ impl Executor {
                         }
                     }
 
-                #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-                    {
-                        if Instant::now() - route_not_bound_sleep > Duration::from_secs(10) {
-                            match self.init() {
-                                Ok(_) => init_success = true,
-                                Err(RpcError::client_not_bound) => route_not_bound_sleep = Instant::now(),
-                                _ => (),
-                            }
-                        }
-                    }
+//                #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+//                    {
+//                        if Instant::now() - route_not_bound_sleep > Duration::from_secs(10) {
+//                            match self.init() {
+//                                Ok(_) => init_success = true,
+//                                Err(RpcError::client_not_bound) => route_not_bound_sleep = Instant::now(),
+//                                _ => (),
+//                            }
+//                        }
+//                    }
                 if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
                     return;
                 }
@@ -381,23 +372,6 @@ impl Executor {
                 .checked_sub(start.elapsed()) {
                 thread::sleep(remaining);
             }
-        }
-    }
-
-    // get_online_proxy with heartbeat (The client must get the proxy offline info in this way.)
-    fn exec_heartbeat(&self) -> Result<()> {
-        info!("client_heart_beat");
-        loop {
-            let start = Instant::now();
-            if let Ok(_) = self.client.client_heartbeat() {
-                return Ok(());
-            } else {
-                error!("Heart beat send failed.");
-            }
-            if Instant::now().duration_since(start) > Duration::from_secs(5) {
-                return Err(ClientError::RpcTimeout);
-            }
-            thread::sleep(Duration::from_millis(1000));
         }
     }
 
@@ -425,11 +399,14 @@ impl Executor {
     }
 
     #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-    fn init(&self) -> std::result::Result<(), SubError> {
+    fn init(&self) -> std::result::Result<(), Error> {
+        info!("client_login");
         self.client.client_login()?;
-        self.client.client_key_report()?;
-        self.client.binding_device()?;
+        info!("device_add");
+        self.client.device_add()?;
+        info!("search_user_team");
         self.client.search_user_team()?;
+        info!("client_get_online_proxy");
         let connect_to = self.client.client_get_online_proxy()?;
         let mut info = get_mut_info().lock().unwrap();
         info.tinc_info.connect_to = connect_to;
@@ -437,14 +414,20 @@ impl Executor {
     }
 
     #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-    fn init(&self) -> std::result::Result<(), SubError> {
+    fn init(&self) -> std::result::Result<(), Error> {
+        info!("client_login");
         self.client.client_login()?;
+        info!("client_key_report");
         self.client.client_key_report()?;
+        info!("search_team_by_mac");
         self.client.search_team_by_mac()?;
+        info!("start_team");
         self.start_team()?;
+        info!("client_get_online_proxy");
         self.client.client_get_online_proxy()?;
         let mut info = get_mut_info().lock().unwrap();
         info.tinc_info.connect_to = connect_to;
+        info!("connect_team_broadcast");
         self.client.connect_team_broadcast()?;
         Ok(())
     }

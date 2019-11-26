@@ -13,23 +13,26 @@ use super::parse_file::FileSettings;
 use super::default_settings::{DEFAULT_LINUX_DEFAULT_HOME_PATH, DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
 use super::error::*;
 use std::net::IpAddr;
-use crate::settings::error::Error::Config;
+use tinc_plugin::DEFAULT_TINC_PORT;
+use crate::settings::default_settings::DEFAULT_PROXY_PUBLIC;
 
 static mut EL: *mut Settings = 0 as *mut _;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Common {
-    pub conductor_url:   String,
-    pub home_path:       PathBuf,
-    pub log_level:       String,
-    pub log_dir:         PathBuf,
-    pub mode:            RunMode,
-    pub username:        String,
-    pub password:        String,
+    pub accept_conductor_invalid_certs:     bool,
+    pub conductor_url:                      String,
+    pub home_path:                          PathBuf,
+    pub log_level:                          String,
+    pub log_dir:                            PathBuf,
+    pub mode:                               RunMode,
+    pub username:                           String,
+    pub password:                           String,
 }
 
 impl Common {
     fn default() -> Result<Self> {
+        let accept_conductor_invalid_certs = false;
         let conductor_url = "".to_owned();
         let home_path = Self::default_home_path()?;
         let log_level = Self::default_log_level();
@@ -38,6 +41,7 @@ impl Common {
         let username = "".to_owned();
         let password = "".to_owned();
         Ok(Self {
+            accept_conductor_invalid_certs,
             conductor_url,
             home_path,
             log_level,
@@ -69,20 +73,22 @@ impl Common {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proxy {
     pub local_ip:                               Option<IpAddr>,
-    pub local_port:                             String,
+    pub local_port:                             u16,
     pub local_https_server_certificate_file:    String,
     pub local_https_server_privkey_file:        String,
     pub proxy_type:                             String,
+    pub public:                                 bool,
 }
 
 impl Proxy {
     fn empty() -> Self {
         Proxy {
             local_ip:                              None,
-            local_port:                            String::new(),
+            local_port:                            DEFAULT_PROXY_LOCAL_SERVER_PORT,
             local_https_server_certificate_file:   String::new(),
             local_https_server_privkey_file:       String::new(),
             proxy_type:                            String::new(),
+            public:                                DEFAULT_PROXY_PUBLIC,
         }
     }
 }
@@ -102,6 +108,7 @@ impl Client {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Tinc {
     pub tinc_memory_limit:                         f64,
+    pub port:                                      u16,
     pub tinc_check_frequency:                      u32,
     pub tinc_allowed_out_memory_times:             u32,
     pub tinc_allowed_tcp_failed_times:             u32,
@@ -111,6 +118,7 @@ impl Tinc {
     fn default() -> Self {
         Tinc {
             tinc_memory_limit:                     100 as f64,
+            port:                                  DEFAULT_TINC_PORT,
             tinc_check_frequency:                  0,
             tinc_allowed_out_memory_times:         0,
             tinc_allowed_tcp_failed_times:         0,
@@ -144,26 +152,16 @@ impl Settings {
         Ok(())
     }
 
-    fn default() -> Result<Self> {
-        let common = Common::default()?;
-        let proxy = Proxy::empty();
-        let client = Client::default();
-        let tinc = Tinc::default();
-        Ok(Self {
-            common,
-            proxy,
-            client,
-            tinc,
-            last_runtime: String::new(),
-        })
-    }
-
     fn parse_file_settings(file_settings: FileSettings) -> Result<Self> {
         let common = file_settings.common
             .ok_or(Error::NoneError)
             .and_then(|file_common| {
+                let accept_conductor_invalid_certs =
+                    file_common.accept_conductor_invalid_certs
+                        .unwrap_or(false);
+
                 let conductor_url = file_common.conductor_url
-                    .ok_or(Error::conductor_url_not_set)?;
+                    .unwrap_or(String::new());
 
                 let home_path = file_common.home_path
                     .map(|home_path_str| PathBuf::from(home_path_str))
@@ -179,6 +177,9 @@ impl Settings {
                     .map(|mode_str| {
                         if mode_str.to_lowercase() == "proxy" {
                             return RunMode::Proxy;
+                        }
+                        else if mode_str.to_lowercase() == "center" {
+                            return RunMode::Center;
                         }
                         else if mode_str.to_lowercase() != "client" {
                             warn!("Invailed running mode setting. Proxy or Client.")
@@ -202,6 +203,7 @@ impl Settings {
                     }
 
                 Ok(Common {
+                    accept_conductor_invalid_certs,
                     conductor_url,
                     home_path,
                     log_level,
@@ -214,7 +216,7 @@ impl Settings {
             .unwrap_or(Common::default()?);
 
         let proxy = {
-            if common.mode == RunMode::Proxy {
+            if common.mode == RunMode::Proxy || common.mode == RunMode::Center {
                 file_settings.proxy
                     .ok_or(Error::NoneError)
                     .and_then(|file_proxy| {
@@ -228,7 +230,7 @@ impl Settings {
                         };
 
                         let local_port = file_proxy.local_port
-                            .unwrap_or(DEFAULT_PROXY_LOCAL_SERVER_PORT.to_owned());
+                            .unwrap_or(DEFAULT_PROXY_LOCAL_SERVER_PORT);
 
                         let local_https_server_privkey_file = file_proxy.local_https_server_privkey_file
                             .ok_or(
@@ -244,12 +246,17 @@ impl Settings {
                             DEFAULT_PROXY_TYPE.to_owned()
                         );
 
+                        let public = file_proxy.public.unwrap_or(
+                            DEFAULT_PROXY_PUBLIC.to_owned()
+                        );
+
                         Ok(Proxy {
                             local_ip,
                             local_port,
                             local_https_server_privkey_file,
                             local_https_server_certificate_file,
                             proxy_type,
+                            public,
                         })
                 })?
             } else {
@@ -284,6 +291,8 @@ impl Settings {
 
         let tinc = file_settings.tinc
             .and_then(|file_settings| {
+                let port = file_settings.port
+                    .unwrap_or(DEFAULT_TINC_PORT);
                 let tinc_memory_limit = file_settings.tinc_memory_limit
                     .and_then(|x|x.parse::<f64>().ok())
                     .unwrap_or(100 as f64);
@@ -301,6 +310,7 @@ impl Settings {
                     .unwrap_or(0 as u32);
 
                 Some(Tinc {
+                    port,
                     tinc_memory_limit,
                     tinc_check_frequency,
                     tinc_allowed_out_memory_times,
@@ -336,6 +346,7 @@ impl Into<TypeSettings> for Settings {
                 auto_connect: self.client.auto_connect,
             },
             proxy: TypeProxy {
+                local_ip: self.proxy.local_ip,
                 local_port: self.proxy.local_port,
                 local_https_server_certificate_file: self.proxy.local_https_server_certificate_file,
                 local_https_server_privkey_file: self.proxy.local_https_server_privkey_file,

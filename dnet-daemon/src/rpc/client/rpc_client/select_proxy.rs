@@ -7,7 +7,7 @@ extern crate pinger;
 use tinc_plugin::ConnectTo;
 
 use crate::info::{get_mut_info, get_info};
-use super::{Error, Result};
+use crate::rpc::{Error, Result};
 
 pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
     let mut connect_to_change_restart_tunnel = false;
@@ -60,7 +60,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
     }
 
     if connect_to.len() == 0 {
-        return Err(Error::no_usable_proxy);
+        return Err(Error::http(511));
     }
 
     let mut info = get_mut_info().lock().unwrap();

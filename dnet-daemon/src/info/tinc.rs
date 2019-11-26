@@ -2,7 +2,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME};
+use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME, DEFAULT_TINC_PORT};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
@@ -13,11 +13,12 @@ use super::error::{Error, Result};
 pub struct TincInfo {
     pub vip:            Option<IpAddr>,
     pub pub_key:        String,
+    pub port:           u16,
     pub connections:    u32,
     pub edges:          u32,
     pub nodes:          u32,
     pub connect_to:     Vec<ConnectTo>,
-    pub last_runtime:       Option<String>,
+    pub last_runtime:   Option<String>,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -28,6 +29,7 @@ impl TincInfo {
         TincInfo {
             vip:            None,
             pub_key,
+            port:           DEFAULT_TINC_PORT,
             connections:    0,
             edges:          0,
             nodes:          0,
@@ -65,10 +67,10 @@ impl TincInfo {
 
     fn load_local_pubkey(&self) -> Result<String> {
         let settings = get_settings();
-        let tinc_home = settings.common.home_path.clone()
+        let pubkey_file = settings.common.home_path.clone()
             .join("tinc").join(PUB_KEY_FILENAME).to_str().unwrap().to_string();
         let mut res = String::new();
-        let mut _file = File::open(tinc_home)
+        let mut _file = File::open(pubkey_file)
             .map_err(Error::FileNotExit)?;
         _file.read_to_string(&mut res)
             .map_err(Error::FileNotExit)?;

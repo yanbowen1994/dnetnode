@@ -85,7 +85,7 @@ impl TincOperator {
                         }
                         Ok(())
                     })?;
-
+                self.clean_tinc_output();
                 let handle = self.tinc_handle.lock().unwrap().take();
                 std::mem::drop(handle);
                 Ok(())

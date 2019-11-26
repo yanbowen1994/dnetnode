@@ -74,466 +74,66 @@ impl Response {
             data: None,
         }
     }
-    pub fn http_401() -> Self {
-        Self {
-            code: 401,
-            msg: "No authentication or authentication failure".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_402() -> Self {
-        Self {
-            code: 402,
-            msg: "The account is locked or inactive".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_403() -> Self {
-        Self {
-            code: 403,
-            msg: "Validation code is invalid, please re-validate".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_404() -> Self {
-        Self {
-            code: 404,
-            msg: "Not Found".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_406() -> Self {
-        Self {
-            code: 406,
-            msg: "Failed to send mail".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_500() -> Self {
-        Self {
-            code: 500,
-            msg: "Internal Server Error".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_800() -> Self {
-        Self {
-            code: 800,
-            msg: "Error reading version information".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_801() -> Self {
-        Self {
-            code: 801,
-            msg: "Version does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_802() -> Self {
-        Self {
-            code: 802,
-            msg: "Download version error".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_900() -> Self {
-        Self {
-            code: 900,
-            msg: "Other runtime errors".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_901() -> Self {
-        Self {
-            code: 901,
-            msg: "Parameter error".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_902() -> Self {
-        Self {
-            code: 902,
-            msg: "The server did not start successfully and cannot provide services.".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_903() -> Self {
-        Self {
-            code: 903,
-            msg: "Proxy not registered".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_904() -> Self {
-        Self {
-            code: 904,
-            msg: "Group does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_905() -> Self {
-        Self {
-            code: 905,
-            msg: "Too many members".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_906() -> Self {
-        Self {
-            code: 906,
-            msg: "There is no such device under the group".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_907() -> Self {
-        Self {
-            code: 907,
-            msg: "No proxy to assign".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_908() -> Self {
-        Self {
-            code: 908,
-            msg: "There is no such group under the user".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_909() -> Self {
-        Self {
-            code: 909,
-            msg: "Unsupported operation".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_910() -> Self {
-        Self {
-            code: 910,
-            msg: "Routers without authentication".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_911() -> Self {
-        Self {
-            code: 911,
-            msg: "More than the number of routers that can be added to this group.".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_912() -> Self {
-        Self {
-            code: 912,
-            msg: "The router is not responding".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_913() -> Self {
-        Self {
-            code: 913,
-            msg: "No permission to delete".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_914() -> Self {
-        Self {
-            code: 914,
-            msg: "No permission to modify".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_915() -> Self {
-        Self {
-            code: 915,
-            msg: "No permission to add".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_916() -> Self {
-        Self {
-            code: 916,
-            msg: "No permission to remove".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_917() -> Self {
-        Self {
-            code: 917,
-            msg: "Device does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_918() -> Self {
-        Self {
-            code: 918,
-            msg: "Already joined".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_919() -> Self {
-        Self {
-            code: 919,
-            msg: "User does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_920() -> Self {
-        Self {
-            code: 920,
-            msg: "Can't invite yourself".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_921() -> Self {
-        Self {
-            code: 921,
-            msg: "Can't remove yourself".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_922() -> Self {
-        Self {
-            code: 922,
-            msg: "No virtual IP can be assigned".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_923() -> Self {
-        Self {
-            code: 923,
-            msg: "Login log not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_924() -> Self {
-        Self {
-            code: 924,
-            msg: "Update publickey fail".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_925() -> Self {
-        Self {
-            code: 925,
-            msg: "The mac address corresponding device is not reported".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_926() -> Self {
-        Self {
-            code: 926,
-            msg: "The device corresponding to the mac address does not have public key information".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_927() -> Self {
-        Self {
-            code: 927,
-            msg: "Proxy does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_928() -> Self {
-        Self {
-            code: 928,
-            msg: "Device does not exist".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_929() -> Self {
-        Self {
-            code: 929,
-            msg: "Proxy offline".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_930() -> Self {
-        Self {
-            code: 930,
-            msg: "The assigned IP address format is incorrect".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_931() -> Self {
-        Self {
-            code: 931,
-            msg: "The device already exists in the group".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_932() -> Self {
-        Self {
-            code: 932,
-            msg: "Troubleshooting failed".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_933() -> Self {
-        Self {
-            code: 933,
-            msg: "The device is not currently joined to the group".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_934() -> Self {
-        Self {
-            code: 934,
-            msg: "Operation database failure".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_935() -> Self {
-        Self {
-            code: 935,
-            msg: "No router is in the team, no client device is allowed to be added".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_936() -> Self {
-        Self {
-            code: 936,
-            msg: "The number of users exceeds the maximum number".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_937() -> Self {
-        Self {
-            code: 937,
-            msg: "Maximum number of online users".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_938() -> Self {
-        Self {
-            code: 938,
-            msg: "The device has been bound by other users.".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_939() -> Self {
-        Self {
-            code: 939,
-            msg: "Username have registered".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_940() -> Self {
-        Self {
-            code: 940,
-            msg: "Useremail have registered".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_941() -> Self {
-        Self {
-            code: 941,
-            msg: "fail to modify password".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_942() -> Self {
-        Self {
-            code: 942,
-            msg: "fail to modify user's information".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_943() -> Self {
-        Self {
-            code: 943,
-            msg: "FRIENDS_ALREADY".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_944() -> Self {
-        Self {
-            code: 944,
-            msg: "The proxy has been bound by other users.".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_945() -> Self {
-        Self {
-            code: 945,
-            msg: "The vpn groud disabled.".to_owned(),
-            data: None,
-        }
-    }
-
-    pub fn http_946() -> Self {
-        Self {
-            code: 946,
-            msg: "Online proxy cannot be deleted".to_owned(),
-            data: None,
-        }
-    }
 
     pub fn new_from_code(code: i32) -> Self {
+        let msg = Self::get_msg_by_code(code);
+
+        let code = if code < 0 {
+            0
+        }
+        else {
+            code as u32
+        };
+
+        Self {
+            code,
+            msg,
+            data: None,
+        }
+    }
+
+    pub fn get_msg_by_code(code: i32) -> String {
         let msg = match code {
-            401 => "No authentication or authentication failure".to_owned(),
+            401 => "Not yet logged in or the token has expired.".to_owned(),
+            403 => "No relevant permissions.".to_owned(),
+            405 => "Parameter value verification failed.".to_owned(),
+            406 => "Parameter type failed.".to_owned(),
+            407 => "Request parameter error.".to_owned(),
+            408 => "file does not exist!".to_owned(),
+            409 => "Data does not exist!".to_owned(),
+            410 => "Username or password error. Continuous login %s times error account will lock %s minutes, you can also try %s login.".to_owned(),
+            411 => "User does not exist.".to_owned(),
+            412 => "User has logged out.".to_owned(),
+            413 => "User has been frozen.".to_owned(),
+            414 => "User is not activated.".to_owned(),
+            415 => "Password error.".to_owned(),
+            416 => "User logins are too many, please wait for %s seconds and try again.".to_owned(),
+            417 => "User already exists！".to_owned(),
+            418 => "Delete user cannot delete themselves.".to_owned(),
+            419 => "No permission to delete super administrator.".to_owned(),
+            441 => "Parameter cannot be empty.".to_owned(),
+            600 => "The proxy failed to locate and could not obtain the IP address of the external network.".to_owned(),
+            601 => "Proxy does not exist, please re-select.".to_owned(),
+            602 => "Uploading public key failed. ".to_owned(),
+            603 => "Update device proxy tinc status failed.".to_owned(),
+            611 => "The device has been bound by another account. Please untie it first.".to_owned(),
+            612 => "Device does not exist.".to_owned(),
+            620 => "Router does not exist.".to_owned(),
+            621 => "Router is disabled.".to_owned(),
+            622 => "Router password error.".to_owned(),
+            623 => "Router not bound account.".to_owned(),
+            624 => "Please bind the router with your account first.!".to_owned(),
+            900 => "Exception handling.".to_owned(),
+            910 => "The name of the key value is not in the parameter value, please check.".to_owned(),
+            911 => "The name of the key value is not in the parameter object. Please check if the value of the object is consistent.".to_owned(),
+
             402 => "The account is locked or inactive".to_owned(),
-            403 => "Validation code is invalid, please re-validate".to_owned(),
             404 => "Not Found".to_owned(),
-            406 => "Failed to send mail".to_owned(),
             500 => "Internal Server Error".to_owned(),
+            502 => "Bad Gateway".to_owned(),
             800 => "Error reading version information".to_owned(),
             801 => "Version does not exist".to_owned(),
             802 => "Download version error".to_owned(),
-            900 => "Other runtime errors".to_owned(),
             901 => "Parameter error".to_owned(),
             902 => "The server did not start successfully and cannot provide services.".to_owned(),
             903 => "Proxy not registered".to_owned(),
@@ -543,8 +143,6 @@ impl Response {
             907 => "No proxy to assign".to_owned(),
             908 => "There is no such group under the user".to_owned(),
             909 => "Unsupported operation".to_owned(),
-            910 => "Routers without authentication".to_owned(),
-            911 => "More than the number of routers that can be added to this group.".to_owned(),
             912 => "The router is not responding".to_owned(),
             913 => "No permission to delete".to_owned(),
             914 => "No permission to modify".to_owned(),
@@ -580,20 +178,10 @@ impl Response {
             944 => "The proxy has been bound by other users.".to_owned(),
             945 => "The vpn groud disabled.".to_owned(),
             946 => "Online proxy cannot be deleted".to_owned(),
+
+            511 => "No usable proxy.".to_owned(),
             _ => "".to_owned(),
         };
-
-        let code = if code < 0 {
-            0
-        }
-        else {
-            code as u32
-        };
-
-        Self {
-            code,
-            msg,
-            data: None,
-        }
+        msg
     }
 }

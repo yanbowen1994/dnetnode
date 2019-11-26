@@ -1,9 +1,11 @@
 use std::path::PathBuf;
+use std::net::IpAddr;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RunMode {
     Proxy,
     Client,
+    Center,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -19,7 +21,8 @@ pub struct Common {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proxy {
-    pub local_port:                             String,
+    pub local_ip:                               Option<IpAddr>,
+    pub local_port:                             u16,
     pub local_https_server_certificate_file:    String,
     pub local_https_server_privkey_file:        String,
     pub proxy_type:                             String,

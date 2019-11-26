@@ -4,3 +4,7 @@ log_level = "debug"
 log_dir = "E:/dnet"
 mode = "client"
 conductor_url = "https://api.vlan.cn"
+accept_conductor_invalid_certs = true
+
+[tinc]
+port = 50069

@@ -20,9 +20,6 @@ pub enum Error {
     #[error(display = "Process Home Path Not Set.")]
     home_path_not_set,
 
-    #[error(display = "conductor_url_not_set")]
-    conductor_url_not_set,
-
     #[error(display = "invalid_conductro_url")]
     invalid_conductro_url,
 

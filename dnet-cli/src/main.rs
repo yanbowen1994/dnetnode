@@ -2,7 +2,7 @@ use std::path::Path;
 
 extern crate ipc_server;
 extern crate dnet_path;
-use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+use management_client::{new_standalone_ipc_client, DaemonRpcClient};
 use clap::App;
 
 mod cmds;

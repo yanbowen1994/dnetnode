@@ -1,2 +1,2 @@
-pub mod ipc_server;
+pub mod management_server;
 pub mod types;

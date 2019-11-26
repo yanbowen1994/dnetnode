@@ -2,17 +2,17 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::daemon::DaemonEvent;
 use crate::traits::RpcTrait;
-use crate::settings::get_settings;
 use crate::tinc_manager::TincOperator;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcProxyCmd};
 
 use super::web_server;
 use super::RpcClient;
 use std::sync::mpsc::Receiver;
-use crate::rpc::proxy::report_host_status_change::report_host_status_change;
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
+use crate::settings::get_settings;
+use dnet_types::settings::RunMode;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -57,8 +57,8 @@ impl RpcMonitor {
             match rpc_cmd {
                 RpcEvent::Proxy(cmd) => {
                     match cmd {
-                        RpcProxyCmd::HostStatusChange(host_status_change) => {
-                            report_host_status_change(host_status_change);
+                        RpcProxyCmd::HostStatusChange(_host_status_change) => {
+                            ()
                         }
                     }
                 }
@@ -94,25 +94,24 @@ impl RpcMonitor {
 
     fn init(&self) {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);
-        let settings = get_settings();
 
         // 初始化上报操作
         loop {
             // RpcClient Login
             info!("proxy_login");
             {
-                if let Err(e) = self.client.proxy_login(&settings) {
-                    error!("{:?}\n{}", e, e);
+                if let Err(e) = self.client.proxy_login() {
+                    error!("proxy_login {:?} {}", e, e.get_http_error_msg());
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
             }
 
             // 注册proxy
-            info!("proxy_register");
+            info!("proxy_add");
             {
-                if let Err(e) = self.client.proxy_register() {
-                    error!("{:?}\n{}", e, e);
+                if let Err(e) = self.client.proxy_add() {
+                    error!("proxy_add {:?} {}", e, e.get_http_error_msg());
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
@@ -121,8 +120,8 @@ impl RpcMonitor {
             // 初次上传heartbeat
             info!("proxy_heart_beat");
             {
-                if let Err(e) = self.client.proxy_heart_beat() {
-                    error!("{:?}\n{}", e, e);
+                if let Err(e) = self.client.proxy_heartbeat() {
+                    error!("proxy_heart_beat {:?} {}", e, e.get_http_error_msg());
                     thread::sleep(std::time::Duration::from_secs(1));
                     continue
                 }
@@ -130,10 +129,15 @@ impl RpcMonitor {
 
             info!("proxy_get_online_proxy");
             {
-                if let Err(e) = self.client.proxy_get_online_proxy() {
-                    error!("{:?}\n{}", e, e);
-                    thread::sleep(std::time::Duration::from_secs(1));
-                    continue
+                match self.client.proxy_get_online_proxy() {
+                    Ok(connect_to_vec) => {
+                        self.client.init_connect_to(connect_to_vec);
+                    }
+                    Err(e) => {
+                        error!("proxy_get_online_proxy {:?} {}", e, e.get_http_error_msg());
+                        thread::sleep(std::time::Duration::from_secs(1));
+                        continue
+                    }
                 }
             }
             break
@@ -146,7 +150,15 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(_) = self.client.proxy_heart_beat() {
+            if let Ok(_) = self.client.proxy_heartbeat() {
+                let settings = get_settings();
+                if settings.common.mode == RunMode::Center {
+                    if let Ok(_) = self.client.center_get_team_info() {
+                        info!("exec conductor_get_team_info success.");
+                    } else {
+                        error!("conductor update connections failed.");
+                    }
+                }
                 return Ok(());
             } else {
                 error!("Heart beat send failed.");
@@ -164,10 +176,8 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(3);
         let start = Instant::now();
         loop {
-            if let Ok(need_restart_tunnel) = self.client.proxy_get_online_proxy() {
-                if need_restart_tunnel {
-                    let _ = self.daemon_event_tx.send(DaemonEvent::DaemonInnerCmd(TunnelCommand::Reconnect));
-                }
+            if let Ok(connect_to) = self.client.proxy_get_online_proxy() {
+                self.client.add_connect_to_host(connect_to);
                 return Ok(());
             } else {
                 error!("proxy_get_online_proxy failed.");

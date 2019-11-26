@@ -3,7 +3,8 @@
 use std::net::IpAddr;
 use std::str::FromStr;
 
-use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator, TincOperatorError, TincTools, TincSettings};
+use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator,
+                  TincOperatorError, TincTools, TincSettings};
 use dnet_types::settings::RunMode;
 
 use crate::info::{get_info, get_mut_info};
@@ -13,7 +14,7 @@ use crate::settings::default_settings::TINC_INTERFACE;
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
 /// Tinc operator
-pub struct TincOperator {}
+pub struct TincOperator;
 impl TincOperator {
     /// 获取tinc home dir 创建tinc操作。
     pub fn new() -> Self {
@@ -24,10 +25,13 @@ impl TincOperator {
             let tinc_run_model = match &settings.common.mode {
                 RunMode::Proxy => TincRunMode::Proxy,
                 RunMode::Client => TincRunMode::Client,
+                RunMode::Center => TincRunMode::Center,
             };
+            let port = settings.tinc.port;
             let tinc_settings = TincSettings {
                 tinc_home,
                 mode: tinc_run_model,
+                port,
                 tinc_memory_limit: settings.tinc.tinc_memory_limit,
                 tinc_allowed_out_memory_times: settings.tinc.tinc_allowed_out_memory_times,
                 tinc_allowed_tcp_failed_times: settings.tinc.tinc_allowed_tcp_failed_times,
@@ -51,10 +55,27 @@ impl TincOperator {
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
+        self.set_tinc_team_init_file()?;
+
         PluginTincOperator::mut_instance().start_tinc()?;
         let now = chrono::Utc::now().to_string();
         get_mut_info().lock().unwrap().tinc_info.last_runtime = Some(now);
         return Ok(());
+    }
+
+    fn set_tinc_team_init_file(&self) -> Result<()> {
+        let run_mode = &get_settings().common.mode;
+
+        if *run_mode == RunMode::Proxy || *run_mode == RunMode::Client {
+            return Ok(());
+        }
+
+        let team_file = get_settings().common.home_path
+            .join("tinc").join("tinc.group")
+            .to_str().unwrap().to_string();
+        let tinc_team = get_info().lock().unwrap()
+            .teams.to_tinc_team();
+        tinc_team.set_tinc_init_file(&team_file)
     }
 
     pub fn set_routing(&self) -> Result<()> {
@@ -157,15 +178,23 @@ impl TincOperator {
 
     pub fn restart_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
+        self.set_tinc_team_init_file()?;
         PluginTincOperator::mut_instance().restart_tinc()?;
         let now = chrono::Utc::now().to_string();
         get_mut_info().lock().unwrap().tinc_info.last_runtime = Some(now);
         Ok(())
     }
 
-    /// 添加子设备
-    pub fn set_hosts(&self, is_proxy: bool, ip: &str, pubkey: &str) -> Result<()> {
-        PluginTincOperator::instance().set_hosts(is_proxy, ip, pubkey)
+    pub fn set_hosts(&self,
+                     ip_port: Option<(IpAddr, u16)>,
+                     vip:     IpAddr,
+                     pubkey:  &str,
+    ) -> Result<()> {
+        PluginTincOperator::instance().set_hosts(
+            ip_port,
+            vip,
+            pubkey,
+        )
     }
 
     /// 获取子设备公钥
@@ -196,10 +225,10 @@ impl TincOperator {
     }
 
     pub fn get_client_filename_by_virtual_ip(&self, vip: &str) -> String {
-        TincTools::get_filename_by_ip(false, vip)
+        TincTools::get_filename_by_vip(false, vip)
     }
 
     pub fn get_proxy_filename_by_virtual_ip(&self, vip: &str) -> String {
-        TincTools::get_filename_by_ip(true, vip)
+        TincTools::get_filename_by_vip(true, vip)
     }
 }

@@ -1,10 +1,11 @@
-use std::net::TcpStream;
 use std::io::Write;
-use std::net::SocketAddr;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Result, Read};
 use std::time::Duration;
 use std::str::FromStr;
+use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream};
+
+use socket2::{Domain, Protocol, Type};
 
 #[allow(dead_code)]
 #[repr(i8)]
@@ -57,6 +58,10 @@ pub enum RequestType {
     ReqDumpTraffic           = 13,
     ReqPcap                  = 14,
     ReqLog                   = 15,
+    ReqDumpEvents            = 16,
+    ReqDumpGroups            = 17,
+    ReqGroup                 = 18,
+    SubScribe                = 19,
 }
 
 pub struct TincStream {
@@ -84,7 +89,13 @@ impl TincStream {
     }
 
     fn parse_control_cookie(path: &str) -> Result<(String, String, String)> {
-        let mut file = File::open(path)?;
+        let mut file = File::open(path)
+            .map_err(|e|
+                Error::new(
+                    ErrorKind::NotFound,
+                    "tinc pid file ".to_owned() + &(e.to_string()
+                    )))?;
+
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let iter: Vec<&str> = contents.split_whitespace().collect();
@@ -296,24 +307,120 @@ impl TincStream {
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
+    pub fn del_group(&mut self, group_id: &str) -> Result<()> {
+        let cmd = format!("{} {} delg {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          group_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("{:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    pub fn add_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
+        let cmd = format!("{} {} addn {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          node_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("add_group_node {:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    pub fn del_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
+        let cmd = format!("{} {} deln {} {}\n",
+                          Request::Control as i8,
+                          RequestType::ReqGroup as i8,
+                          group_id,
+                          node_id,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        info!("{:?}", res);
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    pub fn subscribe(pid_path: &str) -> Result<socket2::Socket> {
+        let (control_cookie, tinc_ip, tinc_port) =
+            Self::parse_control_cookie(pid_path)?;
+
+        let addr = socket2::SockAddr::from(
+            SocketAddrV4::new(
+                Ipv4Addr::from_str(&tinc_ip)
+                    .map_err(|e|Error::new(
+                        ErrorKind::InvalidData,
+                        e.to_string()))?,
+                tinc_port.parse::<u16>()
+                    .map_err(|e|Error::new(
+                        ErrorKind::InvalidData,
+                        e.to_string()))?));
+
+        let mut socket = socket2::Socket::new(
+            Domain::ipv4(),
+            Type::stream(),
+            Some(Protocol::tcp())
+        ).unwrap();
+        if let Ok(_) = socket.connect(&addr) {
+            let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
+            socket.write_all(buf.as_bytes())?;
+
+            let cmd = format!("{} {} subscribe true\n",
+                             Request::Control as i8,
+                             RequestType::SubScribe as i8,
+            );
+
+            socket.write_all(cmd.as_bytes())?;
+            socket.set_read_timeout(Some(Duration::from_millis(400)))?;
+            return Ok(socket);
+        }
+        else {
+            let _ = socket.shutdown(Shutdown::Both);
+        }
+        Err(Error::new(ErrorKind::NotConnected, "Connect failed."))
+    }
+
+    pub fn recv_from_subscribe(socket: &socket2::Socket) -> Result<String> {
+        let mut buffer: [u8; 2048] = [0; 2048];
+        match socket.recv_from(&mut buffer) {
+            Ok(_) => return Ok(String::from_utf8(buffer.to_vec()).unwrap()),
+            Err(e) => return Err(e),
+        }
+    }
+
     fn recv(&mut self) -> Result<String> {
         let mut output = String::new();
         loop {
-            let res = &mut [0; 1024];
+            let res = &mut [0; 128];
             let _len = match self.stream.read(res) {
                 Ok(x) => x,
                 Err(_) => 0,
             };
+
             if _len == 0 {
                 break
             }
             else {
-                let this = String::from_utf8_lossy(res).to_string().replace("\u{0}", "");
-                if this.len() == 0 {
-                    break
-                }
-                else {
-                    output += &this;
+                if let Ok(res) = String::from_utf8(res.to_vec()) {
+                    if res.contains("\u{0}") {
+                        output += &res.replace("\u{0}", "");
+                        break
+                    }
+                    output += &res;
                 }
             }
         }
@@ -322,7 +429,7 @@ impl TincStream {
 
     fn check_res(res: &str, req: i8, req_type: i8) -> bool {
         let iter: Vec<&str> = res.split_whitespace().collect();
-        if iter.is_empty() {
+        if iter.len() < 2 {
             return false;
         }
         let control: i8 = match iter[0].parse() {
@@ -338,6 +445,12 @@ impl TincStream {
             return true;
         }
         false
+    }
+}
+
+impl Drop for TincStream {
+    fn drop(&mut self) {
+        let _ = self.stream.shutdown(Shutdown::Both);
     }
 }
 
@@ -365,8 +478,8 @@ pub struct SourceNode {
 impl SourceNode {
     pub fn from(source_str: &str) -> Result<Self> {
         let source_str = source_str.to_string();
-        let node_str:Vec<&str> = source_str.split(" ").collect();
-        if node_str.len() == 20 {
+        let node_str:Vec<&str> = source_str.split_ascii_whitespace().collect();
+        if node_str.len() >= 20 {
             let node: String = node_str[2].to_string();
             let id: String = node_str[3].to_string();
             let host: String = node_str[4].to_string();

@@ -3,6 +3,10 @@ home_path = "/usr/local/opt/dnet"
 log_dir = "/usr/local/opt/dnet"
 mode = "client"
 conductor_url = "https://api.vlan.cn"
+accept_conductor_invalid_certs = true
 
 [client]
 auto_connect = true
+
+[tinc]
+port = 50069

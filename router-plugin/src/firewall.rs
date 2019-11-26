@@ -4,26 +4,28 @@ use std::os::unix::fs::PermissionsExt;
 
 use sandbox::firewall::{imp::{iptables_insert_rule, iptables_find_rule}, types::IptablesRule};
 
-pub fn start_firewall() {
-    firewall_script_write();
+pub fn start_firewall(port: u16) {
+    firewall_script_write(port);
     firewall_script_start();
     vpn_tunnel_firewall();
 }
 
-pub fn stop_firewall() {
-    firewall_script_write();
+pub fn stop_firewall(port: u16) {
+    firewall_script_write(port);
     firewall_script_stop();
 }
 
-fn firewall_script_write() {
+fn firewall_script_write(port: u16) {
+    let port = format!("{}", port);
+
     let buf = "#! /bin/sh\n\
     if [ \"$1\" == \"start\" ]; then\n\
         \t/usr/sbin/iptables -I INPUT -i dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -I OUTPUT -o dnet -j ACCEPT\n\
-        \t/usr/sbin/iptables -I INPUT -i brwan -p udp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -I INPUT -i ppp0 -p udp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -I INPUT -i brwan -p tcp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -I INPUT -i ppp0 -p tcp --dport 50069 -j ACCEPT\n\
+        \t/usr/sbin/iptables -I INPUT -i brwan -p udp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -I INPUT -i ppp0 -p udp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -I INPUT -i brwan -p tcp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -I INPUT -i ppp0 -p tcp --dport " + &port + " -j ACCEPT\n\
         \t/usr/sbin/iptables -I FORWARD -i dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -I FORWARD -o dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -t nat -I POSTROUTING -o dnet -j MASQUERADE\n\
@@ -31,10 +33,10 @@ fn firewall_script_write() {
     if [ \"$1\" == \"stop\" ]; then\n\
         \t/usr/sbin/iptables -D INPUT -i dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -D OUTPUT -o dnet -j ACCEPT\n\
-        \t/usr/sbin/iptables -D INPUT -i brwan -p udp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -D INPUT -i ppp0 -p udp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -D INPUT -i brwan -p tcp --dport 50069 -j ACCEPT\n\
-        \t/usr/sbin/iptables -D INPUT -i ppp0 -p tcp --dport 50069 -j ACCEPT\n\
+        \t/usr/sbin/iptables -D INPUT -i brwan -p udp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -D INPUT -i ppp0 -p udp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -D INPUT -i brwan -p tcp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -D INPUT -i ppp0 -p tcp --dport " + &port + " -j ACCEPT\n\
         \t/usr/sbin/iptables -D FORWARD -i dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -D FORWARD -o dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -t nat -D POSTROUTING -o dnet -j MASQUERADE\n\

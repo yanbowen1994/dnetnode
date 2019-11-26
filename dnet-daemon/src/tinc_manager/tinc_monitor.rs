@@ -8,6 +8,7 @@ use tinc_plugin::TincOperatorError;
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::tinc_manager::tinc_event_handle::TincEventHandle;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -45,15 +46,16 @@ impl TincMonitor {
                 TunnelCommand::Connect => {
                     let inner = get_monitor_inner();
                     let res = match inner.connect() {
-                        Ok(_) => Response::success(),
+                        Ok(_) => {
+                            thread::spawn(move || {
+                                // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
+                                thread::sleep(Duration::from_secs(3));
+                                inner.run();
+                            });
+                            Response::success()
+                        },
                         Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
-
-                    thread::spawn(move || {
-                        // wait tunnel TODO use ipc get tunnel start. tinc -> tinc-up -> ipc -> tinc-monitor
-                        thread::sleep(Duration::from_secs(3));
-                        inner.run();
-                    });
 
                     let _ = res_tx.send(res);
                 }
@@ -79,9 +81,9 @@ impl TincMonitor {
 }
 
 struct MonitorInner {
-    stop_sign_tx:          mpsc::Sender<mpsc::Sender<bool>>,
-    stop_sign_rx:          mpsc::Receiver<mpsc::Sender<bool>>,
-    is_running:            Arc<Mutex<bool>>,
+    stop_sign_tx:                       mpsc::Sender<mpsc::Sender<bool>>,
+    stop_sign_rx:                       mpsc::Receiver<mpsc::Sender<bool>>,
+    is_running:                         Arc<Mutex<bool>>,
 }
 
 impl MonitorInner {
@@ -99,15 +101,14 @@ impl MonitorInner {
         let (tx, rx) = mpsc::channel();
 
         let inner = Self {
-            stop_sign_tx:   tx,
-            stop_sign_rx:   rx,
-            is_running:     Arc::new(Mutex::new(false)),
+            stop_sign_tx:       tx,
+            stop_sign_rx:       rx,
+            is_running:         Arc::new(Mutex::new(false)),
         };
 
         unsafe {
             EL = Box::into_raw(Box::new(inner));
         };
-
     }
 
     fn connect(&mut self) -> Result<()> {
@@ -130,6 +131,9 @@ impl MonitorInner {
         let mut check_time = Instant::now();
 
         info!("tinc check start.");
+
+        let mut tinc_event_handle = TincEventHandle::new();
+
         loop {
             if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
                 let _ = res_tx.send(true);
@@ -137,6 +141,7 @@ impl MonitorInner {
                 *is_running = false;
                 break
             }
+
             if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
                 debug!("exec_tinc_check");
                 if let Err(_) = self.exec_tinc_check() {
@@ -144,9 +149,7 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            else {
-                thread::sleep(Duration::from_millis(500));
-            }
+            tinc_event_handle.recv();
         }
         info!("tinc check stop.");
     }
@@ -177,12 +180,11 @@ impl MonitorInner {
                     let _ = rx.recv_timeout(Duration::from_secs(5));
                     ()
                 },
-                Err(_) => (),
+                Err(_) => return Err(TincOperatorError::StopTincError),
             }
-            let mut tinc = TincOperator::new();
-            tinc.restart_tinc()?;
-            info!("tinc_monitor restart tinc");
         }
+        self.connect()?;
+        info!("tinc_monitor restart tinc");
         Ok(())
     }
 

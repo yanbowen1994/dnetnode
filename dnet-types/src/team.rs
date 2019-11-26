@@ -1,35 +1,72 @@
 use std::net::IpAddr;
-use crate::device_type::DeviceType;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Team {
-    pub team_id:    String,
-    pub team_name:  String,
-    pub members:    Vec<TeamMember>,
+    pub company_id:         Option<String>,
+    pub create_by:          Option<String>,
+    pub create_time:        Option<String>,
+    pub enable_flag:        Option<bool>,
+    pub private_team_flag:  Option<bool>,
+    pub site_count:         Option<u32>,
+    pub team_des:           Option<String>,
+    pub team_id:            String,
+    pub members:            Vec<TeamMember>,
+    pub team_name:          Option<String>,
+    pub terminal_count:     Option<u32>,
+    pub update_by:          Option<String>,
+    pub update_time:        Option<String>,
+    pub user_count:         Option<u32>,
+    pub user_id:            Option<String>,
 }
 
 impl Team {
-    pub fn new(team_id: &str, team_name: &str, members: Vec<TeamMember>) -> Self {
+    pub fn new() -> Self {
         Team {
-            team_id: team_id.to_owned(),
-            team_name: team_name.to_owned(),
-            members,
+            company_id:         None,
+            create_by:          None,
+            create_time:        None,
+            enable_flag:        None,
+            private_team_flag:  None,
+            site_count:         None,
+            team_des:           None,
+            team_id:            String::new(),
+            members:            vec![],
+            team_name:          None,
+            terminal_count:     None,
+            update_by:          None,
+            update_time:        None,
+            user_count:         None,
+            user_id:            None,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TeamMember {
-    pub device_id:      String,
-    pub device_name:    String,
-    pub device_type:    DeviceType,
-    pub vip:            IpAddr,
-    pub lan:            Vec<NetSegment>,
-    pub wan:            String,
-    pub proxy_ip:       Vec<IpAddr>,
-    pub status:         u32,
-    pub is_self:        bool,
-    pub user_name:      String
+    pub alias:                Option<String>,
+    pub app_version:          Option<String>,
+    pub city:                 Option<String>,
+    pub company_id:           Option<String>,
+    pub connection_limit:     Option<String>,
+    pub country:              Option<String>,
+    pub create_by:            Option<String>,
+    pub create_time:          Option<String>,
+    pub device_name:          Option<String>,
+    pub device_serial:        String,
+    pub device_type:          Option<i8>,
+    pub hidden_flag:          Option<bool>,
+    pub id:                   Option<String>,
+    pub vip:                  IpAddr,
+    pub lan:                  Option<String>,
+    pub latitude:             Option<String>,
+    pub longitude:            Option<String>,
+    pub pubkey:               String,
+    pub region:               Option<String>,
+    pub status:               i8,
+    pub update_by:            Option<String>,
+    pub update_time:          Option<String>,
+    pub username:             Option<String>,
+    pub wan:                  Option<String>,
 }
 
 // mask CIDR.
@@ -44,70 +81,3 @@ impl NetSegment {
         format!("{}/{}", self.ip.to_string(), self.mask)
     }
 }
-
-//#[derive(Clone, Debug, Serialize, Deserialize)]
-//pub struct Team {
-//    pub enable:             bool,
-//    pub members:            Vec<TeamMember>,
-//    pub site_count:         u32,
-//    pub team_des:           String,
-//    pub team_id:            String,
-//    pub team_name:          String,
-//    pub proxy_ip:           String,
-//    pub subnet:             String,
-//    pub terminal_count:     u32,
-//    pub user_count:         u32,
-//    pub user_id:            String,
-//}
-//
-//impl Team {
-//    pub fn new(members: Vec<TeamMember>, team_id: &str, team_name: &str) -> Self {
-//        Self {
-//            enable:             true,
-//            members,
-//            site_count:         0,
-//            team_des:           String::new(),
-//            team_id:            team_id.to_owned(),
-//            team_name:          team_name.to_owned(),
-//            proxy_ip:           String::new(),
-//            subnet:             String::new(),
-//            terminal_count:     0,
-//            user_count:         0,
-//            user_id:            String::new(),
-//        }
-//    }
-//}
-//
-//#[derive(Clone, Debug, Serialize, Deserialize)]
-//pub struct TeamMember {
-//    pub appversion:         String,
-//    pub city:               String,
-//    pub connection_limit:   String,
-//    pub country:            String,
-//    pub ip:                 String,
-//    pub label_name:         String,
-//    pub lan:                Vec<String>,
-//    pub latitude:           String,
-//    pub longitude:          String,
-//    pub mac:                String,
-//    pub member_public_key:  String,
-//    pub member_type:        u32,
-//    pub proxylist:          Vec<DeviceProxy>,
-//    pub pubkey:             String,
-//    pub region:             String,
-//    pub serviceaddress:     String,
-//    pub status:             u32,
-//    pub team_id:            String,
-//    pub user_id:            String,
-//    pub user_name:          String,
-//    pub wan:                String,
-//}
-//
-//#[derive(Clone, Debug, Serialize, Deserialize)]
-//pub struct DeviceProxy {
-//    pub city:               String,
-//    pub country:            String,
-//    pub proxy_ip:           String,
-//    pub proxygw:            String,
-//    pub proxypubkey:        String,
-//}

@@ -1,7 +1,8 @@
+use std::str::FromStr;
 use std::collections::HashMap;
+use std::net::IpAddr;
 
 use reqwest::header::HeaderValue;
-
 use actix_web::{
     web,
     error, Error,
@@ -9,10 +10,14 @@ use actix_web::{
 };
 use futures::{Future, Stream};
 use bytes::BytesMut;
+use serde_json::json;
+use tinc_plugin::{TincTeam, PID_FILENAME};
+use dnet_types::response::Response;
 
 use crate::tinc_manager::TincOperator;
-use super::types::Response;
 use crate::info::get_info;
+use crate::settings::get_settings;
+use dnet_types::settings::RunMode;
 
 const MAX_SIZE: usize = 262_144;
 
@@ -35,29 +40,19 @@ pub fn get_key(req: HttpRequest,
 }
 
 
-//pub fn update_team_info(req: HttpRequest,
-//                        payload: web::Payload
-//) -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
-//    parse_payload(req, payload, update_team_info_inner)
-//}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[allow(non_snake_case)]
-struct Vip {
-    mac:            String,
-    vip:            String,
-    pubKey:         String,
-}
-impl Vip {
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
+pub fn update_team_info(req: HttpRequest,
+                        payload: web::Payload
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    parse_payload(req, payload, update_team_info_inner)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 pub struct KeyReport {
-    vips: Vec<Vip>,
+    deviceSerial:   String,
+    vip:            String,
+    pubKey:         String,
+    proxyPubkey:    Option<String>,
 }
 impl KeyReport {
     fn to_json(&self) -> String {
@@ -66,37 +61,41 @@ impl KeyReport {
 }
 
 pub fn report_key_inner(body: String) -> Result<HttpResponse, Error> {
-
     debug!("http_report_key - response data : {:?}", body);
 
-    let mut response = Response::uid_failed();
+    let mut response = Response::unauthorized();
 
     match serde_json::from_str(body.as_str()) {
         Ok(key_report) => {
-            let key_report: KeyReport = key_report;
-            debug!("http_report_key - key_report: {:?}",key_report);
+            let client: KeyReport = key_report;
+            debug!("http_report_key - key_report: {:?}", client);
             let operator = TincOperator::new();
 
-            let mut failed_ip = vec![];
-            for client in key_report.clone().vips {
-                if let Err(e) = operator.set_hosts(
-                    false,
-                    client.vip.as_str(),
-                    client.pubKey.as_str()
-                ) {
-                    failed_ip.push(client.vip)
-                }
-            }
-            if failed_ip.len() == 0 {
-                response = Response::succeed(key_report.to_json())
+            let res = IpAddr::from_str(&client.vip)
+                .ok()
+                .and_then(|vip| {
+                    operator.set_hosts(
+                        None,
+                        vip,
+                        client.pubKey.as_str(),
+                    ).ok()
+                });
+
+            if let Some(_) = res {
+                response = Response::success()
             }
             else {
-                response = Response::set_host_failed(failed_ip);
+                response = Response::new_from_code(500);
             }
         },
         Err(_) => error!("http_report_key - response KeyReport {}", body.as_str()),
     }
-    Ok(HttpResponse::Ok().json(response))
+    if response.code == 200 {
+        Ok(HttpResponse::Ok().json(response))
+    }
+    else {
+        Ok(HttpResponse::InternalServerError().json(response))
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -119,15 +118,15 @@ fn check_key_inner(body: String) -> Result<HttpResponse, Error> {
             if pubkey == check_pubkey.pubKey {
                 let response = Response {
                     code: 200,
-                    data: Some(pubkey),
-                    msg: None,
+                    data: Some(json!(pubkey)),
+                    msg:  String::new(),
                 };
                 return Ok(HttpResponse::Ok().json(response)); // <- send response
             }
         }
     }
 
-    let response = Response::not_found();
+    let response = Response::new_from_code(404);
     Ok(HttpResponse::Ok().json(response)) // <- send response
 }
 
@@ -165,39 +164,52 @@ fn get_key_inner(body: String) -> Result<HttpResponse, Error> {
         }
     }
 
-    let data = Some(serde_json::to_string(&output).unwrap());
+    let data = Some(json!(&output));
 
     let response = Response {
         code:   200,
         data,
-        msg:    None,
+        msg:    String::new(),
     };
     Ok(HttpResponse::Ok().json(response)) // <- send response
 }
 
-//fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
-//    info!("update_group_info - response data : {}",body);
-//
-//    let mut response = Response::internal_error();
-//
-//    match serde_json::from_str(body.as_str()) {
-//        Ok(request) => {
-//            let request: TeamInfo = request;
-//            info!("server team change: {:?}", request);
-//
-//            let mut info = info.lock().unwrap();
-//            let change = info.proxy_info.team_info.increment_modify(&request);
-//            let tinc = TincOperator::new();
-//            if !tinc.send_node_team_info(&change.0, &change.1) {
-//                error!("update_team_info failed.");
-//            }
-//            response = Response::succeed("".to_owned());
-//        },
-//        Err(_) => error!("update_group_info - can't parse: {}", body.as_str()),
-//    }
-//
-//    Ok(HttpResponse::Ok().json(response)) // <- send response
-//}
+fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
+    if get_settings().common.mode == RunMode::Center {
+        info!("update_team_info - response data : {}",body);
+
+        let mut response = Response::internal_error();
+
+        match serde_json::from_str(body.as_str()) {
+            Ok(request) => {
+                info!("server team change: {:?}", request);
+                match TincTeam::from_json_str(request) {
+                    Ok(tinc_team) => {
+                        let tinc_pid = get_settings().common.home_path
+                            .join("tinc").join(PID_FILENAME)
+                            .to_str().unwrap().to_string();
+                        match tinc_team.send_to_tinc(&tinc_pid) {
+                            Ok(_) => response = Response::success(),
+                            Err(failed_team) => {
+                                response = Response::internal_error()
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        response = Response::internal_error()
+                            .set_msg("Parse body failed.".to_owned());
+                    }
+                }
+            },
+            Err(_) => error!("update_group_info - can't parse: {}", body.as_str()),
+        }
+        Ok(HttpResponse::Ok().json(response)) // <- send response
+    }
+    else {
+        Ok(HttpResponse::NotFound().json(""))
+    }
+
+}
 
 fn parse_payload<F>(
     req: HttpRequest,
@@ -237,22 +249,18 @@ fn check_apikey(apikey: Option<&HeaderValue>)
     let uid;
     {
         let info = get_info().lock().unwrap();
-        uid = info.proxy_info.uid.clone();
+        uid = info.proxy_info.auth_id.clone().unwrap();
     }
 
     if let Some(client_apikey) = apikey {
-        debug!("http_report_key - response apikey: {:?}", client_apikey);
         if let Ok(client_apikey) = client_apikey.to_str() {
             if client_apikey == &uid {
+                info!("check_apikey - request apikey: {:?}", client_apikey);
                 return None;
             }
             else {
                 error!("http_client - response api key authentication failure");
-                let response = Response {
-                    code: 401,
-                    data: None,
-                    msg: Some("Apikey invalid".to_owned()),
-                };
+                let response = Response::new_from_code(401);
 
                 return Some(response);
             }
@@ -263,7 +271,7 @@ fn check_apikey(apikey: Option<&HeaderValue>)
     let response = Response {
         code: 404,
         data: None,
-        msg:  Some("No Apikey".to_owned()),
+        msg:  "No Apikey".to_owned(),
     };
     return Some(response);
 }

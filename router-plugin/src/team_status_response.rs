@@ -91,7 +91,7 @@ impl From<DaemonTeamMember> for Member {
         Self {
             id:         member.device_name,
             status:     member.status,
-            serial_num: member.device_id,
+            serial_num: member.device_serial,
             ip:         member.vip.to_string(),
             wan_ip:     member.wan,
             sub_ip,

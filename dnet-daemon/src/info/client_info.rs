@@ -17,8 +17,8 @@ use dnet_types::device_type::DeviceType;
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
     pub uid:            String,
-    pub cookie:         String,
-    pub devicetype:     String,
+    pub token:          String,
+    pub devicetype:     DeviceType,
     pub lan:            String,
     pub wan:            String,
     pub devicename:     String,
@@ -28,7 +28,7 @@ pub struct ClientInfo {
 }
 impl ClientInfo {
     pub fn new() -> Result<Self> {
-        let device_type = Self::get_device_type();
+        let device_type = DeviceType::get_device_type();
         let client_info;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
@@ -36,7 +36,6 @@ impl ClientInfo {
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
                 client_info = Self {
                     uid:                device_uid.clone(),
-                    cookie:             "0cde13b523sf9aa5a403dc9f5661344b91d77609f70952eb488f31641".to_owned(),
                     devicetype:         device_type,
                     lan:                "".to_string(),
                     wan:                "".to_string(),
@@ -50,7 +49,7 @@ impl ClientInfo {
                 let device_uid = Self::get_uid(&device_type)?;
                 client_info = Self {
                     uid:                device_uid.clone(),
-                    cookie:             "0cde13b523sf9aa5a403dc9f5661344b91d77609f70952eb488f31641".to_owned(),
+                    token:              "".to_string(),
                     devicetype:         device_type,
                     lan:                "".to_string(),
                     wan:                "".to_string(),
@@ -61,11 +60,7 @@ impl ClientInfo {
         Ok(client_info)
     }
 
-    fn get_device_type() -> String {
-        return format!("{}", (DeviceType::get_device_type() as i8));
-    }
-
-    fn get_uid(device_type: &str) -> Result<String> {
+    fn get_uid(device_type: &DeviceType) -> Result<String> {
         let mac = match get_mac_address() {
             Ok(Some(ma)) => Some(ma.to_string().replace(":", "")),
             Ok(None) => None,
@@ -73,8 +68,8 @@ impl ClientInfo {
         }.ok_or(Error::GetMac)?;
 
         let uid;
-        match &device_type[..] {
-            "6" => {
+        match device_type {
+            DeviceType::Linux => {
                 #[cfg(feature = "router_debug")]
                     {
                         uid = get_settings().common.username.clone();
@@ -86,10 +81,12 @@ impl ClientInfo {
                     }
             }
             #[cfg(target_arch = "arm")]
-            "0" => uid = get_sn().ok_or(Error::GetMac)?,
-            "4" => uid = "macos/".to_owned() + &mac,
-            "3" => uid = "windows/".to_owned() + &mac,
-            _ => uid = "unknown".to_owned() + &mac,
+            DeviceType::Router => uid = get_sn().ok_or(Error::GetMac)?,
+            DeviceType::MAC => uid = "macos/".to_owned() + &mac,
+            DeviceType::IOS => uid = "ios/".to_owned() + &mac,
+            DeviceType::Windows => uid = "windows/".to_owned() + &mac,
+            DeviceType::Cloud => uid = "cloud/".to_owned() + &mac,
+            _ => uid = "unknown/".to_owned() + &mac,
         };
         Ok(uid)
     }

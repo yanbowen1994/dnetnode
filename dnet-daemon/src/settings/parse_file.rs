@@ -6,22 +6,24 @@ use super::error::*;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Common {
-    pub home_path:       Option<String>,
-    pub log_level:       Option<String>,
-    pub log_dir:         Option<String>,
-    pub mode:            Option<String>,
-    pub conductor_url:   Option<String>,
-    pub username:        Option<String>,
-    pub password:        Option<String>,
+    pub home_path:                              Option<String>,
+    pub log_level:                              Option<String>,
+    pub log_dir:                                Option<String>,
+    pub mode:                                   Option<String>,
+    pub conductor_url:                          Option<String>,
+    pub accept_conductor_invalid_certs:         Option<bool>,
+    pub username:                               Option<String>,
+    pub password:                               Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Proxy {
     pub local_ip:                               Option<String>,
-    pub local_port:                             Option<String>,
+    pub local_port:                             Option<u16>,
     pub local_https_server_certificate_file:    Option<String>,
     pub local_https_server_privkey_file:        Option<String>,
     pub proxy_type:                             Option<String>,
+    pub public:                                 Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -32,6 +34,7 @@ pub struct Client {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tinc {
     pub auto_connect:                              Option<String>,
+    pub port:                                      Option<u16>,
     pub tinc_memory_limit:                         Option<String>,
     pub tinc_check_frequency:                      Option<String>,
     pub tinc_allowed_out_memory_times:             Option<String>,

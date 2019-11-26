@@ -1,87 +1,24 @@
+use serde_json::json;
+
 use crate::info::get_info;
 use crate::settings::get_settings;
-use crate::rpc::client::rpc_client::types::teams::{JavaResponseTeamMember, JavaResponseDeviceProxy};
-use super::post;
-use super::{Error, Result};
+use crate::rpc::http_request::post;
+use crate::rpc::Result;
 
 pub(super) fn join_team(team_id: &str) -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vppn/api/v2/client/jointeam";
+        + "/vlan/team/member/add";
 
-    let device_id;
-    let cookie;
-    {
-        let info = get_info().lock().unwrap();
-        device_id = info.client_info.uid.clone();
-        cookie = info.client_info.cookie.clone();
-    }
-    let data = RequestJoinTeam {
-        teamid:   team_id.to_owned(),
-        deviceid: device_id,
-    }.to_json();
+    let info = get_info().lock().unwrap();
+    let device_id = info.client_info.uid.clone();
+    std::mem::drop(info);
 
-    post(&url, &data, &cookie)
-        .and_then(|mut res| {
-            if res.status().as_u16() == 200 {
-                if let Ok(res_data) = &res.text() {
-                    if let Ok(recv) = serde_json::from_str(res_data) {
-                        let recv: JavaResponse = recv;
-                        if recv.code == 200 {
-                            return Ok(());
-                        }
-                        else {
-                            warn!("join_team response code: {} msg: {:?}", recv.code, recv.msg);
-                            return Err(Error::http(recv.code));
-                        }
-                    }
-                    else if let Ok(recv) = serde_json::from_str(res_data) {
-                        let recv: JavaResponseAlreadyIn = recv;
-                        if recv.code == 931 {
-                            return Ok(());
-                        }
-                        else {
-                            warn!("join_team response code: {} msg: {:?}", recv.code, recv.msg);
-                            return Err(Error::http(recv.code));
-                        }
-                    }
-                    else {
-                        warn!("join_team - response can't parse: {:?}", res_data);
-                        return Ok(());
-                    }
-                }
-                else {
-                    warn!("{:?}", res);
-                    return Ok(());
-                }
-            }
-            else {
-                return Err(Error::join_team);
-            };
-        })
-}
+    let data = json!({
+        "deviceIds": device_id,
+        "teamId": team_id
+    }).to_string();
 
-#[derive(Debug, Serialize, Deserialize)]
-struct RequestJoinTeam {
-    teamid:   String,
-    deviceid: String,
-}
 
-impl RequestJoinTeam {
-    fn to_json(&self) -> String {
-        return serde_json::to_string(self).unwrap();
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct JavaResponse {
-    code: i32,
-    data: Option<JavaResponseTeamMember>,
-    msg:  Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct JavaResponseAlreadyIn {
-    code: i32,
-    data: Option<Vec<JavaResponseDeviceProxy>>,
-    msg:  Option<String>,
+    let _ = post(&url, &data)?;
+    Ok(())
 }

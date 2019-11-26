@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use ipc_client::{new_standalone_ipc_client, DaemonRpcClient};
+use management_client::{new_standalone_ipc_client, DaemonRpcClient};
 
 #[derive(Serialize, Deserialize)]
-pub enum HostStatusChange {
+enum HostStatusChange {
     TincUp,
     TincDown,
     HostUp(String),

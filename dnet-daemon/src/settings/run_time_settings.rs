@@ -178,7 +178,8 @@ impl Settings {
                         if mode_str.to_lowercase() == "proxy" {
                             return RunMode::Proxy;
                         }
-                        else if mode_str.to_lowercase() == "center" {
+                        else if mode_str.to_lowercase() == "center"
+                            || mode_str.to_lowercase() == "centre" {
                             return RunMode::Center;
                         }
                         else if mode_str.to_lowercase() != "client" {

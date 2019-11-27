@@ -19,12 +19,12 @@ pub fn device_add() -> Result<()> {
     info!("Request {}", data);
 
     let res_data = post(&url, &data.to_string())?;
+    info!("Response {:?}", res_data.to_string());
     let res_device: JavaDevice = serde_json::from_value(res_data.clone())
         .map_err(|e|{
             Error::ResponseParse(format!("err: {:?}\n{:?}", e, res_data.to_string()))
         })?;
 
-    info!("Response {:?}", res_device);
 
     let vip = res_device.ip
         .and_then(|vip|IpAddr::from_str(&vip).ok())

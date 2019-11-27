@@ -93,6 +93,8 @@ impl RpcMonitor {
     }
 
     fn init(&self) {
+        let run_mode = get_settings().common.mode.clone();
+
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnecting);
 
         // 初始化上报操作
@@ -127,13 +129,14 @@ impl RpcMonitor {
                 }
             }
 
-            // 注册proxy
-            info!("all_device_pubkey");
-            {
-                if let Err(e) = self.client.all_device_pubkey() {
-                    error!("all_device_pubkey {:?} {}", e, e.get_http_error_msg());
-                    thread::sleep(std::time::Duration::from_secs(1));
-                    continue
+            if run_mode == RunMode::Proxy {
+                info!("all_device_pubkey");
+                {
+                    if let Err(e) = self.client.all_device_pubkey() {
+                        error!("all_device_pubkey {:?} {}", e, e.get_http_error_msg());
+                        thread::sleep(std::time::Duration::from_secs(1));
+                        continue
+                    }
                 }
             }
 

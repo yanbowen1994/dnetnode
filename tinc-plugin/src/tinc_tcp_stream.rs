@@ -333,7 +333,7 @@ impl TincStream {
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
         info!("add_group_node {:?}", res);
-        if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+        if Self::check_group_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
             return Ok(());
         }
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
@@ -442,6 +442,32 @@ impl TincStream {
             _ => -1,
         };
         if control == req && control_type == req_type {
+            return true;
+        }
+        false
+    }
+
+    fn check_group_res(res: &str, req: i8, req_type: i8) -> bool {
+        let iter: Vec<&str> = res.split_whitespace().collect();
+        if iter.len() < 3 {
+            return false;
+        }
+        let control: i8 = match iter[0].parse() {
+            Ok(x) => x,
+            _ => -1,
+        };
+
+        let control_type: i8 = match iter[1].parse() {
+            Ok(x) => x,
+            _ => -1,
+        };
+
+        let success: i8 = match iter[2].parse() {
+            Ok(x) => x,
+            _ => -1,
+        };
+
+        if control == req && control_type == req_type && success == 0 {
             return true;
         }
         false

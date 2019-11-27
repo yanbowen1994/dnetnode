@@ -42,7 +42,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
 
     readline_dir = "/root/readline-8.0"
     os.chdir("/root")
-    os.system("wget http://ftp.gnu.org/gnu/readline/readline-8.0.tar.gz")
+    os.system("wget http://ftp.gnu.org/gnu/readline/readline-8.0.tar.gz -o readline-8.0.tar.gz")
     os.system("tar -zxvf readline-8.0.tar.gz")
     os.chdir(readline_dir)
     os.system("chmod 777 configure")
@@ -109,8 +109,6 @@ os.system("cp /root/dnetnode/target/release/dnet ./dnetnode/root/dnetnode")
 os.system("cp /root/dnetnode/compile_script/control  ./dnetnode/DEBIAN")
 os.system("cp /root/dnetnode/compile_script/dnet.service  ./dnetnode/lib/systemd/system/dnetnode.service")
 os.system("cp /root/tinc /root/dnetnode/root -rf")
-os.system("dpkg-deb -b /root/dnetnode")
+os.system("dpkg-deb -b /root/dnetnode dnet.deb")
 os.system("cp /root/dnetnode.deb /mnt/")
-
-
-
+print("finish")

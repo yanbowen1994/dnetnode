@@ -26,7 +26,7 @@ impl Info {
         let mut proxy_info = ProxyInfo::new();
         proxy_info.auth_id = Some(uuid::Uuid::new_v4().to_string());
 
-        println!("{:?}", proxy_info.auth_id);
+        info!("local uid: {:?}", proxy_info.auth_id);
 
         let mut tinc_info = TincInfo::new();
         tinc_info.load_local();

@@ -1,7 +1,6 @@
 use std::net::IpAddr;
 use std::str::FromStr;
 
-use tinc_plugin::{TincTeam, PID_FILENAME};
 use crate::settings::get_settings;
 use crate::tinc_manager::TincOperator;
 use crate::rpc::{Error, Result};
@@ -17,7 +16,9 @@ pub fn all_device_pubkey() -> Result<()> {
     .ok_or(Error::ResponseParse(res_data.to_string()))? {
         if let Ok(vip) = IpAddr::from_str(vip) {
             if let Some(pubkey) = pubkey_value.as_str() {
-                tinc.set_hosts(None, vip, pubkey);
+                if let Err(e) = tinc.set_hosts(None, vip, pubkey) {
+                    error!("vip:{} err:{:?}", vip.to_string(), e.to_string())
+                }
             }
         }
     }

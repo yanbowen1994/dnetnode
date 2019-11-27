@@ -8,16 +8,17 @@ mod route;
 mod search_user_team;
 mod select_proxy;
 mod types;
+use route::search_team_by_mac;
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 extern crate router_plugin;
-use tinc_plugin::ConnectTo;
 
+use tinc_plugin::ConnectTo;
 use crate::info::UserInfo;
 use crate::rpc::common::login::login;
 use crate::rpc::common::get_online_proxy;
-use crate::rpc::Result;
 
+use crate::rpc::Result;
 pub use select_proxy::select_proxy;
 
 #[derive(Debug)]
@@ -44,9 +45,9 @@ impl RpcClient {
         device_select_proxy::device_select_proxy()
     }
 
-//    pub fn search_team_by_mac(&self) -> Result<bool> {
-//        search_team_by_mac()
-//    }
+    pub fn search_team_by_mac(&self) -> Result<()> {
+        search_team_by_mac::search_team_by_mac()
+    }
 
     pub fn get_users_by_team(&self, team_id: &str) -> Result<Vec<UserInfo>> {
         get_users_by_team::get_users_by_team(team_id)

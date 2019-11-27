@@ -57,7 +57,7 @@ pub struct TeamMember {
     pub hidden_flag:          Option<bool>,
     pub id:                   Option<String>,
     pub vip:                  IpAddr,
-    pub lan:                  Option<String>,
+    pub lan:                  Vec<NetSegment>,
     pub latitude:             Option<String>,
     pub longitude:            Option<String>,
     pub pubkey:               String,

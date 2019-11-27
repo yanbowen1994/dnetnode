@@ -12,7 +12,6 @@ use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client;
 use super::error::{Error as ClientError, Result};
-use serde_json::Value;
 use crate::rpc::Error;
 
 #[derive(Eq, PartialEq)]
@@ -162,6 +161,24 @@ impl RpcMonitor {
             }
         }
     }
+
+
+    fn handle_get_users_by_team(&self, team_id: String) -> Response {
+        info!("handle_get_users_by_team");
+        match self.client.get_users_by_team(&team_id) {
+            Ok(res) => {
+                let data: Vec<serde_json::Value> = res.iter()
+                    .map(|user| {
+                        user.to_json()
+                    })
+                    .collect();
+                let data = serde_json::Value::Array(data);
+                Response::success().set_data(Some(data))
+            },
+            Err(Error::http(code)) => Response::new_from_code(code),
+            Err(e) => Response::internal_error().set_msg(e.to_string()),
+        }
+    }
 }
 
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
@@ -215,23 +232,6 @@ impl RpcMonitor {
         }
     }
 
-    fn handle_get_users_by_team(&self, team_id: String) -> Response {
-        info!("handle_get_users_by_team");
-        match self.client.get_users_by_team(&team_id) {
-            Ok(res) => {
-                let data: Vec<Value> = res.iter()
-                    .map(|user| {
-                        user.to_json()
-                    })
-                    .collect();
-                let data = serde_json::Value::Array(data);
-                Response::success().set_data(Some(data))
-            },
-            Err(Error::http(code)) => Response::new_from_code(code),
-            Err(e) => Response::internal_error().set_msg(e.to_string()),
-        }
-    }
-
     fn handle_select_proxy(&self) -> Response {
         info!("handle_select_proxy");
         let response;
@@ -249,7 +249,20 @@ impl RpcMonitor {
     // use for client run as muti-team.
     fn start_team(&self) {
         let mut info = get_mut_info().lock().unwrap();
-        info.client_info.running_teams = info.teams.clone();
+        info.teams.running_teams = info.teams.running_teams.clone();
+    }
+
+    fn handle_fresh_team(&self) -> Response {
+        if let Err(error) = self.client.search_team_by_mac() {
+            let res = match error {
+                Error::http(code) => Response::new_from_code(code),
+                _ => Response::internal_error().set_msg(error.to_string())
+            };
+            return res;
+        }
+        else {
+            return Response::success();
+        }
     }
 }
 
@@ -424,7 +437,7 @@ impl Executor {
         info!("start_team");
         self.start_team()?;
         info!("client_get_online_proxy");
-        self.client.client_get_online_proxy()?;
+        let connect_to = self.client.client_get_online_proxy()?;
         let mut info = get_mut_info().lock().unwrap();
         info.tinc_info.connect_to = connect_to;
         info!("connect_team_broadcast");

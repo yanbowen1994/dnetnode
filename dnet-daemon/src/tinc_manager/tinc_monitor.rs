@@ -158,7 +158,7 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            if let Some(mut handle) = tinc_event_handle.as_mut() {
+            if let Some(handle) = tinc_event_handle.as_mut() {
                 handle.recv();
             }
             else {

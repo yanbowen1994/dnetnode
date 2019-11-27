@@ -75,9 +75,9 @@ build_rpc_trait! {
 
 /// Enum representing commands coming in on the management interface.
 pub enum ManagementCommand {
-    TunnelConnect(OneshotSender<Response>, String),
+    TeamConnect(OneshotSender<Response>, String),
 
-    TunnelDisconnect(OneshotSender<Response>, String),
+    TeamDisconnect(OneshotSender<Response>, String),
 
     /// Request the current state.
     State(OneshotSender<State>),
@@ -222,7 +222,7 @@ for ManagementInterface<T>
         log::info!("management interface tunnel connect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelConnect(tx, team_id))
+            .send_command_to_daemon(ManagementCommand::TeamConnect(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }
@@ -233,7 +233,7 @@ for ManagementInterface<T>
         log::info!("management interface tunnel disconnect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TunnelDisconnect(tx, team_id))
+            .send_command_to_daemon(ManagementCommand::TeamDisconnect(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

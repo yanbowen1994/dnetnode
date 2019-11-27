@@ -22,7 +22,7 @@ fn firewall_script_write(port: u16) {
     if [ \"$1\" == \"start\" ]; then\n\
         \t/usr/sbin/iptables -I INPUT -i dnet -j ACCEPT\n\
         \t/usr/sbin/iptables -I OUTPUT -o dnet -j ACCEPT\n\
-        \t/usr/sbin/iptables -I INPUT -i brwan -p udp --dport " + &port + " -j ACCEPT\n\
+        \t/usr/sbin/iptables -I INPUT -i brwan -p udp --dport ".to_string() + &port + " -j ACCEPT\n\
         \t/usr/sbin/iptables -I INPUT -i ppp0 -p udp --dport " + &port + " -j ACCEPT\n\
         \t/usr/sbin/iptables -I INPUT -i brwan -p tcp --dport " + &port + " -j ACCEPT\n\
         \t/usr/sbin/iptables -I INPUT -i ppp0 -p tcp --dport " + &port + " -j ACCEPT\n\

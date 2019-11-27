@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 use std::str::FromStr;
 
-use dnet_types::team::{TeamMember, Team};
+use dnet_types::team::{TeamMember, Team, NetSegment};
 use crate::info::get_mut_info;
 
 #[allow(non_snake_case)]
@@ -91,6 +91,7 @@ pub struct ResponseTeamMember {
 impl ResponseTeamMember {
     pub fn parse_to_team_member(self) -> Option<TeamMember> {
         let vip = IpAddr::from_str(&self.ip).ok()?;
+        let lan: Vec<NetSegment> = serde_json::from_str(&self.ip).ok().unwrap_or(vec![]);
         Some(TeamMember {
             alias:             self.alias,
             app_version:       self.appVersion,
@@ -106,7 +107,7 @@ impl ResponseTeamMember {
             hidden_flag:       self.hiddenFlag,
             id:                self.id,
             vip,
-            lan:               self.lan,
+            lan,
             latitude:          self.latitude,
             longitude:         self.longitude,
             pubkey:            self.pubKey.clone(),

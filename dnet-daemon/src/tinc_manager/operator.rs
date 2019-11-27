@@ -7,6 +7,9 @@ use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator,
                   TincOperatorError, TincTools, TincSettings};
 use dnet_types::settings::RunMode;
 
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+use dnet_types::team::NetSegment;
+
 use crate::info::{get_info, get_mut_info};
 use crate::settings::get_settings;
 use crate::settings::default_settings::TINC_INTERFACE;
@@ -83,12 +86,14 @@ impl TincOperator {
         let local_vip = info.tinc_info.vip.ok_or(TincOperatorError::local_vip_not_init)?;
 
         let mut members_vip = vec![];
-        for running_team in &info.client_info.running_teams {
-            for member in &running_team.members {
-                if &member.vip == &local_vip {
-                    continue;
+        for running_team_id in &info.teams.running_teams {
+            if let Some(running_team) = info.teams.all_teams.get(running_team_id) {
+                for member in &running_team.members {
+                    if member.vip == local_vip {
+                        continue;
+                    }
+                    members_vip.push(member.vip.clone());
                 }
-                members_vip.push(member.vip.clone());
             }
         }
 
@@ -115,18 +120,17 @@ impl TincOperator {
                 let local_vip = info.client_info.device_info.lan.clone();
 
                 let mut members_lan = vec![];
-                for running_team in &info.client_info.running_teams {
-                    for member in &running_team.members {
-                        for member_lan in &member.lan {
-                            if local_vip.contains(member_lan) {
-                                continue;
-                            }
-                            else {
-                                members_lan.push(member_lan.clone());
+                for running_team_id in &info.teams.running_teams {
+                    if let Some(running_team) = info.teams.all_teams.get(running_team_id) {
+                        for member in running_team.members {
+                            for member_lan in &member.lan {
+                                if local_vip.contains(&member_lan) {
+                                    continue;
+                                } else {
+                                    members_lan.push(member_lan.clone());
+                                }
                             }
                         }
-
-
                     }
                 }
                 std::mem::drop(info);

@@ -60,7 +60,7 @@ impl From<DaemonTeam> for Team {
 
         Self {
             id:        team.team_id,
-            name:      team.team_name,
+            name:      team.team_name.unwrap_or("".to_string()),
             offline,
             online,
             members,
@@ -72,7 +72,7 @@ impl From<DaemonTeam> for Team {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Member {
     id:         String,
-    status:     u32,
+    status:     i8,
     serial_num: String,
     ip:         String,
     wan_ip:     String,
@@ -88,14 +88,15 @@ impl From<DaemonTeamMember> for Member {
             })
             .collect::<Vec<String>>();
         let sub_ip = format!("{:?}", member.lan);
+        let svtype = format!("{}", member.device_type.unwrap_or(6));
         Self {
-            id:         member.device_name,
+            id:         member.device_name.unwrap_or("".to_string()),
             status:     member.status,
             serial_num: member.device_serial,
             ip:         member.vip.to_string(),
-            wan_ip:     member.wan,
+            wan_ip:     member.wan.unwrap_or("".to_string()),
             sub_ip,
-            svtype:     member.device_type.to_string(),
+            svtype,
         }
     }
 }

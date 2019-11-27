@@ -3,7 +3,6 @@ extern crate uuid;
 use mac_address::get_mac_address;
 
 use super::error::{Error, Result};
-use dnet_types::team::Team;
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 use router_plugin::device_info::DeviceInfo;
@@ -17,12 +16,10 @@ use dnet_types::device_type::DeviceType;
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
     pub uid:            String,
-    pub token:          String,
     pub devicetype:     DeviceType,
     pub lan:            String,
     pub wan:            String,
     pub devicename:     String,
-    pub running_teams:  Vec<Team>,
     #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
     pub device_info:    DeviceInfo,
 }
@@ -40,7 +37,6 @@ impl ClientInfo {
                     lan:                "".to_string(),
                     wan:                "".to_string(),
                     devicename:         device_uid,
-                    running_teams:      vec![],
                     device_info,
                 }
             }
@@ -49,12 +45,10 @@ impl ClientInfo {
                 let device_uid = Self::get_uid(&device_type)?;
                 client_info = Self {
                     uid:                device_uid.clone(),
-                    token:              "".to_string(),
                     devicetype:         device_type,
                     lan:                "".to_string(),
                     wan:                "".to_string(),
                     devicename:         device_uid,
-                    running_teams:      vec![],
                 }
             }
         Ok(client_info)

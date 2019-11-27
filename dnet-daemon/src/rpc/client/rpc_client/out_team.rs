@@ -7,10 +7,10 @@ use crate::rpc::Result;
 
 pub(super) fn out_team(team_id: &str) -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vlan/team/member/deleteBatch";
+        + "/vlan/team/member/deleteBatchByDeviceSerial";
 
     let info = get_info().lock().unwrap();
-    let device_id = info.client_info.uid.clone();
+    let device_id = info.client_info.device_name.clone();
     let data = json!({
         "teamId":    team_id.to_owned(),
         "deviceIds": vec![device_id],

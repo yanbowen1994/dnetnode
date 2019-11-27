@@ -11,7 +11,7 @@ use crate::rpc::{Error, Result};
 
 pub fn get_online_proxy() -> Result<Vec<ConnectTo>> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vlan/proxy/queryAllOnline?pageNum=1&pageSize=10";
+        + "/vlan/proxy/queryAllOnline";
     let res = get(&url)?;
     info!("Response: {:?}", res);
     let proxy_vec: Vec<GetProxyResponse> = res.get("records")

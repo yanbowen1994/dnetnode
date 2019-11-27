@@ -15,7 +15,7 @@ pub(super) fn device_select_proxy() -> Result<()> {
         return Err(Error::http(511));
     }
 
-    let device_serial = info.client_info.uid.clone();
+    let device_serial = info.client_info.device_name.clone();
     let proxy_ip = info.tinc_info.connect_to[0].ip.clone().to_string();
     let proxy_port = info.tinc_info.connect_to[0].port;
     let pubkey = info.tinc_info.connect_to[0].pubkey.clone();

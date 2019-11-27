@@ -10,7 +10,7 @@ use std::collections::HashMap;
 // if return true restart tunnel.
 pub(super) fn search_user_team() -> Result<bool> {
     let url = get_settings().common.conductor_url.clone()
-        + "/vlan/team/queryMyAll?pageNum=1&pageSize=10";
+        + "/vlan/team/queryMyAll";
 
     let res_data = get(&url)?;
 

@@ -70,7 +70,7 @@ pub struct ResponseTeamMember {
     pub country:              Option<String>,
     pub createBy:             Option<String>,
     pub createTime:           Option<String>,
-    pub deviceName:           Option<String>,
+    pub device_name:           Option<String>,
     pub deviceSerial:         Option<String>,
     pub deviceType:           Option<i8>,
     pub hiddenFlag:           Option<bool>,
@@ -101,7 +101,7 @@ impl ResponseTeamMember {
             country:           self.country,
             create_by:         self.createBy,
             create_time:       self.createTime,
-            device_name:       self.deviceName,
+            device_name:       self.device_name,
             device_serial:     self.deviceSerial?,
             device_type:       self.deviceType,
             hidden_flag:       self.hiddenFlag,
@@ -132,7 +132,7 @@ pub struct JavaDevice {
     pub country:                    Option<String>,
     pub createBy:                   Option<String>,
     pub createTime:                 Option<String>,
-    pub deviceName:                 String,
+    pub device_name:                 String,
     pub deviceSerial:               String,
     pub deviceType:                 i8,
     pub hiddenFlag:                 bool,
@@ -156,7 +156,7 @@ impl JavaDevice {
         if let Err(e) = info.tinc_info.flush_connections() {
             warn!("{:?}", e);
         }
-        let device_name = info.client_info.devicename.clone();
+        let device_name = info.client_info.device_name.clone();
         let device_type = info.client_info.devicetype.clone() as i8;
         let pubkey = info.tinc_info.pub_key.clone();
         std::mem::drop(info);
@@ -170,7 +170,7 @@ impl JavaDevice {
             country:                    None,
             createBy:                   None,
             createTime:                 None,
-            deviceName:                 device_name.clone(),
+            device_name:                 device_name.clone(),
             deviceSerial:               device_name,
             deviceType:                 device_type,
             hiddenFlag:                 false,

@@ -28,7 +28,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
 
     fec_dir = "/root/libmyfec"
     os.chdir("/root")
-    os.system("git clone http://bowen.yan:siteview123%21%40%23@git.dnetlab.com/dnet/libmyfec.git "
+    os.system("git clone https://github.com/dnetlab/libmyfec.git "
               + fec_dir)
     os.chdir(fec_dir)
     os.system("mkdir build")
@@ -62,7 +62,9 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
         except:
             pass
 
-if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "tinc"):
+if len(sys.argv) == 1\
+        or (len(sys.argv) > 1
+            and (sys.argv[1] == "tinc" or sys.argv[1] == "init")):
     tinc_dir = "/root/tinc_src"
     if not os.path.exists(tinc_dir):
         os.chdir("/root")
@@ -82,7 +84,9 @@ if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "tinc"):
               " --with-readline-include=/root/readline-8.0/include")
     os.system("make")
 
-if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "dnet"):
+if len(sys.argv) == 1 \
+        or (len(sys.argv) > 1
+            and (sys.argv[1] == "dnet" or sys.argv[1] == "init")):
     dnet_dir = "/root/dnetnode"
     if not os.path.exists(dnet_dir):
         os.system("git clone http://bowen.yan:siteview123%21%40%23@git.dnetlab.com/dnet/dnetnode "

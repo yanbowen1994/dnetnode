@@ -10,7 +10,7 @@ use super::super::types::ResponseTeam;
 
 pub fn search_team_by_mac() -> Result<()> {
     let info = get_info().lock().unwrap();
-    let device_id = info.client_info.devicename.clone();
+    let device_id = info.client_info.device_name.clone();
     std::mem::drop(info);
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryByDeviceSerial?deviceSerial=" + &device_id;

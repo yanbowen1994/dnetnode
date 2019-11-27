@@ -13,7 +13,7 @@ pub(super) fn connect_disconnect_team(
         + "/vlan/device/proxy/connectTeam";
 
     let info = get_info().lock().unwrap();
-    let device_serial = info.client_info.uid.clone();
+    let device_serial = info.client_info.device_name.clone();
     std::mem::drop(info);
 
     let status = if connect_or_disconnect {

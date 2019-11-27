@@ -135,7 +135,7 @@ impl JavaResponseTeamMember {
 
         let info = get_info().lock().unwrap();
 
-        let is_self = if self.mac.as_ref() == Some(&info.client_info.devicename) {
+        let is_self = if self.mac.as_ref() == Some(&info.client_info.device_name) {
             true
         }
         else {

@@ -4,10 +4,6 @@ version = "0.1.0"
 authors = ["bowen.yan <bowen.yan@siteview.com>"]
 edition = "2018"
 
-[[bin]]
-path = "./src/main.rs"
-name = "tinc-report-test"
-
 [dependencies]
 duct = "0.12"
 err-derive = "0.1.5"

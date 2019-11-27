@@ -127,6 +127,16 @@ impl RpcMonitor {
                 }
             }
 
+            // 注册proxy
+            info!("all_device_pubkey");
+            {
+                if let Err(e) = self.client.all_device_pubkey() {
+                    error!("all_device_pubkey {:?} {}", e, e.get_http_error_msg());
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    continue
+                }
+            }
+
             info!("proxy_get_online_proxy");
             {
                 match self.client.proxy_get_online_proxy() {

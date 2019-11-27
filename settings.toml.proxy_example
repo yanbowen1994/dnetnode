@@ -13,7 +13,7 @@ local_ip = "192.168.1.1"
 local_port = 10087
 local_https_server_certificate_file = "/opt/dnet/cert.pem"
 local_https_server_privkey_file = "/opt/dnet/key.pem"
-proxy_type = "proxy"
+proxy_type = ""
 public = true
 
 [client]

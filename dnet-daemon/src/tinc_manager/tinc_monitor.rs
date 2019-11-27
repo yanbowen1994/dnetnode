@@ -9,6 +9,8 @@ use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::tinc_manager::tinc_event_handle::TincEventHandle;
+use crate::settings::get_settings;
+use dnet_types::settings::RunMode;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -132,7 +134,14 @@ impl MonitorInner {
 
         info!("tinc check start.");
 
-        let mut tinc_event_handle = TincEventHandle::new();
+        let run_mode = &get_settings().common.mode;
+        let mut tinc_event_handle = if *run_mode == RunMode::Client
+            || *run_mode == RunMode::Center {
+            Some(TincEventHandle::new())
+        }
+        else {
+            None
+        };
 
         loop {
             if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
@@ -149,7 +158,12 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            tinc_event_handle.recv();
+            if let Some(mut handle) = tinc_event_handle.as_mut() {
+                handle.recv();
+            }
+            else {
+                thread::sleep(Duration::from_millis(400));
+            }
         }
         info!("tinc check stop.");
     }

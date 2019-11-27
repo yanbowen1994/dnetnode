@@ -1,3 +1,4 @@
+mod all_device_pubkey;
 mod center_get_team_info;
 mod center_update_tinc_status;
 mod heartbeat;
@@ -19,6 +20,10 @@ pub struct RpcClient;
 impl RpcClient {
     pub fn new() -> Self {
         Self
+    }
+
+    pub fn all_device_pubkey(&self) -> Result<()> {
+        all_device_pubkey::all_device_pubkey()
     }
 
     pub fn center_get_team_info(&self) -> Result<()> {

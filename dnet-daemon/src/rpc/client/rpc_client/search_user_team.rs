@@ -14,10 +14,7 @@ pub(super) fn search_user_team() -> Result<bool> {
 
     let res_data = get(&url)?;
 
-    let teams_vec = res_data.get("records")
-        .and_then(|records| {
-            records.as_array()
-        })
+    let teams_vec = res_data.as_array()
         .and_then(|team_vec| {
             let team_vec = team_vec.clone();
             Some(team_vec

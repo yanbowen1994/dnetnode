@@ -14,10 +14,7 @@ pub fn get_online_proxy() -> Result<Vec<ConnectTo>> {
         + "/vlan/proxy/queryAllOnline";
     let res = get(&url)?;
     info!("Response: {:?}", res);
-    let proxy_vec: Vec<GetProxyResponse> = res.get("records")
-        .and_then(|records| {
-            records.as_array()
-        })
+    let proxy_vec: Vec<GetProxyResponse> = res.as_array()
         .and_then(|records| {
             let proxy_vec = records.iter()
                 .filter_map(|record| {

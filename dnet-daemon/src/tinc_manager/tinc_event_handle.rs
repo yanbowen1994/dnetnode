@@ -115,3 +115,5 @@ impl Drop for TincEventHandle {
         }
     }
 }
+
+//#[cfg(windows)]

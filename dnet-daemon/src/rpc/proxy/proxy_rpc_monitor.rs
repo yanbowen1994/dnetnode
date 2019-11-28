@@ -140,6 +140,18 @@ impl RpcMonitor {
                 }
             }
 
+            if run_mode == RunMode::Center {
+                info!("center_get_team_info");
+                {
+                    if let Err(e) = self.client.center_get_team_info() {
+                        error!("all_device_pubkey {:?} {}", e, e.get_http_error_msg());
+                        thread::sleep(std::time::Duration::from_secs(1));
+                        continue
+                    }
+                }
+            }
+
+
             info!("proxy_get_online_proxy");
             {
                 match self.client.proxy_get_online_proxy() {
@@ -160,18 +172,10 @@ impl RpcMonitor {
 
     fn exec_heartbeat(&self) -> Result<()> {
         info!("proxy_heart_beat");
-        let timeout_secs = Duration::from_secs(3);
+        let timeout_secs = Duration::from_secs(20);
         let start = Instant::now();
         loop {
             if let Ok(_) = self.client.proxy_heartbeat() {
-                let settings = get_settings();
-                if settings.common.mode == RunMode::Center {
-                    if let Ok(_) = self.client.center_get_team_info() {
-                        info!("exec conductor_get_team_info success.");
-                    } else {
-                        error!("conductor update connections failed.");
-                    }
-                }
                 return Ok(());
             } else {
                 error!("Heart beat send failed.");
@@ -186,7 +190,7 @@ impl RpcMonitor {
 
     fn exec_online_proxy(&self) -> Result<()> {
         trace!("exec_online_proxy");
-        let timeout_secs = Duration::from_secs(3);
+        let timeout_secs = Duration::from_secs(20);
         let start = Instant::now();
         loop {
             if let Ok(connect_to) = self.client.proxy_get_online_proxy() {

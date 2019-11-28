@@ -58,7 +58,7 @@ impl TincOperator {
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
-        self.set_tinc_team_init_file()?;
+//        self.set_tinc_team_init_file()?;
 
         PluginTincOperator::mut_instance().start_tinc()?;
         let now = chrono::Utc::now().to_string();
@@ -182,7 +182,7 @@ impl TincOperator {
 
     pub fn restart_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
-        self.set_tinc_team_init_file()?;
+//        self.set_tinc_team_init_file()?;
         PluginTincOperator::mut_instance().restart_tinc()?;
         let now = chrono::Utc::now().to_string();
         get_mut_info().lock().unwrap().tinc_info.last_runtime = Some(now);

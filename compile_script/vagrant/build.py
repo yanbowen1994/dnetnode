@@ -13,18 +13,18 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
     os.system("cp /usr/lib/x86_64-linux-gnu/libncurses.so " + tinc_lib_dir + "/libncurses.so.5")
 
     openssl_dir = "/root/openssl"
-    while True:
-        try:
-            os.system("git clone --branch OpenSSL_1_1_1c"
-                      " https://github.com/openssl/openssl.git " + openssl_dir)
-            os.chdir(openssl_dir)
-            os.system("chmod 777 config")
-            os.system("./config shared")
-            os.system("make")
-            os.system("cp " + openssl_dir + "/libcrypto.so.1.1 " + tinc_lib_dir)
-            break
-        except:
-            pass
+
+    print("download openssl")
+
+    os.system("git clone --branch OpenSSL_1_1_1c https://github.com/openssl/openssl.git " + openssl_dir)
+    print("download openssl finish.")
+
+    os.chdir(openssl_dir)
+    os.system("chmod 777 config")
+    os.system("./config shared")
+    os.system("make install")
+    os.system("cp " + openssl_dir + "/libcrypto.so.1.1 " + tinc_lib_dir)
+
 
     fec_dir = "/root/libmyfec"
     os.chdir("/root")
@@ -36,13 +36,13 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
     os.system("cmake ..")
     os.system("make")
     os.system("sudo make install")
-    os.system("cp /usr/local/myfec/include /usr/include")
+    os.system("cp /usr/local/myfec/include/* /usr/include")
     os.system("cp /usr/local/lib/libmyfec.so /usr/lib")
     os.system("cp /usr/local/lib/libmyfec.so /root/tinc/lib")
 
     readline_dir = "/root/readline-8.0"
     os.chdir("/root")
-    os.system("wget http://ftp.gnu.org/gnu/readline/readline-8.0.tar.gz -o readline-8.0.tar.gz")
+    os.system("wget http://ftp.gnu.org/gnu/readline/readline-8.0.tar.gz")
     os.system("tar -zxvf readline-8.0.tar.gz")
     os.chdir(readline_dir)
     os.system("chmod 777 configure")
@@ -83,6 +83,13 @@ if len(sys.argv) == 1\
               " --with-readline-lib=/root/readline-8.0/shlib/"
               " --with-readline-include=/root/readline-8.0/include")
     os.system("make")
+    if os.system("cp " + tinc_dir + "/src/tinc /root/tinc"):
+        print("compile tinc failed.")
+        exit(1)
+    if os.system("cp " + tinc_dir + "/src/tincd /root/tincd"):
+        print("compile tincd failed.")
+        exit(1)
+
 
 if len(sys.argv) == 1 \
         or (len(sys.argv) > 1
@@ -96,23 +103,26 @@ if len(sys.argv) == 1 \
         os.chdir(dnet_dir)
         os.system("git pull --rebase")
 
-    os.system("export PATH='$HOME/.cargo/bin:$PATH'")
+    path = os.getenv("PATH")
+    path += ":$HOME/.cargo/bin"
+    os.putenv("PATH", path)
     os.putenv("OPENSSL_DIR", "/usr/local")
     os.putenv("OPENSSL_STATIC", "1")
     os.chdir(dnet_dir)
     os.system("/root/.cargo/bin/cargo build --release")
 
 os.chdir("/root")
-os.system("mkdir -p /root/dnetnode/DEBIAN /root/dnetnode/lib/systemd/system "
-          "/root/dnetnode/root/dnetnode /root/dnetnode/root/tinc/lib")
-os.system("cp /root/dnetnode/cert.pem ./dnetnode/root/dnetnode")
-os.system("cp /root/dnetnode/key.pem ./dnetnode/root/dnetnode")
-os.system("cp /root/dnetnode/settings.toml.example ./dnetnode/root/dnetnode/settings.toml")
-os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnetnode/root/dnetnode")
-os.system("cp /root/dnetnode/target/release/dnet ./dnetnode/root/dnetnode")
-os.system("cp /root/dnetnode/compile_script/control  ./dnetnode/DEBIAN")
-os.system("cp /root/dnetnode/compile_script/dnet.service  ./dnetnode/lib/systemd/system/dnetnode.service")
-os.system("cp /root/tinc /root/dnetnode/root -rf")
-os.system("dpkg-deb -b /root/dnetnode dnet.deb")
-os.system("cp /root/dnetnode.deb /mnt/")
+build_dir = "/root/dnet"
+os.system("mkdir -p /root/dnet/DEBIAN /root/dnet/lib/systemd/system "
+          "/root/dnet/root/dnet /root/dnet/root/tinc/lib")
+os.system("cp /root/dnetnode/cert.pem ./dnet/root/dnet")
+os.system("cp /root/dnetnode/key.pem ./dnet/root/dnet")
+os.system("cp /root/dnetnode/settings.toml.example ./dnet/root/dnet/settings.toml")
+os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnet/root/dnet")
+os.system("cp /root/dnetnode/target/release/dnet ./dnet/root/dnet")
+os.system("cp /root/dnetnode/compile_script/control  ./dnet/DEBIAN")
+os.system("cp /root/dnetnode/compile_script/dnet.service  ./dnet/lib/systemd/system/dnet.service")
+os.system("cp /root/tinc /root/dnet/root -rf")
+os.system("dpkg-deb -b /root/dnet dnet.deb")
+os.system("cp /root/dnet.deb /mnt/")
 print("finish")

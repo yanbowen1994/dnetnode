@@ -123,6 +123,13 @@ impl Response {
             622 => "Router password error.".to_owned(),
             623 => "Router not bound account.".to_owned(),
             624 => "Please bind the router with your account first.!".to_owned(),
+            641 => "Group does not exist".to_owned(),
+            642 => "More than the number of routers that can be added to this group.".to_owned(),
+            643 => "The number of users exceeds the maximum number".to_owned(),
+            644 => "Maximum number of online member".to_owned(),
+            645 => "The device already exists in the group".to_owned(),
+            646 => "The group has been disabled".to_owned(),
+
             900 => "Exception handling.".to_owned(),
             910 => "The name of the key value is not in the parameter value, please check.".to_owned(),
             911 => "The name of the key value is not in the parameter object. Please check if the value of the object is consistent.".to_owned(),

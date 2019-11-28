@@ -67,9 +67,12 @@ impl RpcClient {
     pub fn join_team(&self, team_id: &str) -> Result<()> {
         if let Err(e) = join_team::join_team(team_id) {
             match e {
-                Error::http(code) => if code == 6 {
-
+                Error::http(code) => {
+                    if code != 645 {
+                        return Err(Error::http(code));
+                    }
                 }
+                _ => return Err(e),
             }
         }
         self.connect_team(team_id)

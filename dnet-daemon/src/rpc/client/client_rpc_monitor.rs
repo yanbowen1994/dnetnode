@@ -223,10 +223,7 @@ impl RpcMonitor {
 
     fn handle_fresh_team(&self) -> Response {
         if let Err(error) = self.client.search_user_team() {
-            let res = match error {
-                Error::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string())
-            };
+            let res = error.to_response();
             return res;
         }
         else {
@@ -239,7 +236,7 @@ impl RpcMonitor {
         let response;
         match self.client.device_select_proxy() {
             Ok(_) => response = Response::success(),
-            Err(e) => response = Response::internal_error().set_msg(e.to_string())
+            Err(e) => response = e.to_response(),
         }
         response
     }

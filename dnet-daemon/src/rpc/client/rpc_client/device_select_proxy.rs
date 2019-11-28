@@ -15,19 +15,22 @@ pub(super) fn device_select_proxy() -> Result<()> {
         return Err(Error::http(511));
     }
 
-    let device_serial = info.client_info.device_name.clone();
-    let proxy_ip = info.tinc_info.connect_to[0].ip.clone().to_string();
-    let proxy_port = info.tinc_info.connect_to[0].port;
-    let pubkey = info.tinc_info.connect_to[0].pubkey.clone();
+    let device_name = info.client_info.device_name.clone();
+    let mut proxy_ids = vec![];
+    for connect_to in &info.tinc_info.connect_to {
+        proxy_ids.push(connect_to.id.to_owned());
+    }
+    let pubkey = info.tinc_info.pub_key.clone();
 
     std::mem::drop(info);
 
     let data = json!({
-        "deviceSerial":         device_serial,
-        "proxyIp":              proxy_ip,
-        "proxyPort":            proxy_port,
+        "deviceSerial":         device_name,
+        "proxyIds":              proxy_ids,
         "pubKey":               pubkey,
     }).to_string();
+
+    info!("request {}", data);
 
     let _ = post(&url, &data)?;
 

@@ -19,3 +19,6 @@ serde_json = "1.0"
 socket2 = "0.3.11"
 dnet-path = { path = "../dnet-path" }
 management-client = { path = "../management-client" }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "tlhelp32", "handleapi", "processthreadsapi"] }

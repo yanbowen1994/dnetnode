@@ -10,7 +10,9 @@ use dnet_types::settings::{
 };
 
 use super::parse_file::FileSettings;
-use super::default_settings::{DEFAULT_LINUX_DEFAULT_HOME_PATH, DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
+use super::default_settings::{DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
+#[cfg(linux)]
+use super::default_settings::DEFAULT_LINUX_DEFAULT_HOME_PATH;
 use super::error::*;
 use std::net::IpAddr;
 use tinc_plugin::DEFAULT_TINC_PORT;
@@ -53,8 +55,15 @@ impl Common {
     }
 
     fn default_home_path() -> Result<PathBuf> {
-        dnet_path::home_dir(Some(DEFAULT_LINUX_DEFAULT_HOME_PATH))
-            .ok_or(Error::home_path_not_set)
+        #[cfg(target_os = "linux")]
+            {
+                dnet_path::home_dir(Some(DEFAULT_LINUX_DEFAULT_HOME_PATH)).ok_or(Error::home_path_not_set)
+            }
+
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+            {
+                dnet_path::home_dir().ok_or(Error::home_path_not_set)
+            }
     }
 
     fn default_log_dir() -> Result<PathBuf> {

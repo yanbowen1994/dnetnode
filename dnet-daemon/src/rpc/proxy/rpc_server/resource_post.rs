@@ -63,29 +63,31 @@ impl KeyReport {
 pub fn report_key_inner(body: String) -> Result<HttpResponse, Error> {
     debug!("http_report_key - response data : {:?}", body);
 
-    let mut response = Response::unauthorized();
+    let mut response = Response::success();
 
     match serde_json::from_str(body.as_str()) {
         Ok(key_report) => {
-            let client: KeyReport = key_report;
-            debug!("http_report_key - key_report: {:?}", client);
+            let client_vec: Vec<KeyReport> = key_report;
+            debug!("http_report_key - key_report: {:?}", client_vec);
             let operator = TincOperator::new();
 
-            let res = IpAddr::from_str(&client.vip)
-                .ok()
-                .and_then(|vip| {
-                    operator.set_hosts(
-                        None,
-                        vip,
-                        client.pubKey.as_str(),
-                    ).ok()
-                });
+            for client in client_vec {
+                if client.pubKey.len() > 0 {
+                    let res = IpAddr::from_str(&client.vip)
+                        .ok()
+                        .and_then(|vip| {
+                            operator.set_hosts(
+                                None,
+                                vip,
+                                client.pubKey.as_str(),
+                            ).ok()
+                        });
 
-            if let Some(_) = res {
-                response = Response::success()
-            }
-            else {
-                response = Response::new_from_code(500);
+                    if let None = res {
+                        response = Response::new_from_code(500);
+                        break
+                    }
+                }
             }
         },
         Err(_) => error!("http_report_key - response KeyReport {}", body.as_str()),

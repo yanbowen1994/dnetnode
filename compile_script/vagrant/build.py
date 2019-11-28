@@ -25,7 +25,6 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
     os.system("make install")
     os.system("cp " + openssl_dir + "/libcrypto.so.1.1 " + tinc_lib_dir)
 
-
     fec_dir = "/root/libmyfec"
     os.chdir("/root")
     os.system("git clone https://github.com/dnetlab/libmyfec.git "
@@ -82,11 +81,13 @@ if len(sys.argv) == 1\
               " --with-openssl-include=/root/openssl/include"
               " --with-readline-lib=/root/readline-8.0/shlib/"
               " --with-readline-include=/root/readline-8.0/include")
+    os.system("sed -i 's#FLAGS = -g -O2 -Wall#FLAGS = -g -O2 -Wall -Wl,-rpath=/opt/dnet/tinc/lib#g' "
+              + tinc_dir + "/src/Makefile")
     os.system("make")
-    if os.system("cp " + tinc_dir + "/src/tinc /root/tinc"):
+    if os.system("cp " + tinc_dir + "/src/tinc /root/tinc/tinc"):
         print("compile tinc failed.")
         exit(1)
-    if os.system("cp " + tinc_dir + "/src/tincd /root/tincd"):
+    if os.system("cp " + tinc_dir + "/src/tincd /root/tinc/tincd"):
         print("compile tincd failed.")
         exit(1)
 
@@ -109,20 +110,22 @@ if len(sys.argv) == 1 \
     os.putenv("OPENSSL_DIR", "/usr/local")
     os.putenv("OPENSSL_STATIC", "1")
     os.chdir(dnet_dir)
+    os.system("/root/.cargo/bin/rustup update")
     os.system("/root/.cargo/bin/cargo build --release")
 
 os.chdir("/root")
 build_dir = "/root/dnet"
 os.system("mkdir -p /root/dnet/DEBIAN /root/dnet/lib/systemd/system "
-          "/root/dnet/root/dnet /root/dnet/root/tinc/lib")
-os.system("cp /root/dnetnode/cert.pem ./dnet/root/dnet")
-os.system("cp /root/dnetnode/key.pem ./dnet/root/dnet")
-os.system("cp /root/dnetnode/settings.toml.example ./dnet/root/dnet/settings.toml")
-os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnet/root/dnet")
-os.system("cp /root/dnetnode/target/release/dnet ./dnet/root/dnet")
-os.system("cp /root/dnetnode/compile_script/control  ./dnet/DEBIAN")
-os.system("cp /root/dnetnode/compile_script/dnet.service  ./dnet/lib/systemd/system/dnet.service")
-os.system("cp /root/tinc /root/dnet/root -rf")
+          "/root/dnet/opt/dnet /root/dnet/opt/dnet/tinc/lib "
+          "/root/dnet/opt/dnet/tinc")
+os.system("cp /root/dnetnode/cert.pem ./dnet/opt/dnet")
+os.system("cp /root/dnetnode/key.pem ./dnet/opt/dnet")
+os.system("cp /root/dnetnode/settings.example.toml ./dnet/opt/dnet/settings.toml")
+os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnet/opt/dnet")
+os.system("cp /root/dnetnode/target/release/dnet ./dnet/opt/dnet")
+os.system("cp /root/dnetnode/compile_script/control ./dnet/DEBIAN")
+os.system("cp /root/dnetnode/compile_script/dnet.service ./dnet/lib/systemd/system/dnet.service")
+os.system("cp /root/tinc/* /root/dnet/opt/dnet/tinc -rf")
 os.system("dpkg-deb -b /root/dnet dnet.deb")
 os.system("cp /root/dnet.deb /mnt/")
 print("finish")

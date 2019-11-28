@@ -4,6 +4,7 @@ use std::str::FromStr;
 use crate::info::get_mut_info;
 use crate::settings::get_settings;
 use dnet_types::proxy::ProxyInfo;
+use dnet_types::settings::RunMode;
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,6 +53,11 @@ impl JavaProxy {
         let local_port = settings.proxy.local_port;
         let tinc_port = settings.tinc.port;
         let public = settings.proxy.public;
+        let server_type = match get_settings().common.mode {
+            RunMode::Center => "center".to_owned(),
+            RunMode::Proxy => "proxy".to_owned(),
+            _ => "proxy".to_owned(),
+        };
         Self {
             authCookie:     None,
             authId:         auth_id,
@@ -71,7 +77,7 @@ impl JavaProxy {
             publicFlag:     public,
             region:         None,
             serverPort:     local_port,
-            serverType:     None,
+            serverType:     Some(server_type),
             sshPort:        None,
             status:         0,
             tincPort:       tinc_port,

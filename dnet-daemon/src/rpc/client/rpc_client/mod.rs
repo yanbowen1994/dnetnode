@@ -18,7 +18,7 @@ use crate::info::UserInfo;
 use crate::rpc::common::login::login;
 use crate::rpc::common::get_online_proxy;
 
-use crate::rpc::Result;
+use crate::rpc::{Result, Error};
 pub use select_proxy::select_proxy;
 
 #[derive(Debug)]
@@ -65,7 +65,13 @@ impl RpcClient {
     }
 
     pub fn join_team(&self, team_id: &str) -> Result<()> {
-        join_team::join_team(team_id)?;
+        if let Err(e) = join_team::join_team(team_id) {
+            match e {
+                Error::http(code) => if code == 6 {
+
+                }
+            }
+        }
         self.connect_team(team_id)
     }
 

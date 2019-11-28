@@ -192,6 +192,7 @@ impl RpcMonitor {
             };
             return response;
         } else {
+            info!("search_user_team");
             if let Err(error) = self.client.search_user_team() {
                 let response = match error {
                     Error::http(code) => Response::new_from_code(code),
@@ -200,6 +201,7 @@ impl RpcMonitor {
                 return response;
             }
         }
+        info!("handle_connect_team success");
         Response::success()
     }
 

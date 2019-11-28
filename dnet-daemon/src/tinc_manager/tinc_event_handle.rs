@@ -105,7 +105,6 @@ impl TincEventHandle {
             return;
         }
     }
-
 }
 
 impl Drop for TincEventHandle {
@@ -115,5 +114,3 @@ impl Drop for TincEventHandle {
         }
     }
 }
-
-//#[cfg(windows)]

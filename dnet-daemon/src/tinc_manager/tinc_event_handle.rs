@@ -80,25 +80,27 @@ impl TincEventHandle {
                 });
             }
             else if *run_mode == RunMode::Client {
-                match host_status_change {
+                match &host_status_change {
                     HostStatusChange::HostUp(host) => {
-                        if let Some(vip) = TincTools::get_vip_by_filename(&host) {
+                        if let Some(vip) = TincTools::get_vip_by_filename(host) {
                             add_route(&vip, 32, TINC_INTERFACE);
                         }
                         else {
-                            error!("add_route - Can not parse host:{} to vip", &host)
+                            error!("add_route - Can not parse host:{} to vip", host)
                         }
                     }
                     HostStatusChange::HostDown(host) => {
-                        if let Some(vip) = TincTools::get_vip_by_filename(&host) {
+                        if let Some(vip) = TincTools::get_vip_by_filename(host) {
                             del_route(&vip, 32, TINC_INTERFACE);
                         }
                         else {
-                            error!("del_route - Can not parse host:{} to vip", &host)
+                            error!("del_route - Can not parse host:{} to vip", host)
                         }
                     }
                     _ => ()
                 }
+                #[cfg(windows)]
+                windows::send_host_change(&host_status_change);
             }
         }
         else {
@@ -112,5 +114,68 @@ impl Drop for TincEventHandle {
         if let Some(socket) = &self.socket {
             let _ = socket.shutdown(Shutdown::Both);
         }
+    }
+}
+
+#[cfg(windows)]
+mod windows {
+    extern crate windows_named_pipe;
+    use std::io::Write;
+
+    use serde_json;
+    use dnet_types::tinc_host_status_change::HostStatusChange;
+    use crate::info::get_info;
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    struct TincEvent {
+        state:              String,
+        device_name:        String,
+        team_id:            Vec<String>,
+    }
+
+    impl TincEvent {
+        fn new(state: &str, host: &str) -> Option<Self> {
+            let info = get_info().lock().unwrap();
+            let (device_name, team_id) = info.teams.find_host_in_running(host);
+            std::mem::drop(info);
+            if device_name.len() > 0 && team_id.len() > 0 {
+                let tinc_event = Self {
+                    state: state.to_owned(),
+                    device_name,
+                    team_id,
+                };
+                Some(tinc_event)
+            }
+            else {
+                None
+            }
+        }
+    }
+
+    pub fn send_host_change(host_status_change: &HostStatusChange) {
+        match host_status_change {
+            HostStatusChange::HostUp(host) => {
+                if let Some(tinc_event) = TincEvent::new("host-up", host) {
+                    if let Ok(buf) = serde_json::to_string(&tinc_event) {
+                        ipc_sender(&buf)
+                    }
+                }
+            }
+            HostStatusChange::HostDown(host) => {
+                if let Some(tinc_event) = TincEvent::new("host-down", host) {
+                    if let Ok(buf) = serde_json::to_string(&tinc_event) {
+                        ipc_sender(&buf)
+                    }
+                }
+            }
+            _ => ()
+        }
+    }
+
+    fn ipc_sender(buf: &str) {
+        if let Ok(mut _pipe) = windows_named_pipe::PipeStream::connect(
+            r"\\.\pipe\dnet_client") {
+            let _ = _pipe.write(buf.as_bytes());
+        };
     }
 }

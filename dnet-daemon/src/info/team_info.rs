@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use dnet_types::team::Team;
 use sandbox::route::del_route;
 use crate::settings::default_settings::TINC_INTERFACE;
-use tinc_plugin::TincTeam;
+use tinc_plugin::{TincTeam, TincTools};
 
 #[derive(Debug, Clone)]
 pub struct TeamInfo {
@@ -63,4 +63,34 @@ impl TeamInfo {
             delete: HashMap::new(),
         }
     }
+
+        /// return (device_name, in which running team's team_id)
+    pub fn find_host_in_running(&self, host: &str) -> (String, Vec<String>) {
+        let all_teams = &self.all_teams;
+        let mut team_id_vec: Vec<String> = vec![];
+        let mut device_name = String::new();
+        for (team_id, team) in all_teams {
+            if self.running_teams.contains(team_id) {
+                for member in &team.members {
+                    if let Some(find_device_name) =
+                        if Some(member.vip) == TincTools::get_vip_by_filename(host) {
+                            member.device_name.clone()
+                        }
+                        else {
+                            continue
+                        } {
+
+                        if device_name.is_empty() {
+                            device_name = find_device_name;
+                        }
+
+                        team_id_vec.push(team_id.to_owned());
+                        break
+                    }
+                }
+            }
+        }
+        (device_name, team_id_vec)
+    }
+
 }

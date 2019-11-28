@@ -58,6 +58,7 @@ libc = "0.2"
 simple-signal = "1.1"
 
 [target.'cfg(windows)'.dependencies]
+windows-named-pipe = "0.1.0"
 ctrlc = "3.0"
 ceviche = "*"
 

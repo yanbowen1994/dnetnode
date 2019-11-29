@@ -55,7 +55,7 @@ impl RpcMonitor {
     // If return false restart rpc connect.
     fn start_cmd_recv(mut self) {
         let mut rpc_restart_tx_cache: Option<mpsc::Sender<Response>> = None;
-        while let rpc_event = self.rpc_rx.recv().unwrap() {
+        while let Ok(rpc_event) = self.rpc_rx.recv() {
             info!("rpc_event {:?}", rpc_event);
             match rpc_event {
                 RpcEvent::Client(cmd) => {

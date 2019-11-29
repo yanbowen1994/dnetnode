@@ -342,7 +342,6 @@ impl TincStream {
         else {
             return Ok(Ok(()))
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
     fn parse_groups(groups: &HashMap<String, Vec<String>>) -> String {
@@ -398,6 +397,7 @@ impl TincStream {
         ).unwrap();
         if let Ok(_) = socket.connect(&addr) {
             let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
+            socket.set_write_timeout(Some(Duration::from_millis(200)));
             socket.write_all(buf.as_bytes())?;
 
             let cmd = format!("{} {} subscribe true\n",
@@ -409,9 +409,7 @@ impl TincStream {
             socket.set_read_timeout(Some(Duration::from_millis(400)))?;
             return Ok(socket);
         }
-        else {
-            let _ = socket.shutdown(Shutdown::Both);
-        }
+        let _ = socket.shutdown(Shutdown::Both);
         Err(Error::new(ErrorKind::NotConnected, "Connect failed."))
     }
 

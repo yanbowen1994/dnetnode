@@ -29,7 +29,7 @@ impl TincEventHandle {
         tinc_event_handle
     }
 
-    pub fn recv(&mut self) {
+    pub fn recv(&mut self) -> Option<()> {
         if let None = self.socket {
             self.subscribe();
         }
@@ -38,10 +38,11 @@ impl TincEventHandle {
             match TincStream::recv_from_subscribe(socket) {
                 Ok(res) => {
                     self.recv_parse(&res);
+                    return Some(())
                 }
                 Err(e) => {
                     if e.kind() == io::ErrorKind::TimedOut {
-                        return;
+                        return Some(());
                     }
                     else {
                         self.socket = None;
@@ -49,6 +50,7 @@ impl TincEventHandle {
                 }
             }
         }
+        None
     }
 
     fn subscribe(&mut self) {

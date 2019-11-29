@@ -40,7 +40,7 @@ impl TincTeam {
                     failed.append(failed_groups.as_mut());
                 }
             },
-            Err(e) => {
+            Err(_) => {
                 failed.append(self.add.keys()
                     .collect::<Vec<&String>>()
                     .into_iter()

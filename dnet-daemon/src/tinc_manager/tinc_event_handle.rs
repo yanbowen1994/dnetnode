@@ -135,6 +135,14 @@ mod windows {
 
     impl TincEvent {
         fn new(state: &str, host: &str) -> Option<Self> {
+            if host.contains("proxy") {
+                return Some(TincEvent {
+                    state: state.to_owned(),
+                    device_name: host.to_owned(),
+                    team_id: vec![],
+                })
+            }
+
             let info = get_info().lock().unwrap();
             let (device_name, team_id) = info.teams.find_host_in_running(host);
             std::mem::drop(info);

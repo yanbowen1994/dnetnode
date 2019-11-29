@@ -10,7 +10,7 @@ except:
 
 if len(sys.argv) > 1 and sys.argv[1] == "init":
     os.system("cp /usr/lib/x86_64-linux-gnu/liblzo2.so " + tinc_lib_dir + "/liblzo2.so.2")
-    os.system("cp /usr/lib/x86_64-linux-gnu/libncurses.so " + tinc_lib_dir + "/libncurses.so.5")
+    os.system("cp /lib/x86_64-linux-gnu/libncurses.so.5.9 " + tinc_lib_dir + "/libncurses.so.5")
 
     openssl_dir = "/root/openssl"
 
@@ -120,7 +120,7 @@ os.system("mkdir -p /root/dnet/DEBIAN /root/dnet/lib/systemd/system "
           "/root/dnet/opt/dnet/tinc")
 os.system("cp /root/dnetnode/cert.pem ./dnet/opt/dnet")
 os.system("cp /root/dnetnode/key.pem ./dnet/opt/dnet")
-os.system("cp /root/dnetnode/settings.example.toml ./dnet/opt/dnet/settings.toml")
+os.system("cp /root/dnetnode/settings.example.toml ./dnet/opt/dnet/settings.example.toml")
 os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnet/opt/dnet")
 os.system("cp /root/dnetnode/target/release/dnet ./dnet/opt/dnet")
 os.system("cp /root/dnetnode/compile_script/control ./dnet/DEBIAN")

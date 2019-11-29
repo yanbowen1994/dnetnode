@@ -11,7 +11,7 @@ use dnet_types::settings::{
 
 use super::parse_file::FileSettings;
 use super::default_settings::{DEFAULT_PROXY_LOCAL_SERVER_PORT, DEFAULT_PROXY_TYPE, DEFAULT_LOG_LEVEL, DEFAULT_CLIENT_AUTO_CONNECT};
-#[cfg(linux)]
+#[cfg(target_os = "linux")]
 use super::default_settings::DEFAULT_LINUX_DEFAULT_HOME_PATH;
 use super::error::*;
 use std::net::IpAddr;

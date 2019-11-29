@@ -2,7 +2,7 @@
 pub const DEFAULT_LOG_LEVEL: &str = "Error";
 
 // proxy
-#[cfg(linux)]
+#[cfg(target_os = "linux")]
 pub const DEFAULT_LINUX_DEFAULT_HOME_PATH: &str = "/opt/dnet";
 pub const DEFAULT_PROXY_LOCAL_SERVER_PORT: u16 = 443;
 pub const DEFAULT_PROXY_TYPE: &str = "other";

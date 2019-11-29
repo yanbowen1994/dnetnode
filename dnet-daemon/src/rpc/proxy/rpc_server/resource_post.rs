@@ -203,12 +203,7 @@ fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
                 }
             Err(_) => error!("update_group_info - can't parse: {}", body.as_str()),
         }
-        if response.code == 200 {
-            return Ok(HttpResponse::Ok().json(response)); // <- send response
-        }
-        else {
-            return Ok(HttpResponse::Ok().json(response));
-        }
+        return Ok(HttpResponse::Ok().json(response)); // <- send response
     }
     else {
         return Ok(HttpResponse::Ok().json(""));

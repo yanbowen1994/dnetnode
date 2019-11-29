@@ -113,7 +113,7 @@ impl TincTeam {
     }
 }
 
-#[test]
+#[cfg(test)]
 mod test {
     use std::collections::HashMap;
     use crate::TincTeam;

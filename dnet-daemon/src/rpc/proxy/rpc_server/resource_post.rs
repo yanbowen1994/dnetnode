@@ -96,7 +96,7 @@ pub fn report_key_inner(body: String) -> Result<HttpResponse, Error> {
         Ok(HttpResponse::Ok().json(response))
     }
     else {
-        Ok(HttpResponse::InternalServerError().json(response))
+        Ok(HttpResponse::Ok().json(response))
     }
 }
 
@@ -207,11 +207,11 @@ fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
             return Ok(HttpResponse::Ok().json(response)); // <- send response
         }
         else {
-            return Ok(HttpResponse::InternalServerError().json(response));
+            return Ok(HttpResponse::Ok().json(response));
         }
     }
     else {
-        return Ok(HttpResponse::NotFound().json(""));
+        return Ok(HttpResponse::Ok().json(""));
     }
 }
 

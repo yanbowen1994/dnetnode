@@ -16,7 +16,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
 
     print("download openssl")
 
-    os.system("git clone --branch OpenSSL_1_1_1c https://github.com/openssl/openssl.git " + openssl_dir)
+    os.system("git clone https://github.com/13136106206/openssl-1.1.1c.git " + openssl_dir)
     print("download openssl finish.")
 
     os.chdir(openssl_dir)

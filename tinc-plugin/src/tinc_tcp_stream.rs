@@ -328,7 +328,7 @@ impl TincStream {
                           groups: &HashMap<String, Vec<String>>
     ) -> Result<std::result::Result<(), Vec<String>>> {
         let buf = Self::parse_groups(groups);
-        let cmd = format!("{} {} addn {} .\n",
+        let cmd = format!("{} {} addg {} .\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
                           buf,
@@ -347,14 +347,16 @@ impl TincStream {
     fn parse_groups(groups: &HashMap<String, Vec<String>>) -> String {
         let mut out = String::new();
         for (group_id, nodes) in groups {
+            let mut group_buf = String::new();
             if nodes.len() > 0 {
-                out += group_id;
-                out += ",";
+                group_buf += group_id;
+                group_buf += ":";
                 for node in nodes {
-                    out += node;
+                    group_buf += node;
                 }
             }
-            out += "#";
+            group_buf += "#";
+            out += &group_buf;
         }
         out
     }
@@ -496,7 +498,7 @@ impl TincStream {
                 return Some(vec![]);
         }
         else {
-            let failed_groups: Vec<&str> = iter[4]
+            let failed_groups: Vec<&str> = iter[3]
                 .split("\n")
                 .collect::<Vec<&str>>();
             let failed_groups = failed_groups[0]

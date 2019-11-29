@@ -112,3 +112,28 @@ impl TincTeam {
             .collect::<Vec<String>>()
     }
 }
+
+#[test]
+mod test {
+    use std::collections::HashMap;
+    use crate::TincTeam;
+
+    #[test]
+    fn test_send_to_tinc() {
+        let mut add = HashMap::new();
+        add.insert("123456789123456789123456789123456789".to_string(),
+                   vec!["10.1.1.1".to_string()]);
+        add.insert("89123456789123456789123456789".to_string(),
+                   vec!["10.1.1.2".to_string()]);
+        add.insert("456789123456789123456789123456789".to_string(),
+                   vec!["10.1.1.3".to_string()]);
+        let tinc_team = TincTeam {
+            add,
+            delete: HashMap::new(),
+        };
+        match tinc_team.send_to_tinc("/opt/dnet/tinc/tinc.pid") {
+            Ok(()) => println!("ok"),
+            Err(e) => println!("{:?}", e),
+        }
+    }
+}

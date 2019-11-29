@@ -20,36 +20,41 @@ impl TincTeam {
         serde_json::from_str(json)
     }
 
-    pub fn send_to_tinc(self, pid_file: &str) -> std::result::Result<(), Self> {
+    pub fn send_to_tinc(self, pid_file: &str) -> std::result::Result<(), Vec<String>> {
         let mut tinc_stream = match TincStream::new(pid_file) {
             Ok(x) => x,
             Err(e) => {
                 error!("{:?}", e);
-                return Err(self);
+
+                let mut  failed = Self::get_keys(&self.add);
+                failed.append(Self::get_keys(&self.delete).as_mut());
+
+                return Err(failed);
             },
         };
 
-        let mut failed = Self::new();
-
-        for (team_id, team_members) in self.add {
-            let mut nodes = String::new();
-            for member in &team_members {
-                if nodes.is_empty() {
-                    nodes = nodes + member;
+        let mut failed = vec![];
+        match tinc_stream.add_group_node(&self.add) {
+            Ok(res) => {
+                if let Err(mut failed_groups) = res {
+                    failed.append(failed_groups.as_mut());
                 }
-                else {
-                    nodes = nodes + "," + member;
-                }
-            }
-            if let Err(_) = tinc_stream.add_group_node(&team_id, &nodes) {
-                failed.add.insert(team_id, team_members);
+            },
+            Err(e) => {
+                failed.append(self.add.keys()
+                    .collect::<Vec<&String>>()
+                    .into_iter()
+                    .map(|keys|keys.to_owned())
+                    .collect::<Vec<String>>()
+                    .as_mut()
+                )
             }
         }
 
         for (team_id, team_members) in self.delete {
             if team_members.is_empty() {
                 if let Err(_) = tinc_stream.del_group(&team_id) {
-                    failed.delete.insert(team_id, vec![]);
+                    failed.push(team_id);
                 }
             }
             else {
@@ -63,11 +68,11 @@ impl TincTeam {
                     }
                 }
                 if let Err(_) = tinc_stream.del_group_node(&team_id, &nodes) {
-                    failed.delete.insert(team_id, team_members);
+                    failed.push(team_id);
                 }
             }
         }
-        if !failed.add.is_empty() || !failed.delete.is_empty() {
+        if !failed.is_empty() {
             Err(failed)
         }
         else {
@@ -97,5 +102,13 @@ impl TincTeam {
             .map_err(|e|
                 TincOperatorError::IoError(path.to_string() + " " + &(e.to_string())))?;
         Ok(())
+    }
+
+    fn get_keys(hash: &HashMap<String, Vec<String>>) -> Vec<String> {
+        hash.keys()
+            .collect::<Vec<&String>>()
+            .into_iter()
+            .map(|keys|keys.to_owned())
+            .collect::<Vec<String>>()
     }
 }

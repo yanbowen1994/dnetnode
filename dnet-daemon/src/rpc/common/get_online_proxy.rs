@@ -73,7 +73,7 @@ fn get_remote_info(proxy: &GetProxyResponse) -> Option<(String, IpAddr, IpAddr, 
         None => return None,
     };
 
-    let proxy_port = match &proxy.serverPort {
+    let proxy_port = match &proxy.tincPort {
         Some(x) => x.clone(),
         None => return None,
     };
@@ -103,6 +103,7 @@ struct GetProxyResponse {
     publicFlag:            Option<bool>,
     serverPort:            Option<u16>,
     status:                Option<i32>,
+    tincPort:              Option<u16>,
     updateBy:              Option<String>,
     updateTime:            Option<String>,
     userId:                Option<String>,

@@ -262,7 +262,7 @@ impl TincOperator {
                     + "DeviceType=tap\n\
                    Mode=switch\n\
                    Interface=dnet\n\
-                   BindToAddress = *"  + &format!("{}", port) + "\n\
+                   BindToAddress = * "  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    Device = /dev/tap0\n\
@@ -277,7 +277,7 @@ impl TincOperator {
                     + "DeviceType=tap\n\
                    Mode=switch\n\
                    Interface=dnet\n\
-                   BindToAddress = *"  + &format!("{}", port) + "\n\
+                   BindToAddress = * "  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    AutoConnect=no\n\

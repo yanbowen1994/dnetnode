@@ -182,35 +182,37 @@ fn update_team_info_inner(body: String) -> Result<HttpResponse, Error> {
 
         let mut response = Response::internal_error();
 
-        match serde_json::from_str(body.as_str()) {
-            Ok(request) => {
-                info!("server team change: {:?}", request);
-                match TincTeam::from_json_str(request) {
-                    Ok(tinc_team) => {
-                        let tinc_pid = get_settings().common.home_path
-                            .join("tinc").join(PID_FILENAME)
-                            .to_str().unwrap().to_string();
-                        match tinc_team.send_to_tinc(&tinc_pid) {
-                            Ok(_) => response = Response::success(),
-                            Err(failed_team) => {
+        match serde_json::from_str::<TincTeam>(&body) {
+            Ok(tinc_team) => {
+                info!("server team change: {:?}", tinc_team);
+                    let tinc_pid = get_settings().common.home_path
+                        .join("tinc").join(PID_FILENAME)
+                        .to_str().unwrap().to_string();
+                    match tinc_team.send_to_tinc(&tinc_pid) {
+                        Ok(_) => response = Response::success(),
+                        Err(failed_team) => {
+                            if let Ok(value) = serde_json::to_value(&failed_team) {
+                                response = Response::internal_error()
+                                    .set_data(Some(value))
+                            }
+                            else {
                                 response = Response::internal_error()
                             }
                         }
                     }
-                    Err(_) => {
-                        response = Response::internal_error()
-                            .set_msg("Parse body failed.".to_owned());
-                    }
                 }
-            },
             Err(_) => error!("update_group_info - can't parse: {}", body.as_str()),
         }
-        Ok(HttpResponse::Ok().json(response)) // <- send response
+        if response.code == 200 {
+            return Ok(HttpResponse::Ok().json(response)); // <- send response
+        }
+        else {
+            return Ok(HttpResponse::InternalServerError().json(response));
+        }
     }
     else {
-        Ok(HttpResponse::NotFound().json(""))
+        return Ok(HttpResponse::NotFound().json(""));
     }
-
 }
 
 fn parse_payload<F>(

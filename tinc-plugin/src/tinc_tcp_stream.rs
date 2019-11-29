@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream};
 
 use socket2::{Domain, Protocol, Type};
+use std::collections::HashMap;
 
 #[allow(dead_code)]
 #[repr(i8)]
@@ -323,20 +324,40 @@ impl TincStream {
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
-    pub fn add_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
-        let cmd = format!("{} {} addn {} {}\n",
+    pub fn add_group_node(&mut self,
+                          groups: &HashMap<String, Vec<String>>
+    ) -> Result<std::result::Result<(), Vec<String>>> {
+        let buf = Self::parse_groups(groups);
+        let cmd = format!("{} {} addn {} .\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
-                          group_id,
-                          node_id,
+                          buf,
         );
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
         info!("add_group_node {:?}", res);
-        if Self::check_group_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
-            return Ok(());
+        if let Some(failed_group) = Self::check_group_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
+            return Ok(Err(failed_group));
+        }
+        else {
+            return Ok(Ok(()))
         }
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    fn parse_groups(groups: &HashMap<String, Vec<String>>) -> String {
+        let mut out = String::new();
+        for (group_id, nodes) in groups {
+            if nodes.len() > 0 {
+                out += group_id;
+                out += ",";
+                for node in nodes {
+                    out += node;
+                }
+            }
+            out += "#";
+        }
+        out
     }
 
     pub fn del_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
@@ -447,30 +468,45 @@ impl TincStream {
         false
     }
 
-    fn check_group_res(res: &str, req: i8, req_type: i8) -> bool {
+    // if return None, means Ok.
+    // if return vec![], means all group set failed.
+    fn check_group_res(res: &str, req: i8, req_type: i8) -> Option<Vec<String>> {
         let iter: Vec<&str> = res.split_whitespace().collect();
-        if iter.len() < 3 {
-            return false;
+        if iter.len() < 2 {
+            return Some(vec![]);
         }
-        let control: i8 = match iter[0].parse() {
-            Ok(x) => x,
-            _ => -1,
-        };
 
-        let control_type: i8 = match iter[1].parse() {
-            Ok(x) => x,
-            _ => -1,
-        };
+        else if iter.len() == 2 {
+            let control: i8 = match iter[0].parse() {
+                Ok(x) => x,
+                _ => -1,
+            };
 
-        let success: i8 = match iter[2].parse() {
-            Ok(x) => x,
-            _ => -1,
-        };
+            let control_type: i8 = match iter[1].parse() {
+                Ok(x) => x,
+                _ => -1,
+            };
 
-        if control == req && control_type == req_type && success == 0 {
-            return true;
+            if control == req && control_type == req_type {
+                return None;
+            }
+            else {
+                return Some(vec![]);
+            }
         }
-        false
+        else if iter.len() == 3 {
+                return Some(vec![]);
+        }
+        else {
+            let failed_group: Vec<String> = iter[4]
+                .split(",")
+                .collect::<Vec<&str>>()
+                .into_iter()
+                .map(|group|group.to_string())
+                .collect();
+
+            Some(failed_group)
+        }
     }
 }
 

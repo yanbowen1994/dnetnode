@@ -397,7 +397,7 @@ impl TincStream {
         ).unwrap();
         if let Ok(_) = socket.connect(&addr) {
             let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
-            socket.set_write_timeout(Some(Duration::from_millis(200)));
+            socket.set_write_timeout(Some(Duration::from_millis(200)))?;
             socket.write_all(buf.as_bytes())?;
 
             let cmd = format!("{} {} subscribe true\n",

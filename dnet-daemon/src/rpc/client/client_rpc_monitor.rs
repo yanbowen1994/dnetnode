@@ -318,16 +318,16 @@ impl Executor {
                     },
                 }
             }
-            if start - heartbeat_start > Duration::from_secs(HEARTBEAT_FREQUENCY_SEC as u64) {
-                heartbeat_start = start;
-                if send_heartbeat {
-                    if init_success {
-                        if let Err(_) = self.exec_online_proxy() {
-                            init_success = false;
-                        }
+            if init_success && send_heartbeat {
+                if start - heartbeat_start > Duration::from_secs(HEARTBEAT_FREQUENCY_SEC as u64) {
+                    if let Ok(_) = self.exec_online_proxy() {
+                        heartbeat_start = start;
+                        info!("Rpc Executor heartbeat.");
+                    } else {
+                        error!("exec_online_proxy failed.");
+                        init_success = false;
                     }
                 }
-                info!("Rpc Executor heartbeat.");
             }
 
             if !init_success {
@@ -389,18 +389,18 @@ impl Executor {
 
     fn exec_online_proxy(&self) -> Result<()> {
 //         get_online_proxy is not most important. If failed still return Ok.
-//        info!("exec_online_proxy");
         loop {
             let start = Instant::now();
-            if let Ok(connect_to_vec) = self.client.client_get_online_proxy() {
-                if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
-                    if tunnel_restart {
-                        let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+            match self.client.client_get_online_proxy() {
+                Ok(connect_to_vec) => {
+                    if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
+                        if tunnel_restart {
+                            let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+                        }
+                        return Ok(());
                     }
-                    return Ok(());
                 }
-            } else {
-                error!("Get online proxy failed.");
+                Err(e) => error!("{:?}", e.to_response())
             }
 
             if Instant::now().duration_since(start) > Duration::from_secs(5) {

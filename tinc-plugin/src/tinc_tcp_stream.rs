@@ -496,14 +496,17 @@ impl TincStream {
                 return Some(vec![]);
         }
         else {
-            let failed_group: Vec<String> = iter[4]
+            let failed_groups: Vec<&str> = iter[4]
+                .split("\n")
+                .collect::<Vec<&str>>();
+            let failed_groups = failed_groups[0]
                 .split(",")
                 .collect::<Vec<&str>>()
                 .into_iter()
                 .map(|group|group.to_string())
-                .collect();
+                .collect::<Vec<String>>();
 
-            Some(failed_group)
+            Some(failed_groups)
         }
     }
 }

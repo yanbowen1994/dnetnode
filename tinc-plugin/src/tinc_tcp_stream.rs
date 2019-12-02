@@ -309,7 +309,7 @@ impl TincStream {
     }
 
     pub fn del_group(&mut self, group_id: &str) -> Result<()> {
-        let cmd = format!("{} {} delg {} {}\n",
+        let cmd = format!("{} {} delvlan {} {}\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
                           group_id,
@@ -328,7 +328,7 @@ impl TincStream {
                           groups: &HashMap<String, Vec<String>>
     ) -> Result<std::result::Result<(), Vec<String>>> {
         let buf = Self::parse_groups(groups);
-        let cmd = format!("{} {} addg {} .\n",
+        let cmd = format!("{} {} addvlan {} .\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
                           buf,

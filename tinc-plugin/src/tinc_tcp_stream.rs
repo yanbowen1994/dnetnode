@@ -3,10 +3,11 @@ use std::fs::File;
 use std::io::{Error, ErrorKind, Result, Read};
 use std::time::Duration;
 use std::str::FromStr;
-use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream};
+use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream, IpAddr};
 
 use socket2::{Domain, Protocol, Type};
 use std::collections::HashMap;
+use crate::TincTools;
 
 #[allow(dead_code)]
 #[repr(i8)]
@@ -324,7 +325,7 @@ impl TincStream {
     }
 
     pub fn add_group_node(&mut self,
-                          groups: &HashMap<String, Vec<String>>
+                          groups: &HashMap<String, Vec<IpAddr>>
     ) -> Result<std::result::Result<(), Vec<String>>> {
         let buf = Self::parse_groups(groups);
         let cmd = format!("{} {} addvlan {} .\n",
@@ -334,7 +335,12 @@ impl TincStream {
         );
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
-        info!("add_group_node {:?}", res);
+        if res.contains("18 18 2") {
+            error!("add_group_node {:?}", res);
+        }
+        else {
+            info!("add_group_node success res: {:?}", res);
+        }
         if let Some(failed_group) = Self::check_group_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
             return Ok(Err(failed_group));
         }
@@ -343,14 +349,14 @@ impl TincStream {
         }
     }
 
-    fn parse_groups(groups: &HashMap<String, Vec<String>>) -> String {
+    fn parse_groups(groups: &HashMap<String, Vec<IpAddr>>) -> String {
         let mut out = String::new();
         for (group_id, nodes) in groups {
             let mut group_buf = String::new();
             if nodes.len() > 0 {
                 group_buf += group_id;
                 for node in nodes {
-                    group_buf = group_buf + "," + node;
+                    group_buf = group_buf + "," + &TincTools::get_filename_by_vip(false, &node.to_string());
                 }
             }
             group_buf += "#";

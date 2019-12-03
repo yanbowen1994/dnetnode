@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::io::Write;
 use crate::{TincStream, TincTools, TincOperatorError};
+use std::net::IpAddr;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TincTeam {
-    pub add: HashMap<String, Vec<String>>,
-    pub delete: HashMap<String, Vec<String>>
+    pub add: HashMap<String, Vec<IpAddr>>,
+    pub delete: HashMap<String, Vec<IpAddr>>
 }
 
 impl TincTeam {
@@ -61,10 +62,12 @@ impl TincTeam {
                 let mut nodes = String::new();
                 for member in &team_members {
                     if nodes.is_empty() {
-                        nodes = nodes + member;
+                        nodes = nodes + &TincTools::get_filename_by_vip(
+                            false, &member.to_string());
                     }
                     else {
-                        nodes = nodes + "," + member;
+                        nodes = nodes + "," + &TincTools::get_filename_by_vip(
+                            false, &member.to_string());
                     }
                 }
                 if let Err(_) = tinc_stream.del_group_node(&team_id, &nodes) {
@@ -85,7 +88,7 @@ impl TincTeam {
         for (team_id, members) in &self.add {
             let mut members_str = String::new();
             for member in members {
-                let name = TincTools::get_filename_by_vip(false, member);
+                let name = TincTools::get_filename_by_vip(false, &member.to_string());
                 if members_str.len() != 0 {
                     members_str += ",";
                 }
@@ -104,7 +107,7 @@ impl TincTeam {
         Ok(())
     }
 
-    fn get_keys(hash: &HashMap<String, Vec<String>>) -> Vec<String> {
+    fn get_keys(hash: &HashMap<String, Vec<IpAddr>>) -> Vec<String> {
         hash.keys()
             .collect::<Vec<&String>>()
             .into_iter()

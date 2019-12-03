@@ -3,6 +3,7 @@ use dnet_types::team::Team;
 use sandbox::route::del_route;
 use crate::settings::default_settings::TINC_INTERFACE;
 use tinc_plugin::{TincTeam, TincTools};
+use std::net::IpAddr;
 
 #[derive(Debug, Clone)]
 pub struct TeamInfo {
@@ -52,9 +53,9 @@ impl TeamInfo {
             let vips = team.members
                 .iter()
                 .map(|member| {
-                    member.vip.to_string()
+                    member.vip.clone()
                 })
-                .collect::<Vec<String>>();
+                .collect::<Vec<IpAddr>>();
             add.insert(team_id.to_string(), vips);
         }
 

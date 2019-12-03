@@ -140,18 +140,6 @@ impl RpcMonitor {
                 }
             }
 
-            if run_mode == RunMode::Center {
-                info!("center_get_team_info");
-                {
-                    if let Err(e) = self.client.center_get_team_info() {
-                        error!("all_device_pubkey {:?} {}", e, e.get_http_error_msg());
-                        thread::sleep(std::time::Duration::from_secs(1));
-                        continue
-                    }
-                }
-            }
-
-
             info!("proxy_get_online_proxy");
             {
                 match self.client.proxy_get_online_proxy() {
@@ -170,12 +158,24 @@ impl RpcMonitor {
         let _ = self.daemon_event_tx.send(DaemonEvent::RpcConnected);
     }
 
+    #[allow(unused_assignments)]
     fn exec_heartbeat(&self) -> Result<()> {
         info!("proxy_heart_beat");
         let timeout_secs = Duration::from_secs(20);
         let start = Instant::now();
+
+        let mut is_get_team = false;
         loop {
             if let Ok(_) = self.client.proxy_heartbeat() {
+                info!("center_get_team_info");
+                if !is_get_team {
+                    if let Err(e) = self.client.center_get_team_info() {
+                        error!("center_get_team_info {:?}", e.to_response());
+                    }
+                    else {
+                        is_get_team = true;
+                    }
+                }
                 return Ok(());
             } else {
                 error!("Heart beat send failed.");
@@ -184,7 +184,7 @@ impl RpcMonitor {
             if Instant::now().duration_since(start) > timeout_secs {
                 return Err(Error::RpcTimeout);
             }
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(1000));
         }
     }
 
@@ -203,7 +203,7 @@ impl RpcMonitor {
             if Instant::now().duration_since(start) > timeout_secs {
                 return Err(Error::RpcTimeout);
             }
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(1000));
         }
     }
 }

@@ -53,6 +53,7 @@ struct LoginResponse {
     password:    Option<String>,
     phone:       Option<String>,
     realname:    Option<String>,
+    salt:        Option<String>,
     status:      Option<i32>,
     updateBy:    Option<String>,
     updateTime:  Option<String>,

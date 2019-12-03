@@ -309,10 +309,9 @@ impl TincStream {
     }
 
     pub fn del_group(&mut self, group_id: &str) -> Result<()> {
-        let cmd = format!("{} {} delvlan {} {}\n",
+        let cmd = format!("{} {} delvlan {} ...\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
-                          group_id,
                           group_id,
         );
         self.send_line(cmd.as_bytes())?;
@@ -350,9 +349,9 @@ impl TincStream {
             let mut group_buf = String::new();
             if nodes.len() > 0 {
                 group_buf += group_id;
-                group_buf += ":";
+                group_buf += ",";
                 for node in nodes {
-                    group_buf += node;
+                    group_buf = group_buf + node + ",";
                 }
             }
             group_buf += "#";
@@ -362,11 +361,11 @@ impl TincStream {
     }
 
     pub fn del_group_node(&mut self, group_id: &str, node_id: &str) -> Result<()> {
-        let cmd = format!("{} {} deln {} {}\n",
+        let buf = group_id.to_string() + "," + node_id;
+        let cmd = format!("{} {} deln {} ...\n",
                           Request::Control as i8,
                           RequestType::ReqGroup as i8,
-                          group_id,
-                          node_id,
+                          buf,
         );
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
@@ -742,5 +741,35 @@ impl SourceConnection{
             }
         }
         return Ok(connections);
+    }
+}
+
+//tinc 接收并执行的速度慢, 每一条命令需要间隔时间, 否则将只有第一条命令生效
+#[cfg(test)]
+mod test {
+    use crate::TincStream;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_add_group_node() {
+        let members = vec!["1_1_1".to_owned(), "1_1_2".to_owned()];
+        let mut groups = HashMap::new();
+        groups.insert("123".to_string(), members.clone());
+        groups.insert("456".to_string(), members);
+
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        println!("{:?}", tinc_stream.add_group_node(&groups));
+    }
+
+    #[test]
+    fn test_del_group_node() {
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        println!("{:?}", tinc_stream.del_group_node("123", "1_1_1"));
+    }
+
+    #[test]
+    fn test_del_group() {
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        println!("{:?}", tinc_stream.del_group("456"));
     }
 }

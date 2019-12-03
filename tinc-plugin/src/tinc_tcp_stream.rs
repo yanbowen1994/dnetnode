@@ -349,9 +349,8 @@ impl TincStream {
             let mut group_buf = String::new();
             if nodes.len() > 0 {
                 group_buf += group_id;
-                group_buf += ",";
                 for node in nodes {
-                    group_buf = group_buf + node + ",";
+                    group_buf = group_buf + "," + node;
                 }
             }
             group_buf += "#";

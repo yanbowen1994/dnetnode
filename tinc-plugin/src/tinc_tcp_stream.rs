@@ -749,32 +749,37 @@ impl SourceConnection{
     }
 }
 
-//tinc 接收并执行的速度慢, 每一条命令需要间隔时间, 否则将只有第一条命令生效
 #[cfg(test)]
 mod test {
     use crate::TincStream;
     use std::collections::HashMap;
+    use std::net::IpAddr;
+    use std::str::FromStr;
 
     #[test]
     fn test_add_group_node() {
-        let members = vec!["1_1_1".to_owned(), "1_1_2".to_owned()];
+        let members = vec![IpAddr::from_str("10.1.1.1").unwrap(),
+                           IpAddr::from_str("10.1.1.2").unwrap()];
         let mut groups = HashMap::new();
         groups.insert("123".to_string(), members.clone());
         groups.insert("456".to_string(), members);
 
-        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid")
+            .expect("Tinc socket connect failed.");
         println!("{:?}", tinc_stream.add_group_node(&groups));
     }
 
     #[test]
     fn test_del_group_node() {
-        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid")
+            .expect("Tinc socket connect failed.");
         println!("{:?}", tinc_stream.del_group_node("123", "1_1_1"));
     }
 
     #[test]
     fn test_del_group() {
-        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid").unwrap();
+        let mut tinc_stream = TincStream::new("/opt/dnet/tinc/tinc.pid")
+            .expect("Tinc socket connect failed.");
         println!("{:?}", tinc_stream.del_group("456"));
     }
 }

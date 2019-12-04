@@ -120,16 +120,18 @@ impl TincTeam {
 mod test {
     use std::collections::HashMap;
     use crate::TincTeam;
+    use std::net::IpAddr;
+    use std::str::FromStr;
 
     #[test]
     fn test_send_to_tinc() {
         let mut add = HashMap::new();
         add.insert("123456789123456789123456789123456789".to_string(),
-                   vec!["10.1.1.1".to_string()]);
+                   vec![IpAddr::from_str("10.1.1.1").unwrap()]);
         add.insert("89123456789123456789123456789".to_string(),
-                   vec!["10.1.1.2".to_string()]);
+                   vec![IpAddr::from_str("10.1.1.2").unwrap()]);
         add.insert("456789123456789123456789123456789".to_string(),
-                   vec!["10.1.1.3".to_string()]);
+                   vec![IpAddr::from_str("10.1.1.3").unwrap()]);
         let tinc_team = TincTeam {
             add,
             delete: HashMap::new(),

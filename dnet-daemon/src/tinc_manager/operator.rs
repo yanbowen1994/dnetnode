@@ -50,7 +50,7 @@ impl TincOperator {
     pub fn init(&self) -> Result<()> {
         self.create_tinc_dirs()?;
         if !self.check_pub_key() {
-            self.create_pub_key()?;
+            self.create_self_key_pair()?;
         }
         Ok(())
     }
@@ -207,8 +207,8 @@ impl TincOperator {
     }
 
     /// openssl Rsa 创建2048位密钥对, 并存放到tinc配置文件中
-    pub fn create_pub_key(&self) -> Result<()> {
-        PluginTincOperator::instance().create_pub_key()
+    pub fn create_self_key_pair(&self) -> Result<()> {
+        PluginTincOperator::instance().create_self_key_pair()
     }
 
     /// 从pub_key文件读取pub_key

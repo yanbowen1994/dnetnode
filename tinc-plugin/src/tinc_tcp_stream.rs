@@ -309,6 +309,63 @@ impl TincStream {
         return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
     }
 
+    pub fn dump_group(&mut self) -> Result<HashMap<String, Vec<IpAddr>>> {
+        let cmd = format!("{} {} all\n",
+                          Request::Control as i8,
+                          RequestType::ReqDumpGroups as i8,
+        );
+        self.send_line(cmd.as_bytes())?;
+        let res = self.recv()?;
+        if Self::check_res(&res, Request::Control as i8, RequestType::ReqDumpGroups as i8) {
+            let group_info = Self::parse_source_group_info(&res);
+            return Ok(group_info);
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+    }
+
+    fn parse_source_group_info(source_groups: &str) -> HashMap<String, Vec<IpAddr>> {
+        let mut output_node_info: HashMap<String, Vec<IpAddr>> = HashMap::new();
+        let nodes: Vec<&str> = source_groups.split(" \n").collect();
+
+        for nodes_str in nodes {
+            let item: Vec<&str> = nodes_str
+                .split(": ")
+                .collect();
+            let mut members = vec![];
+            if item.len() == 2 {
+                let nodes: Vec<&str> = item[1]
+                    .split(" ")
+                    .collect();
+
+                for i in nodes {
+                    let vip: Vec<&str> = i.split("_").collect();
+                    if vip.len() == 3 {
+                        let vip = match IpAddr::from_str(
+                            &format!("10.{}.{}.{}",
+                                     vip[0].replace(" ", ""),
+                                     vip[1],
+                                     vip[2])) {
+                            Ok(x) => x,
+                            Err(_) => continue,
+                        };
+                        members.push(vip)
+                    }
+                }
+            }
+            members.sort();
+            members.dedup();
+
+            let index_node: Vec<&str> = item[0].split_ascii_whitespace().collect();
+
+            if index_node.len() == 3 {
+                let team_id = index_node[2].to_owned();
+                output_node_info.insert(team_id, members);
+            }
+        }
+
+        output_node_info
+    }
+
     pub fn del_group(&mut self, group_id: &str) -> Result<()> {
         let cmd = format!("{} {} delvlan {} ...\n",
                           Request::Control as i8,

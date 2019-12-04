@@ -1,5 +1,4 @@
 use std::net::IpAddr;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum TincRunMode {
@@ -39,17 +38,22 @@ pub struct TincInfo {
 }
 
 impl TincInfo {
-    pub fn new() -> Self {
-        let ip = None;
-        let vip = IpAddr::from_str("255.255.255.255").unwrap();
-        let pub_key = "".to_string();
+    pub fn new(
+        ip:             Option<IpAddr>,
+        self_tinc_port: u16,
+        vip:            IpAddr,
+        pub_key:        &str,
+        mode:           TincRunMode,
+        connect_to:     Vec<ConnectTo>,
+    ) -> Self {
+        let pub_key = pub_key.to_string();
         TincInfo {
             ip,
             vip,
-            port: 50069,
+            port: self_tinc_port,
             pub_key,
-            mode: TincRunMode::Client,
-            connect_to: vec![],
+            mode,
+            connect_to,
         }
     }
 }

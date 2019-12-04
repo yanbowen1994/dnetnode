@@ -4,6 +4,9 @@ use std::str::FromStr;
 use super::{Error, Result};
 use std::net::{IpAddr, Ipv4Addr};
 
+extern crate openssl;
+use openssl::rsa::Rsa;
+
 pub struct TincTools;
 
 impl TincTools {
@@ -135,4 +138,19 @@ impl TincTools {
         }
     }
 
+    pub fn create_key_pair() -> Result<(String, String)> {
+        let key = Rsa::generate(2048)
+            .map_err(|_|Error::CreatePubKeyError)?;
+        let priv_key = key.private_key_to_pem()
+            .map_err(|_|Error::CreatePubKeyError)
+            .and_then(|priv_key| String::from_utf8(priv_key)
+                .map_err(|_|Error::CreatePubKeyError))?;
+
+        let pubkey = key.public_key_to_pem()
+            .map_err(|_|Error::CreatePubKeyError)
+            .and_then(|pubkey|String::from_utf8(pubkey)
+                .map_err(|_|Error::CreatePubKeyError))?;
+
+        Ok((priv_key, pubkey))
+    }
 }

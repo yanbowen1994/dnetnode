@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["bowen.yan <bowen.yan@siteview.com>"]
 edition = "2018"
 
+[[bin]]
+name = "test_send_tinc_team_info"
+path = "./src/test/test_send_tinc_team_info.rs"
+
 [dependencies]
 duct = "0.12"
 err-derive = "0.1.5"

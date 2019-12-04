@@ -4,9 +4,6 @@ use std::io::Write;
 use std::time::SystemTime;
 use std::net::IpAddr;
 
-extern crate openssl;
-use openssl::rsa::Rsa;
-
 use crate::info::{TincRunMode, TincInfo};
 use super::{Error, Result, TincOperator,
             PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME};
@@ -166,39 +163,25 @@ impl TincOperator {
     }
 
     /// openssl Rsa 创建2048位密钥对, 并存放到tinc配置文件中
-    pub fn create_pub_key(&self) -> Result<()> {
-        let _guard = self.mutex.lock().unwrap();
-        let mut write_priv_key_ok = false;
-        if let Ok(key) = Rsa::generate(2048) {
-            if let Ok(priv_key) = key.private_key_to_pem() {
-                if let Ok(priv_key) = String::from_utf8(priv_key) {
-                    let mut file = fs::File::create(
-                        self.tinc_settings.tinc_home.to_string() + PRIV_KEY_FILENAME)
-                        .map_err(|e|
-                            Error::FileCreateError((self.tinc_settings.tinc_home.to_string() + PRIV_KEY_FILENAME)
-                                + " " + &e.to_string()))?;
-                    file.write_all(priv_key.as_bytes())
-                        .map_err(|_|Error::CreatePubKeyError)?;
-                    drop(file);
+    pub fn create_self_key_pair(&self) -> Result<()> {
+        let (priv_key, pubkey) = TincTools::create_key_pair()?;
 
-                    write_priv_key_ok = true;
-                }
-            }
-            if let Ok(pub_key) = key.public_key_to_pem() {
-                if let Ok(pub_key) = String::from_utf8(pub_key) {
-                    let path = self.tinc_settings.tinc_home.to_string() + PUB_KEY_FILENAME;
-                    let mut file = fs::File::create(&path)
-                        .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
-                    file.write_all(pub_key.as_bytes())
-                        .map_err(|_|Error::CreatePubKeyError)?;
-                    drop(file);
-                    if write_priv_key_ok {
-                        return Ok(());
-                    }
-                }
-            }
-        }
-        Err(Error::CreatePubKeyError)
+        let mut file = fs::File::create(
+            self.tinc_settings.tinc_home.to_string() + PRIV_KEY_FILENAME)
+            .map_err(|e|
+                Error::FileCreateError((self.tinc_settings.tinc_home.to_string() + PRIV_KEY_FILENAME)
+                    + " " + &e.to_string()))?;
+        file.write_all(priv_key.as_bytes())
+            .map_err(|_|Error::CreatePubKeyError)?;
+        drop(file);
+
+        let path = self.tinc_settings.tinc_home.to_string() + PUB_KEY_FILENAME;
+        let mut file = fs::File::create(&path)
+            .map_err(|e|Error::FileCreateError(path.clone() + " " + &e.to_string()))?;
+        file.write_all(pubkey.as_bytes())
+            .map_err(|_|Error::CreatePubKeyError)?;
+        drop(file);
+        Ok(())
     }
 
     /// 修改本地公钥

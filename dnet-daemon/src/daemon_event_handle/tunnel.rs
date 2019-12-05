@@ -14,7 +14,6 @@ pub fn send_tunnel_connect(
         Duration::from_secs(3))
     {
         if response.code == 200 {
-            let _ = daemon_event_tx.send(DaemonEvent::TunnelConnected);
             return Response::success();
         } else {
             error!("Tunnel connect failed. error: {:?}", response.msg);

@@ -42,8 +42,8 @@ fn dump_group() {
 
 fn main() {
     create_test_env::create_test_env();
-    let tinc = TincOperator::mut_instance();
-
+//    let tinc = TincOperator::mut_instance();
+//
 //    let _ = tinc.stop_tinc();
 //    tinc.start_tinc().expect("start tinc");
 

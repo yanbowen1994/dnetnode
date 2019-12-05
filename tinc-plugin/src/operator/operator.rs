@@ -12,16 +12,29 @@ pub struct TincSettings {
     pub tinc_allowed_out_memory_times:      u32,
     pub tinc_allowed_tcp_failed_times:      u32,
     pub tinc_check_frequency:               u32,
-    pub tinc_debug_level:                   u32,
+    pub external_boot:                      bool,
+}
+
+impl Default for TincSettings {
+    fn default() -> Self {
+        Self {
+            tinc_home:                          "/opt/dnet/tinc/".to_owned(),
+            mode:                               TincRunMode::Client,
+            port:                               50069,
+            tinc_memory_limit:                  100.0,
+            tinc_allowed_out_memory_times:      0,
+            tinc_allowed_tcp_failed_times:      0,
+            tinc_check_frequency:               0,
+            external_boot:                      false,
+        }
+    }
 }
 
 /// Tinc operator
 pub struct TincOperator {
     pub mutex:                  Mutex<i32>,
-    pub tinc_handle:            Mutex<Option<duct::Handle>>,
     pub tinc_settings:          TincSettings,
     pub tinc_out_memory_times:  u32,
-
 }
 
 impl TincOperator {
@@ -29,7 +42,6 @@ impl TincOperator {
     pub fn new(tinc_settings: TincSettings) {
         let operator = TincOperator {
             mutex:                  Mutex::new(0),
-            tinc_handle:            Mutex::new(None),
             tinc_out_memory_times:  0,
             tinc_settings,
         };

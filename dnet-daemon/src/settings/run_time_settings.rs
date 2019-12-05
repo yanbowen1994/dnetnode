@@ -121,7 +121,7 @@ pub struct Tinc {
     pub tinc_check_frequency:                      u32,
     pub tinc_allowed_out_memory_times:             u32,
     pub tinc_allowed_tcp_failed_times:             u32,
-    pub tinc_debug_level:                          u32,
+    pub external_boot:                             bool,
 }
 impl Tinc {
     fn default() -> Self {
@@ -131,7 +131,7 @@ impl Tinc {
             tinc_check_frequency:                  0,
             tinc_allowed_out_memory_times:         0,
             tinc_allowed_tcp_failed_times:         0,
-            tinc_debug_level:                      0,
+            external_boot:                         false,
         }
     }
 }
@@ -315,9 +315,9 @@ impl Settings {
                 let tinc_allowed_tcp_failed_times = file_settings.tinc_allowed_tcp_failed_times
                     .and_then(|x|x.parse::<u32>().ok())
                     .unwrap_or(0 as u32);
-                let tinc_debug_level = file_settings.tinc_debug_level
-                    .and_then(|x|x.parse::<u32>().ok())
-                    .unwrap_or(0 as u32);
+                let external_boot = file_settings.external_boot
+                    .and_then(|x|x.parse::<bool>().ok())
+                    .unwrap_or(false);
 
                 Some(Tinc {
                     port,
@@ -325,7 +325,7 @@ impl Settings {
                     tinc_check_frequency,
                     tinc_allowed_out_memory_times,
                     tinc_allowed_tcp_failed_times,
-                    tinc_debug_level,
+                    external_boot,
                 })
             })
             .unwrap_or(Tinc::default());

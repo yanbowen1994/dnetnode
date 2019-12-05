@@ -39,7 +39,7 @@ impl TincOperator {
                 tinc_allowed_out_memory_times: settings.tinc.tinc_allowed_out_memory_times,
                 tinc_allowed_tcp_failed_times: settings.tinc.tinc_allowed_tcp_failed_times,
                 tinc_check_frequency: settings.tinc.tinc_check_frequency,
-                tinc_debug_level: settings.tinc.tinc_debug_level,
+                external_boot: settings.tinc.external_boot,
             };
 
             PluginTincOperator::new(tinc_settings);

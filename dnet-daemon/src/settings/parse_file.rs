@@ -39,7 +39,7 @@ pub struct Tinc {
     pub tinc_check_frequency:                      Option<String>,
     pub tinc_allowed_out_memory_times:             Option<String>,
     pub tinc_allowed_tcp_failed_times:             Option<String>,
-    pub tinc_debug_level:                          Option<String>,
+    pub external_boot:                             Option<String>,
 }
 
 

@@ -32,8 +32,7 @@ impl TincOperator {
             .unwrap();
         let res = String::from_utf8_lossy( &res2.stdout).to_string();
         let _ = res1.wait();
-        if !res.contains("config") {
-            self.clean_tinc_output();
+        if !res.contains(&self.tinc_settings.tinc_home) {
             return Err(Error::TincNotExist);
         }
 

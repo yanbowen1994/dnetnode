@@ -7,6 +7,7 @@ pub enum RpcEvent {
     Client(RpcClientCmd),
     Proxy(RpcProxyCmd),
     Executor(ExecutorEvent),
+    TunnelConnected,
 }
 
 #[derive(Debug)]

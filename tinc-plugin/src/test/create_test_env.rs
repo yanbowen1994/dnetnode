@@ -17,7 +17,7 @@ pub fn create_test_env() {
         tinc_allowed_out_memory_times:      0,
         tinc_allowed_tcp_failed_times:      0,
         tinc_check_frequency:               0,
-        tinc_debug_level:                   0,
+        external_boot:                      false,
     };
     TincOperator::new(tinc_settings);
 
@@ -35,7 +35,7 @@ pub fn create_test_env() {
     tinc.create_tinc_dirs().unwrap();
     tinc.set_info_to_local(&tinc_info).unwrap();
 
-    for i in 1..256 {
+    for i in 1..11 {
         let (_, pubkey) = TincTools::create_key_pair().unwrap();
         let vip = IpAddr::from_str(&("10.1.1.".to_string() + &format!("{}", i)))
             .unwrap();

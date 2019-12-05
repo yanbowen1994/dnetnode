@@ -390,6 +390,7 @@ impl TincStream {
                           RequestType::ReqGroup as i8,
                           buf,
         );
+        info!("add_group_node success send_line: {:?}", cmd);
         self.send_line(cmd.as_bytes())?;
         let res = self.recv()?;
         if res.contains("18 18 2") {

@@ -26,7 +26,7 @@ impl TunnelTrait for TincMonitor {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>) {
         let (tunnel_command_tx, tunnel_command_rx) = mpsc::channel();
 
-        Arc::new(MonitorInner::new(daemon_event_tx.clone()));
+        MonitorInner::new(daemon_event_tx.clone());
 
         let tinc_monitor = TincMonitor {
             tunnel_command_rx,
@@ -93,6 +93,7 @@ struct MonitorInner {
     stop_sign_tx:                       mpsc::Sender<mpsc::Sender<bool>>,
     stop_sign_rx:                       mpsc::Receiver<mpsc::Sender<bool>>,
     is_running:                         Arc<Mutex<bool>>,
+    daemon_event_tx:                    mpsc::Sender<DaemonEvent>,
 }
 
 impl MonitorInner {
@@ -107,12 +108,14 @@ impl MonitorInner {
             )
             .unwrap_or(());
 
+
         let (tx, rx) = mpsc::channel();
 
         let inner = Self {
             stop_sign_tx:       tx,
             stop_sign_rx:       rx,
             is_running:         Arc::new(Mutex::new(false)),
+            daemon_event_tx,
         };
 
         unsafe {
@@ -143,7 +146,7 @@ impl MonitorInner {
         let run_mode = &get_settings().common.mode;
         let mut tinc_event_handle = if *run_mode == RunMode::Client
             || *run_mode == RunMode::Center {
-            Some(TincEventHandle::new())
+            Some(TincEventHandle::new(self.daemon_event_tx.clone()))
         }
         else {
             None
@@ -164,14 +167,15 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            if let Some(handle) = tinc_event_handle.as_mut() {
-                if let None = handle.recv() {
-                    thread::sleep(Duration::from_millis(400));
-                }
-            }
-            else {
-                thread::sleep(Duration::from_millis(400));
-            }
+//            if let Some(handle) = tinc_event_handle.as_mut() {
+//                if let None = handle.recv() {
+//                    thread::sleep(Duration::from_millis(400));
+//                }
+//            }
+//            else {
+//                thread::sleep(Duration::from_millis(400));
+//            }
+            thread::sleep(Duration::from_millis(400));
         }
         info!("tinc check stop.");
     }

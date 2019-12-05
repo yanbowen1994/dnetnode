@@ -24,4 +24,4 @@ tinc_memory_limit = 85
 tinc_check_frequency = 3
 tinc_allowed_out_memory_times = 5
 tinc_allowed_tcp_failed_times = 5
-tinc_debug_level = 3
+external_boot = false

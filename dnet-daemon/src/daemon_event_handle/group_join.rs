@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::response::Response;
 use dnet_types::states::State;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_info, get_mut_info};
 use super::tunnel::send_tunnel_connect;
 use super::handle_settings;
@@ -19,7 +19,6 @@ pub fn group_join(
     status:                 State,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    daemon_event_tx:        mpsc::Sender<DaemonEvent>,
 ) {
     info!("is_not_proxy");
     let _ = is_not_proxy(ipc_tx)
@@ -44,7 +43,7 @@ pub fn group_join(
                 handle_connect_select_proxy(ipc_tx, rpc_command_tx)
                     .and_then(|ipc_tx| {
                         info!("handle_tunnel_connect");
-                        handle_tunnel_connect(ipc_tx, tunnel_command_tx, daemon_event_tx)
+                        handle_tunnel_connect(ipc_tx, tunnel_command_tx)
                     })
             }
             else {
@@ -123,9 +122,8 @@ fn handle_connect_select_proxy(
 fn handle_tunnel_connect(
     ipc_tx:             oneshot::Sender<Response>,
     tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    daemon_event_tx:    mpsc::Sender<DaemonEvent>,
 ) -> Option<oneshot::Sender<Response>> {
-    let response = send_tunnel_connect(tunnel_command_tx, daemon_event_tx);
+    let response = send_tunnel_connect(tunnel_command_tx);
     if response.code == 200 {
         return Some(ipc_tx);
     }

@@ -23,19 +23,18 @@ impl TincEventHandle {
             .join("tinc").join(PID_FILENAME)
             .to_str().unwrap().to_string();
 
-        let mut tinc_event_handle = Self {
+        let tinc_event_handle = Self {
             socket:  None,
             tinc_pid,
             daemon_event_tx,
         };
-        tinc_event_handle.subscribe();
         tinc_event_handle
     }
 
     pub fn recv(&mut self) -> Option<()> {
         if let None = self.socket {
             if self.subscribe() {
-                let _ = self.daemon_event_tx.send(DaemonEvent::TunnelConnected);
+                self.connect_status_change(true);
             }
             else {
                 return None;
@@ -56,6 +55,7 @@ impl TincEventHandle {
                 }
                 else {
                     self.socket = None;
+                    self.connect_status_change(false);
                     return None;
                 }
             }
@@ -69,6 +69,15 @@ impl TincEventHandle {
         }
         else {
             false
+        }
+    }
+
+    fn connect_status_change(&self, is_connected: bool) {
+        if is_connected {
+            let _ = self.daemon_event_tx.send(DaemonEvent::TunnelConnected);
+        }
+        else {
+            let _ = self.daemon_event_tx.send(DaemonEvent::TunnelDisconnected);
         }
     }
 

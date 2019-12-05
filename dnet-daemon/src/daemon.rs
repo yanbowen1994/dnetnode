@@ -321,7 +321,6 @@ impl Daemon {
             info!("tunnel auto connect");
             let _response = daemon_event_handle::tunnel::send_tunnel_connect(
                 self.tunnel_command_tx.clone(),
-                self.daemon_event_tx.clone(),
             );
         }
     }
@@ -373,7 +372,6 @@ impl Daemon {
         let status = self.status.clone();
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
-        let daemon_event_tx = self.daemon_event_tx.clone();
         thread::spawn( ||
             daemon_event_handle::group_join::group_join(
                 ipc_tx,
@@ -381,7 +379,6 @@ impl Daemon {
                 status,
                 rpc_command_tx,
                 tunnel_command_tx,
-                daemon_event_tx,
             )
         );
     }
@@ -393,7 +390,6 @@ impl Daemon {
         let status = self.status.clone();
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
-        let daemon_event_tx = self.daemon_event_tx.clone();
         thread::spawn( ||
             daemon_event_handle::group_out::group_out(
                 ipc_tx,
@@ -401,7 +397,6 @@ impl Daemon {
                 status,
                 rpc_command_tx,
                 tunnel_command_tx,
-                daemon_event_tx,
             )
         );
     }
@@ -411,13 +406,11 @@ impl Daemon {
     ) {
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
-        let daemon_event_tx = self.daemon_event_tx.clone();
         thread::spawn(move ||
             daemon_event_handle::logout::handle_logout(
                 ipc_tx,
                 rpc_command_tx,
                 tunnel_command_tx,
-                daemon_event_tx,
             )
         );
     }

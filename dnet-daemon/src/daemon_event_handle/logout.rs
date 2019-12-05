@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::settings::get_mut_settings;
-use crate::daemon::{Daemon, TunnelCommand, DaemonEvent};
+use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_mut_info, UserInfo};
 use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
 
@@ -14,14 +14,13 @@ pub fn handle_logout(
     ipc_tx:             oneshot::Sender<Response>,
     rpc_command_tx:     mpsc::Sender<RpcEvent>,
     tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    daemon_event_tx:    mpsc::Sender<DaemonEvent>,
 ) {
     let _ = need_logout(ipc_tx)
         .and_then(|ipc_tx| {
             info!("send_rpc_disconnect");
             send_rpc_disconnect(ipc_tx, rpc_command_tx)})
         .and_then(|ipc_tx| {
-            let response = send_tunnel_disconnect(tunnel_command_tx, daemon_event_tx);
+            let response = send_tunnel_disconnect(tunnel_command_tx);
             let _ = Daemon::oneshot_send(ipc_tx, response, "");
             Some(())
         });

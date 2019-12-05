@@ -167,15 +167,14 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-//            if let Some(handle) = tinc_event_handle.as_mut() {
-//                if let None = handle.recv() {
-//                    thread::sleep(Duration::from_millis(400));
-//                }
-//            }
-//            else {
-//                thread::sleep(Duration::from_millis(400));
-//            }
-            thread::sleep(Duration::from_millis(400));
+            if let Some(handle) = tinc_event_handle.as_mut() {
+                if let None = handle.recv() {
+                    thread::sleep(Duration::from_millis(400));
+                }
+            }
+            else {
+                thread::sleep(Duration::from_millis(400));
+            }
         }
         info!("tinc check stop.");
     }

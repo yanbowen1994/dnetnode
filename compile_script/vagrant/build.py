@@ -67,7 +67,7 @@ if len(sys.argv) == 1\
     tinc_dir = "/root/tinc_src"
     if not os.path.exists(tinc_dir):
         os.chdir("/root")
-        os.system("git clone -b 1.2 http://bowen.yan:siteview123%21%40%23@git.dnetlab.com/dnet/tinc.git "
+        os.system("git clone -b 1.2 http://bowen.yan:siteview123%21%40%23@git.vlan.cn/dnet/tinc.git "
              + tinc_dir)
         os.chdir(tinc_dir)
     else:
@@ -97,7 +97,7 @@ if len(sys.argv) == 1 \
             and (sys.argv[1] == "dnet" or sys.argv[1] == "init")):
     dnet_dir = "/root/dnetnode"
     if not os.path.exists(dnet_dir):
-        os.system("git clone http://bowen.yan:siteview123%21%40%23@git.dnetlab.com/dnet/dnetnode "
+        os.system("git clone http://bowen.yan:siteview123%21%40%23@git.vlan.cn/dnet/dnetnode "
                   + dnet_dir)
         os.chdir(dnet_dir)
     else:

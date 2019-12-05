@@ -46,6 +46,8 @@ impl TincOperator {
             tinc_settings,
         };
 
+        operator.clear_hosts();
+
         unsafe {
             EL = Box::into_raw(Box::new(operator));
         }

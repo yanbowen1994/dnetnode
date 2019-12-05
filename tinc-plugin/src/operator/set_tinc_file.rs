@@ -8,6 +8,7 @@ use crate::info::{TincRunMode, TincInfo};
 use super::{Error, Result, TincOperator,
             PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME};
 use crate::operator::TincTools;
+use std::path::Path;
 
 impl TincOperator {
     pub fn set_info_to_local(&mut self, info: &TincInfo) -> Result<()> {
@@ -308,5 +309,9 @@ impl TincOperator {
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
 
         Ok(())
+    }
+
+    pub fn clear_hosts(&self) {
+        let _ = std::fs::remove_dir_all(Path::new(&(self.tinc_settings.tinc_home.clone() + "hosts/")));
     }
 }

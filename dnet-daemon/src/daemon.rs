@@ -196,6 +196,9 @@ impl Daemon {
         if get_settings().common.mode == RunMode::Client {
             let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
         }
+        else {
+            let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
+        }
     }
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {

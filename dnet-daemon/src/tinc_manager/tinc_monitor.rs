@@ -249,7 +249,7 @@ impl MonitorInner {
             }
             match result {
                 Ok(_) => {
-                    info!("check tinc process: tinc restart finish.");
+                    info!("check tinc process: execute restart tinc.");
                     return;
                 },
                 Err(e) => {

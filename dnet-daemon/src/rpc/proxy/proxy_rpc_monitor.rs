@@ -42,18 +42,17 @@ impl RpcTrait for RpcMonitor {
 impl RpcMonitor {
     fn start_monitor(self, rpc_rx: Receiver<RpcEvent>) {
         let web_server_tx = self.daemon_event_tx.clone();
-        thread::spawn(move || Self::cmd_handle(rpc_rx));
         thread::spawn(move ||
             web_server(Arc::new(Mutex::new(
                 TincOperator::new())),
                        web_server_tx,
             )
         );
-        thread::spawn(||self.run());
+        thread::spawn(||self.run(rpc_rx));
     }
 
-    fn cmd_handle(rpc_rx: mpsc::Receiver<RpcEvent>) {
-        while let Ok(rpc_cmd) = rpc_rx.recv() {
+    fn cmd_handle(&self, rpc_rx: &Receiver<RpcEvent>) {
+        if let Ok(rpc_cmd) = rpc_rx.try_recv() {
             match rpc_cmd {
                 RpcEvent::Proxy(cmd) => {
                     match cmd {
@@ -61,15 +60,23 @@ impl RpcMonitor {
                             ()
                         }
                     }
-                }
+                },
+                RpcEvent::TunnelConnected => {
+                    if get_settings().common.mode == RunMode::Center {
+                        if let Err(e) = self.client.center_get_team_info() {
+                            error!("center_get_team_info {:?}", e.to_response());
+                        }
+                    }
+                },
                 _ => ()
             }
         }
     }
 
-    fn run(self) {
+    fn run(self, rpc_rx: Receiver<RpcEvent>) {
         let timeout_secs: u32 = HEARTBEAT_FREQUENCY_SEC;
         loop {
+            self.cmd_handle(&rpc_rx);
             self.init();
             loop {
                 let start = Instant::now();
@@ -164,18 +171,8 @@ impl RpcMonitor {
         let timeout_secs = Duration::from_secs(20);
         let start = Instant::now();
 
-        let mut is_get_team = false;
         loop {
             if let Ok(_) = self.client.proxy_heartbeat() {
-                info!("center_get_team_info");
-                if !is_get_team {
-                    if let Err(e) = self.client.center_get_team_info() {
-                        error!("center_get_team_info {:?}", e.to_response());
-                    }
-                    else {
-                        is_get_team = true;
-                    }
-                }
                 return Ok(());
             } else {
                 error!("Heart beat send failed.");

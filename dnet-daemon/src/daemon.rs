@@ -14,7 +14,7 @@ use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, RpcProxyCmd};
+use crate::rpc::rpc_cmd::{RpcEvent, RpcProxyCmd};
 use std::time::Duration;
 use super::daemon_event_handle;
 
@@ -39,7 +39,9 @@ pub enum Error {
 #[derive(Clone, Debug)]
 pub enum TunnelCommand {
     Connect,
+    Connected,
     Disconnect,
+    Disconnected,
     Reconnect,
 }
 
@@ -184,12 +186,8 @@ impl Daemon {
             error!("host_status_change tinc-up {:?}", e);
         }
         self.status.tunnel = TunnelState::Connected;
-        if get_settings().common.mode == RunMode::Client {
-            let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
-        }
-        else {
-            let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
-        }
+
+        let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
     }
 
     fn handle_tunnel_disconnected(&mut self) {
@@ -276,14 +274,14 @@ impl Daemon {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincDown => {
                         self.handle_tunnel_disconnected()
                     },
-                    _ => (),
+                    _ => {
+                        let _ = self.rpc_command_tx.send(
+                            RpcEvent::Proxy(
+                                RpcProxyCmd::HostStatusChange(host_status_change)
+                            )
+                        );
+                    },
                 }
-
-                let _ = self.rpc_command_tx.send(
-                    RpcEvent::Proxy(
-                        RpcProxyCmd::HostStatusChange(host_status_change)
-                    )
-                );
             }
 
             ManagementCommand::Shutdown(ipc_tx) => {

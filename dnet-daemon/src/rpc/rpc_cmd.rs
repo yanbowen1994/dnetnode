@@ -8,12 +8,12 @@ pub enum RpcEvent {
     Proxy(RpcProxyCmd),
     Executor(ExecutorEvent),
     TunnelConnected,
+    TunnelDisConnected,
 }
 
 #[derive(Debug)]
 pub enum RpcClientCmd {
     Stop(Sender<bool>),
-    HeartbeatStart,
     RestartRpcConnect(Sender<Response>),
     JoinTeam(String, Sender<Response>),
     OutTeam(String, Sender<Response>),

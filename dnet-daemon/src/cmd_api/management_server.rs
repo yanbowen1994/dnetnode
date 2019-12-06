@@ -323,7 +323,7 @@ for ManagementInterface<T>
     fn host_status_change(&self, _: Self::Metadata, host_status_change: String)
                           -> BoxFuture<(), Error>
     {
-        log::info!("management interface host status change.");
+        log::info!("management interface host status change {}.", host_status_change);
 
         let host_status_change = serde_json::from_str(&host_status_change).unwrap();
         let (tx, rx) = sync::oneshot::channel();

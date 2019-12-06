@@ -58,15 +58,24 @@ impl RpcMonitor {
         while let Ok(rpc_event) = self.rpc_rx.recv() {
             info!("rpc_event {:?}", rpc_event);
             match rpc_event {
+                RpcEvent::TunnelConnected => {
+                    self.run_status = RunStatus::SendHearbeat;
+                    if let Some(executor_tx) = &self.executor_tx {
+                        let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
+                    }
+                }
+
+                RpcEvent::TunnelDisConnected => {
+                    if self.run_status == RunStatus::SendHearbeat {
+                        self.run_status = RunStatus::Login;
+                    }
+                    if let Some(executor_tx) = &self.executor_tx {
+                        let _ = executor_tx.send((ExecutorCmd::HeartbeatStop, None));
+                    }
+                }
+
                 RpcEvent::Client(cmd) => {
                     match cmd {
-                        RpcClientCmd::HeartbeatStart => {
-                            self.run_status = RunStatus::SendHearbeat;
-                            if let Some(executor_tx) = &self.executor_tx {
-                                let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
-                            }
-                        },
-
                         RpcClientCmd::FreshTeam(res_tx) => {
                             let response = self.handle_fresh_team();
                             let _ = res_tx.send(response);

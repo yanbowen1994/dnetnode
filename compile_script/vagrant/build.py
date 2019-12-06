@@ -61,18 +61,15 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
         except:
             pass
 
-if len(sys.argv) == 1\
-        or (len(sys.argv) > 1
-            and (sys.argv[1] == "tinc" or sys.argv[1] == "init")):
+if len(sys.argv) > 1 and (sys.argv[1] == "tinc" or sys.argv[1] == "init"):
     tinc_dir = "/root/tinc_src"
     if not os.path.exists(tinc_dir):
         os.chdir("/root")
-        os.system("git clone -b 1.2 http://bowen.yan:siteview123%21%40%23@git.vlan.cn/dnet/tinc.git "
+        os.system("git clone -b release-1.1pre17 https://github.com/gsliepen/tinc.git "
              + tinc_dir)
         os.chdir(tinc_dir)
     else:
         os.chdir(tinc_dir)
-        os.system("git pull")
 
     os.chdir(tinc_dir)
     os.system("autoreconf -fsi")
@@ -123,6 +120,7 @@ os.system("cp /root/dnetnode/key.pem ./dnet/opt/dnet")
 os.system("cp /root/dnetnode/settings.example.toml ./dnet/opt/dnet/settings.example.toml")
 os.system("cp /root/dnetnode/target/release/dnet-daemon ./dnet/opt/dnet")
 os.system("cp /root/dnetnode/target/release/dnet ./dnet/opt/dnet")
+os.system("cp /root/dnetnode/target/release/tinc-report ./dnet/opt/dnet/tinc")
 os.system("cp /root/dnetnode/compile_script/control ./dnet/DEBIAN")
 os.system("cp /root/dnetnode/compile_script/dnet.service ./dnet/lib/systemd/system/dnet.service")
 os.system("cp /root/tinc/* /root/dnet/opt/dnet/tinc -rf")

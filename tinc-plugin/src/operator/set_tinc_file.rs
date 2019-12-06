@@ -2,13 +2,13 @@ use std::fs;
 use std::path;
 use std::io::Write;
 use std::time::SystemTime;
+use std::path::Path;
 use std::net::IpAddr;
 
 use crate::info::{TincRunMode, TincInfo};
-use super::{Error, Result, TincOperator,
-            PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME};
-use crate::operator::TincTools;
-use std::path::Path;
+use super::{Error, Result, TincOperator, TincTools,
+            PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME,
+            HOST_UP_FILENAME, TINC_DOWN_FILENAME, HOST_DOWN_FILENAME};
 
 impl TincOperator {
     pub fn set_info_to_local(&mut self, info: &TincInfo) -> Result<()> {
@@ -20,6 +20,11 @@ impl TincOperator {
         };
 
         self.set_tinc_up(&info)?;
+        self.set_tinc_down(info)?;
+        if is_proxy {
+            self.set_host_up()?;
+            self.set_host_down()?;
+        }
 
         for online_proxy in info.connect_to.clone() {
             self.set_hosts(Some((online_proxy.ip.clone(), online_proxy.port)),
@@ -50,7 +55,7 @@ impl TincOperator {
             TincRunMode::Client => "255.255.255.255",
         };
 
-        let buf;
+        let mut buf;
 
         #[cfg(target_arch = "arm")]
             {
@@ -69,6 +74,7 @@ impl TincOperator {
             vpngw=".to_string() + &tinc_info.vip.to_string() + "\n" +
                     "ifconfig ${dev} ${vpngw} netmask " + netmask;
 
+                buf = buf + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
 //          Example for global proxy
 //
 // ```
@@ -138,6 +144,82 @@ impl TincOperator {
         Ok(())
     }
 
+
+    fn set_tinc_down(&self, _tinc_info: &TincInfo) -> Result<()> {
+        let _guard = self.mutex.lock().unwrap();
+        let buf;
+        #[cfg(target_arch = "arm")]
+            {
+                buf = "#!/bin/sh\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
+            }
+        #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
+            {
+                buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
+            }
+        #[cfg(target_os = "macos")]
+            {
+                let default_gateway = get_default_gateway()?.to_string();
+                buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -d";
+
+//              Example for global proxy
+//                    + "route -n -q delete -host " + &_tinc_info.connect_to[0].ip.to_string() + "\n"
+//                    + "route -n -q delete -net 0.0.0.0 \n\
+//                       route -n -q add -net 0.0.0.0 -gateway " + &default_gateway;
+            }
+        #[cfg(windows)]
+            {
+                let vnic_index = format!("{}", get_vnic_index()?);
+                buf = &self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
+//              Example for global proxy
+//                buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
+//                    + &vnic_index + "\r\n"
+//                    + &self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
+            }
+
+        let path = self.tinc_settings.tinc_home.clone() + TINC_DOWN_FILENAME;
+        let mut file = fs::File::create(path.clone())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        file.write(buf.as_bytes())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        #[cfg(unix)]
+            TincTools::set_script_permissions(&path)?;
+        Ok(())
+    }
+
+    fn set_host_up(&self) -> Result<()> {
+        let _guard = self.mutex.lock().unwrap();
+        #[cfg(windows)]
+            let buf = &(self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -hu ${NODE}");
+        #[cfg(unix)]
+            let buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -hu ${NODE}";
+
+        let path = self.tinc_settings.tinc_home.clone() + HOST_UP_FILENAME;
+        let mut file = fs::File::create(path.clone())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        file.write(buf.as_bytes())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        #[cfg(unix)]
+            TincTools::set_script_permissions(&path)?;
+        Ok(())
+    }
+
+    fn set_host_down(&self) -> Result<()> {
+        let _guard = self.mutex.lock().unwrap();
+        #[cfg(windows)]
+            let buf = &(self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -hd ${NODE}");
+        #[cfg(unix)]
+            let buf = "#!/bin/bash\n".to_string() + &self.tinc_settings.tinc_home + "tinc-report -hd ${NODE}";
+
+        let path = self.tinc_settings.tinc_home.clone() + HOST_DOWN_FILENAME;
+        let mut file = fs::File::create(path.clone())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        file.write(buf.as_bytes())
+            .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
+        #[cfg(unix)]
+            TincTools::set_script_permissions(&path)?;
+        Ok(())
+    }
+
     pub fn create_tinc_dirs(&self) -> Result<()> {
         let path_str = self.tinc_settings.tinc_home.clone() + "hosts";
         if !std::path::Path::new(&path_str).is_dir() {
@@ -195,14 +277,15 @@ impl TincOperator {
             .map_err(|e|Error::IoError(path.clone() + " " + &e.to_string()))?;
         return Ok(());
     }
+
     /// 通过Info修改tinc.conf
     fn set_tinc_conf_file(&self, tinc_info: &TincInfo) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
 
-        let (is_proxy, tinc_type) = match self.tinc_settings.mode {
-            TincRunMode::Proxy => (true, "Proxy"),
-            TincRunMode::Center => (true, "Centre"),
-            TincRunMode::Client => (false, "Client"),
+        let is_proxy = match self.tinc_settings.mode {
+            TincRunMode::Proxy => true,
+            TincRunMode::Center => true,
+            TincRunMode::Client => false,
         };
 
         let name = TincTools::get_filename_by_vip(is_proxy,
@@ -236,8 +319,8 @@ impl TincOperator {
                    PingTimeout=3\n\
                    Device = /dev/net/tun\n\
                    AutoConnect = no\n\
-                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
+//                   Type = " + tinc_type + "\n\
             }
         #[cfg(target_os = "macos")]
             {
@@ -251,8 +334,8 @@ impl TincOperator {
                    PingTimeout=3\n\
                    Device = /dev/tap0\n\
                    AutoConnect=no\n\
-                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
+//                   Type = " + tinc_type + "\n\
             }
         #[cfg(windows)]
             {
@@ -265,8 +348,8 @@ impl TincOperator {
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    AutoConnect=no\n\
-                   Type = " + tinc_type + "\n\
                    MaxConnectionBurst=1000\n";
+//                   Type = " + tinc_type + "\n\
             }
 
         let path = self.tinc_settings.tinc_home.clone() + "tinc.conf";

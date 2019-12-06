@@ -51,12 +51,6 @@ pub enum DaemonEvent {
     // else -> self.Status.rpc.ReConnecting
     RpcConnecting,
 
-    // -> self.Status.tunnel.Connected
-    TunnelConnected,
-
-    // -> self.Status.tunnel.Disconnected
-    TunnelDisconnected,
-
     // ->
     TunnelInitFailed(String),
 
@@ -146,12 +140,6 @@ impl Daemon {
                     self.status.rpc = RpcState::ReConnecting;
                 }
             },
-            DaemonEvent::TunnelConnected => {
-                self.handle_tunnel_connected();
-            },
-            DaemonEvent::TunnelDisconnected => {
-                self.status.tunnel = TunnelState::Disconnected;
-            },
             DaemonEvent::TunnelInitFailed(err_str) => {
                 self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
             },
@@ -192,6 +180,9 @@ impl Daemon {
     }
 
     fn handle_tunnel_connected(&mut self) {
+        if let Err(e) = TincOperator::new().set_routing() {
+            error!("host_status_change tinc-up {:?}", e);
+        }
         self.status.tunnel = TunnelState::Connected;
         if get_settings().common.mode == RunMode::Client {
             let _ = self.rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::HeartbeatStart));
@@ -199,6 +190,10 @@ impl Daemon {
         else {
             let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
         }
+    }
+
+    fn handle_tunnel_disconnected(&mut self) {
+        self.status.tunnel = TunnelState::Disconnected;
     }
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
@@ -276,9 +271,10 @@ impl Daemon {
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
-                        if let Err(e) = TincOperator::new().set_routing() {
-                            error!("host_status_change tinc-up {:?}", e);
-                        }
+                        self.handle_tunnel_connected()
+                    },
+                    dnet_types::tinc_host_status_change::HostStatusChange::TincDown => {
+                        self.handle_tunnel_disconnected()
                     },
                     _ => (),
                 }

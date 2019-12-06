@@ -8,9 +8,6 @@ use tinc_plugin::TincOperatorError;
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
-use crate::tinc_manager::tinc_event_handle::TincEventHandle;
-use crate::settings::get_settings;
-use dnet_types::settings::RunMode;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -93,7 +90,6 @@ struct MonitorInner {
     stop_sign_tx:                       mpsc::Sender<mpsc::Sender<bool>>,
     stop_sign_rx:                       mpsc::Receiver<mpsc::Sender<bool>>,
     is_running:                         Arc<Mutex<bool>>,
-    daemon_event_tx:                    mpsc::Sender<DaemonEvent>,
 }
 
 impl MonitorInner {
@@ -115,7 +111,6 @@ impl MonitorInner {
             stop_sign_tx:       tx,
             stop_sign_rx:       rx,
             is_running:         Arc::new(Mutex::new(false)),
-            daemon_event_tx,
         };
 
         unsafe {
@@ -143,15 +138,6 @@ impl MonitorInner {
 
         info!("tinc check start.");
 
-        let run_mode = &get_settings().common.mode;
-        let mut tinc_event_handle = if *run_mode == RunMode::Client
-            || *run_mode == RunMode::Center {
-            Some(TincEventHandle::new(self.daemon_event_tx.clone()))
-        }
-        else {
-            None
-        };
-
         loop {
             if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
                 let _ = res_tx.send(true);
@@ -167,14 +153,7 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            if let Some(handle) = tinc_event_handle.as_mut() {
-                if let None = handle.recv() {
-                    thread::sleep(Duration::from_millis(400));
-                }
-            }
-            else {
-                thread::sleep(Duration::from_millis(400));
-            }
+            thread::sleep(Duration::from_millis(400));
         }
         info!("tinc check stop.");
     }

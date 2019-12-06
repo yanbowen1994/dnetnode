@@ -56,8 +56,10 @@ impl RpcMonitor {
             match rpc_cmd {
                 RpcEvent::Proxy(cmd) => {
                     match cmd {
-                        RpcProxyCmd::HostStatusChange(_host_status_change) => {
-                            ()
+                        RpcProxyCmd::HostStatusChange(host_status_change) => {
+                            if let Err(e) = self.client.center_update_tinc_status(host_status_change) {
+                                error!("{:?}", e.to_response());
+                            }
                         }
                     }
                 },

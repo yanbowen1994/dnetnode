@@ -94,7 +94,7 @@ if len(sys.argv) == 1 \
             and (sys.argv[1] == "dnet" or sys.argv[1] == "init")):
     dnet_dir = "/root/dnetnode"
     if not os.path.exists(dnet_dir):
-        os.system("git clone http://bowen.yan:siteview123%21%40%23@git.vlan.cn/dnet/dnetnode "
+        os.system("git clone -b origin_tinc http://bowen.yan:siteview123%21%40%23@git.vlan.cn/dnet/dnetnode "
                   + dnet_dir)
         os.chdir(dnet_dir)
     else:

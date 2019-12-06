@@ -46,6 +46,7 @@ pub fn search_team_by_mac() -> Result<()> {
 
     let mut info = get_mut_info().lock().unwrap();
     info.teams.all_teams = teams;
+    std::mem::drop(info);
     fresh_route();
     Ok(())
 }
@@ -87,7 +88,6 @@ fn fresh_route() {
             route::add_route(client_vip, 32, TINC_INTERFACE)
         }
     }
-
 }
 
 

@@ -5,35 +5,28 @@ use crate::route::types::RouteInfo;
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    #[cfg(not(target_os = "windows"))]
-        {
-            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let mut res = Command::new("ip")
-                .args(vec!["route", "add", &ip_mask, "dev", dev])
-                .spawn();
-            if let Ok(mut res) = res {
-                res.wait();
-                let _ = res.wait();
-            }
-        }
+    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let mut res = Command::new("ip")
+        .args(vec!["route", "add", &ip_mask, "dev", dev])
+        .spawn();
+    if let Ok(mut res) = res {
+        res.wait();
+        let _ = res.wait();
+    }
 }
 
 pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    #[cfg(not(target_os = "windows"))]
-        {
-            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let mut res = Command::new("ip")
-                .args(vec!["route", "del", &ip_mask, "dev", dev])
-                .spawn();
-            if let Ok(mut res) = res {
-                res.wait();
-                let _ = res.wait();
-            }
-        }
+    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let mut res = Command::new("ip")
+        .args(vec!["route", "del", &ip_mask, "dev", dev])
+        .spawn();
+    if let Ok(mut res) = res {
+        res.wait();
+        let _ = res.wait();
+    }
 }
 
-pub fn is_in_routing_table(ip: &IpAddr, netmask: u32, dev: &str) -> bool {
-    let routing_table: Vec<RouteInfo> = parse_routing_table();
+pub fn is_in_routing_table(routing_table: &Vec<RouteInfo>, ip: &IpAddr, netmask: u32, dev: &str) -> bool {
     for route_info in routing_table {
 //      Skip default route,
         if let Ok(cur_ip) = IpAddr::from_str(&route_info.dst) {
@@ -167,4 +160,16 @@ fn test() {
     assert!(!stdout.contains("12.12.12.12"));
 
     parse_routing_table();
+}
+
+
+#[cfg(windows)]
+fn get_vnic_index(dev: &str) -> Result<u32> {
+    let adapters = ipconfig::get_adapters().unwrap();
+    for interface in adapters {
+        if interface.friendly_name() == dev {
+            return Ok(interface.ipv6_if_index());
+        }
+    }
+    Err(Error::VnicNotFind("No Adapter name \"dnet\" find".to_string()))
 }

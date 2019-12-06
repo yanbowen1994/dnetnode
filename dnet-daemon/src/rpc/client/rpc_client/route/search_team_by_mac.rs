@@ -80,7 +80,9 @@ fn fresh_route() {
     let now_route = route::parse_routing_table();
 
     for client_vip in &connect_client {
+        let rotue_table = route::parse_routing_table();
         if !route::is_in_routing_table(
+            rotue_table,
             &now_route,
             client_vip,
             32,

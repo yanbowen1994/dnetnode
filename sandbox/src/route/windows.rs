@@ -2,12 +2,15 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::process::Command;
 use crate::route::types::RouteInfo;
+extern crate ipconfig;
+
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let ip_mask = ip.clone().to_string() + " mask " + &format!("{}", netmask);
+    let idx_if = get_vnic_index(dev);
     let mut res = Command::new("ip")
-        .args(vec!["route", "add", &ip_mask, "dev", dev])
+        .args(vec!["route", "add", &ip_mask, "if", &format!("{}", idx_if)])
         .spawn();
     if let Ok(mut res) = res {
         res.wait();
@@ -16,9 +19,9 @@ pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
 }
 
 pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let ip_mask = ip.clone().to_string() + " mask " + &format!("{}", netmask);
     let mut res = Command::new("ip")
-        .args(vec!["route", "del", &ip_mask, "dev", dev])
+        .args(vec!["route", "delele", &ip_mask])
         .spawn();
     if let Ok(mut res) = res {
         res.wait();
@@ -164,12 +167,12 @@ fn test() {
 
 
 #[cfg(windows)]
-fn get_vnic_index(dev: &str) -> Result<u32> {
+fn get_vnic_index(dev: &str) -> u32 {
     let adapters = ipconfig::get_adapters().unwrap();
     for interface in adapters {
         if interface.friendly_name() == dev {
-            return Ok(interface.ipv6_if_index());
+            return interface.ipv6_if_index();
         }
     }
-    Err(Error::VnicNotFind("No Adapter name \"dnet\" find".to_string()))
+    0
 }

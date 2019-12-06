@@ -262,11 +262,7 @@ impl RpcMonitor {
 
     fn handle_fresh_team(&self) -> Response {
         if let Err(error) = self.client.search_team_by_mac() {
-            let res = match error {
-                Error::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string())
-            };
-            return res;
+            return error.to_response();
         }
         else {
             return Response::success();
@@ -307,6 +303,7 @@ impl Executor {
         let mut init_success = false;
         let mut send_heartbeat = false;
         let mut heartbeat_start = Instant::now() - Duration::from_secs(20);
+        let mut fresh_team = Instant::now() - Duration::from_secs(20);
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             let mut route_not_bound_sleep = Instant::now();
         loop {
@@ -331,11 +328,16 @@ impl Executor {
                 if start - heartbeat_start > Duration::from_secs(HEARTBEAT_FREQUENCY_SEC as u64) {
                     if let Ok(_) = self.exec_online_proxy() {
                         heartbeat_start = start;
-                        info!("Rpc Executor heartbeat.");
+                        info!("Rpc Executor get online proxy.");
                     } else {
                         error!("exec_online_proxy failed.");
                         init_success = false;
                     }
+                }
+
+                if start - fresh_team > Duration::from_secs(5) {
+                    fresh_team = start;
+                    let _ = self.client.search_team_by_mac();
                 }
             }
 

@@ -26,14 +26,12 @@ pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
                 .args(vec!["route", "del", &ip_mask, "dev", dev])
                 .spawn();
             if let Ok(mut res) = res {
-                res.wait();
                 let _ = res.wait();
             }
         }
 }
 
-pub fn is_in_routing_table(ip: &IpAddr, netmask: u32, dev: &str) -> bool {
-    let routing_table: Vec<RouteInfo> = parse_routing_table();
+pub fn is_in_routing_table(routing_table: &Vec<RouteInfo>, ip: &IpAddr, netmask: u32, dev: &str) -> bool {
     for route_info in routing_table {
 //      Skip default route,
         if let Ok(cur_ip) = IpAddr::from_str(&route_info.dst) {

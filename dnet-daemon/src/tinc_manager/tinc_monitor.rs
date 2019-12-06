@@ -74,7 +74,6 @@ impl TincMonitor {
                 TunnelCommand::Connected => {
                     let inner = get_monitor_inner();
                     thread::spawn(move || {
-                        thread::sleep(Duration::from_secs(3));
                         inner.run();
                     });
                     let _ = res_tx.send(Response::success());
@@ -154,7 +153,7 @@ impl MonitorInner {
                 }
                 check_time = Instant::now();
             }
-            thread::sleep(Duration::from_millis(400));
+            thread::sleep(Duration::from_millis(1500));
         }
         info!("tinc check stop.");
     }

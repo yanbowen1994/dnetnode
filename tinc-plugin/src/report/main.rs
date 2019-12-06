@@ -26,9 +26,9 @@ fn help() {
     USAGE:\r
           mullvad <FLAGS>\r
     FLAGS:\r
-        -h,      Prints help information\r
-        -u,      Tinc Up\r
-        -d,      Tinc Down\r
+        -h,                 Prints help information\r
+        -u,                 Tinc Up\r
+        -d,                 Tinc Down\r
         -hu <hostname>,     Host Up\r
         -hd <hostname>,     Host Down";
     println!("{}", buf);

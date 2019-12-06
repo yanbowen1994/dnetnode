@@ -55,7 +55,7 @@ impl TincOperator {
             TincRunMode::Client => "255.255.255.255",
         };
 
-        let mut buf;
+        let buf;
 
         #[cfg(target_arch = "arm")]
             {
@@ -72,9 +72,8 @@ impl TincOperator {
                 buf = "#!/bin/bash\n\
             dev=dnet\n\
             vpngw=".to_string() + &tinc_info.vip.to_string() + "\n" +
-                    "ifconfig ${dev} ${vpngw} netmask " + netmask;
-
-                buf = buf + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
+                    "ifconfig ${dev} ${vpngw} netmask " + netmask
+                    + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
 //          Example for global proxy
 //
 // ```
@@ -168,8 +167,7 @@ impl TincOperator {
             }
         #[cfg(windows)]
             {
-                let vnic_index = format!("{}", get_vnic_index()?);
-                buf = &self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
+                buf = self.tinc_settings.tinc_home.to_string() + "tinc-report.exe -d";
 //              Example for global proxy
 //                buf = "route delete 0.0.0.0 mask 0.0.0.0 10.255.255.254 if ".to_string()
 //                    + &vnic_index + "\r\n"

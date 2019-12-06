@@ -23,21 +23,6 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
     os.system("chmod 777 config")
     os.system("./config shared")
     os.system("make install")
-    os.system("cp " + openssl_dir + "/libcrypto.so.1.1 " + tinc_lib_dir)
-
-    fec_dir = "/root/libmyfec"
-    os.chdir("/root")
-    os.system("git clone https://github.com/dnetlab/libmyfec.git "
-              + fec_dir)
-    os.chdir(fec_dir)
-    os.system("mkdir build")
-    os.chdir("build")
-    os.system("cmake ..")
-    os.system("make")
-    os.system("sudo make install")
-    os.system("cp /usr/local/myfec/include/* /usr/include")
-    os.system("cp /usr/local/lib/libmyfec.so /usr/lib")
-    os.system("cp /usr/local/lib/libmyfec.so /root/tinc/lib")
 
     readline_dir = "/root/readline-8.0"
     os.chdir("/root")
@@ -74,8 +59,7 @@ if len(sys.argv) > 1 and (sys.argv[1] == "tinc" or sys.argv[1] == "init"):
     os.chdir(tinc_dir)
     os.system("autoreconf -fsi")
     os.system("chmod 777 configure")
-    os.system("./configure --with-openssl-lib=/root/openssl/"
-              " --with-openssl-include=/root/openssl/include"
+    os.system("./configure"
               " --with-readline-lib=/root/readline-8.0/shlib/"
               " --with-readline-include=/root/readline-8.0/include")
     os.system("sed -i 's#FLAGS = -g -O2 -Wall#FLAGS = -g -O2 -Wall -Wl,-rpath=/opt/dnet/tinc/lib#g' "

@@ -77,6 +77,7 @@ impl TincMonitor {
                         thread::sleep(Duration::from_secs(3));
                         inner.run();
                     });
+                    let _ = res_tx.send(Response::success());
                 }
                 TunnelCommand::Disconnected => {
                     ()

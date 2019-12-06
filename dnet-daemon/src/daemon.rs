@@ -188,6 +188,8 @@ impl Daemon {
         self.status.tunnel = TunnelState::Connected;
 
         let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
+        let (res_tx, _res_rx) = mpsc::channel::<Response>();
+        let _ = self.tunnel_command_tx.send((TunnelCommand::Connected, res_tx));
     }
 
     fn handle_tunnel_disconnected(&mut self) {

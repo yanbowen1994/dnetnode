@@ -7,24 +7,24 @@ extern crate ipconfig;
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    let ip_mask = ip.clone().to_string() + " mask " + &format!("{}", netmask);
+    let mask = parse_netmask_from_cidr(netmask).to_string();
     let idx_if = get_vnic_index(dev);
-    let mut res = Command::new("ip")
-        .args(vec!["route", "add", &ip_mask, "if", &format!("{}", idx_if)])
+    println!("{}", idx_if);
+    println!("{}", mask);
+    let res = Command::new("route")
+        .args(vec!["add", &ip.clone().to_string(), "mask", &mask, &(ip.clone().to_string()), "if", &format!("{}", idx_if)])
         .spawn();
     if let Ok(mut res) = res {
-        res.wait();
         let _ = res.wait();
     }
 }
 
-pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    let ip_mask = ip.clone().to_string() + " mask " + &format!("{}", netmask);
-    let mut res = Command::new("ip")
-        .args(vec!["route", "delele", &ip_mask])
+pub fn del_route(ip: &IpAddr, netmask: u32, _dev: &str) {
+    let mask = parse_netmask_from_cidr(netmask).to_string();
+    let res = Command::new("ip")
+        .args(vec!["route", "delete", &ip.clone().to_string(), "mask",&mask])
         .spawn();
     if let Ok(mut res) = res {
-        res.wait();
         let _ = res.wait();
     }
 }
@@ -59,6 +59,15 @@ pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
         return Some(cidr);
     }
     None
+}
+
+pub fn parse_netmask_from_cidr(netmask: u32) -> IpAddr {
+    if netmask == 0 {
+        return IpAddr::from_str("0.0.0.0").unwrap();
+    }
+    let d: u32 = 4294967295 - (1 << (32 - netmask)) + 1;
+    let mask = Ipv4Addr::from(d);
+    IpAddr::from(mask)
 }
 
 #[cfg(not(target_arch = "arm"))]
@@ -151,17 +160,9 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
 #[test]
 fn test() {
     let ip = IpAddr::from_str("12.12.12.12").unwrap();
-    add_route(&ip, 32, "enp3s0");
+    add_route(&ip, 32, "本地连接");
 
-    let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
-    let stdout = String::from_utf8(stdout).unwrap();
-    assert!(stdout.contains("12.12.12.12"));
-    del_route(&ip, 32, "enp3s0");
-
-    let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
-    let stdout = String::from_utf8(stdout).unwrap();
-    assert!(!stdout.contains("12.12.12.12"));
-
+    del_route(&ip, 32, "本地连接");
     parse_routing_table();
 }
 

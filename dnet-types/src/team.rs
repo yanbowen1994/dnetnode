@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Team {
     pub company_id:         Option<String>,
     pub create_by:          Option<String>,
@@ -41,7 +41,7 @@ impl Team {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TeamMember {
     pub alias:                Option<String>,
     pub app_version:          Option<String>,

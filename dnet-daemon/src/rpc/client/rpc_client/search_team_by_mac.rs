@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 
 use dnet_types::team::Team;
 use sandbox::route;
@@ -7,8 +8,7 @@ use crate::settings::get_settings;
 use crate::rpc::http_request::get;
 use crate::rpc::{Result, Error};
 use crate::info::{get_info, get_mut_info};
-use super::super::types::ResponseTeam;
-use std::net::IpAddr;
+use super::types::ResponseTeam;
 use crate::settings::default_settings::TINC_INTERFACE;
 
 pub fn search_team_by_mac() -> Result<()> {
@@ -45,9 +45,7 @@ pub fn search_team_by_mac() -> Result<()> {
     }
 
     let mut info = get_mut_info().lock().unwrap();
-    info.teams.all_teams = teams;
-    std::mem::drop(info);
-    fresh_route();
+    info.fresh_team_info_from_new_teams(teams);
     Ok(())
 }
 
@@ -75,7 +73,6 @@ fn fresh_route() {
             connect_client.append(&mut this_team_connect_client);
         }
     }
-
 
     let now_route = route::parse_routing_table();
 

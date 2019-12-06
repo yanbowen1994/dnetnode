@@ -7,6 +7,9 @@ use dnet_types::settings::RunMode;
 use dnet_types::proxy::ProxyInfo;
 use crate::settings::get_settings;
 use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
+use std::net::IpAddr;
+use std::collections::HashMap;
+use dnet_types::team::Team;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -84,6 +87,42 @@ impl Info {
         else {
             Ok(false)
         }
+    }
+
+    // return (adds, removes)
+    pub fn fresh_team_info_from_new_teams(&mut self, new_team_info: HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
+        let mut add: Vec<IpAddr> = vec![];
+        let mut del: Vec<IpAddr> = vec![];
+
+        let self_vip = match self.tinc_info.vip {
+            Some(x) => x,
+            None => return (add, del),
+        };
+        let running_team = &self.teams.running_teams;
+        for (team_id, team) in &new_team_info {
+            if running_team.contains(team_id) {
+                if let Some(old_team) =
+                &self.teams.all_teams.get(team_id) {
+                    let old_members = &old_team.members;
+                    for new_member in &team.members {
+                        if !old_members.contains(new_member)
+                            && self_vip != new_member.vip {
+                            add.push(new_member.vip.clone());
+                        }
+                    }
+
+                    let new_members = &team.members;
+                    for old_member in old_members {
+                        if !new_members.contains(old_member)
+                            && self_vip != old_member.vip {
+                            del.push(old_member.vip.clone());
+                        }
+                    }
+                }
+            }
+        }
+        self.teams.all_teams = new_team_info;
+        return (add, del);
     }
 }
 

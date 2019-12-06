@@ -8,7 +8,7 @@ mod route;
 mod search_user_team;
 mod select_proxy;
 mod types;
-use route::search_team_by_mac;
+mod search_team_by_mac;
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 extern crate router_plugin;

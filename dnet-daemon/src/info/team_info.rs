@@ -93,5 +93,4 @@ impl TeamInfo {
         }
         (device_name, team_id_vec)
     }
-
 }

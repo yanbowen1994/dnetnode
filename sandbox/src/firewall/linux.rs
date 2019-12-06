@@ -30,12 +30,15 @@ pub fn parse_iptables_table_chain(table: &str, chain: &str) -> Vec<IptablesRule>
 }
 
 pub fn iptabels_create_chain(table: &str, chain: &str) {
-    let _ = Command::new("iptables").args(vec![
+    let res = Command::new("iptables").args(vec![
         "-t",
         table,
         "-N",
         chain,
     ]).spawn();
+    if let Ok(mut res) = res {
+        let _ = res.wait();
+    }
 }
 
 fn parse_on_rule(rule: &str, table: &str, chain: &str) -> Option<IptablesRule> {

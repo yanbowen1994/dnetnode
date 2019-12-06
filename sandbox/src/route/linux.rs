@@ -12,7 +12,6 @@ pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
                 .args(vec!["route", "add", &ip_mask, "dev", dev])
                 .spawn();
             if let Ok(mut res) = res {
-                res.wait();
                 let _ = res.wait();
             }
         }

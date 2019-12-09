@@ -31,7 +31,7 @@ pub fn center_update_tinc_status(change: HostStatusChange) -> Result<()> {
 	    "status": status,
 	    "vip": vip,
     }).to_string();
-
+    info!("update_tinc_status: {:?}", data);
     let _ = post(&url, &data)?;
     Ok(())
 }

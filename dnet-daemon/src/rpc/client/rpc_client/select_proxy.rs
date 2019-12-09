@@ -12,14 +12,10 @@ use crate::rpc::{Error, Result};
 pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
     let mut connect_to_change_restart_tunnel = false;
 
-    let mut min_rtt = 0;
     let mut proxy_rtt = HashMap::new();
     for proxy in &connect_to_vec {
         if let Some(rtt) = ping(proxy.ip) {
-            if min_rtt == 0 || min_rtt > rtt {
-                min_rtt = rtt;
-                proxy_rtt.insert(proxy.clone(), rtt);
-            }
+            proxy_rtt.insert(proxy.clone(), rtt);
         }
     }
 
@@ -34,16 +30,16 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
         connect_to_change_restart_tunnel = true;
     }
     else {
-        let mut need_change_proxy = true;
+        let mut need_change_proxy = false;
         let (min_rtt_proxy, min_rtt) = select_min_rtt_proxys(proxy_rtt.clone());
         for local_connect_to in local_connect_to_vec {
             // proxy offline
-            if connect_to_vec.contains(&local_connect_to) {
-                if let Some(rtt) = proxy_rtt.get(&local_connect_to).cloned() {
-                    // if (min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100
-                    //     Bad proxy network need change proxy.
+            if let Some(rtt) = proxy_rtt.get(&local_connect_to).cloned() {
+                // if (min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100
+                //     Bad proxy network need change proxy.
+                if rtt != 0 {
                     if !((min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100) {
-                        need_change_proxy = false;
+                        need_change_proxy = true;
                     }
                 }
             }

@@ -14,7 +14,6 @@ router_debug = ["router-plugin"]
 [dependencies]
 actix = "0.8.3"
 actix-web = { version = "1.0.8", features = ["ssl"] }
-base64 = "0.11.0"
 bytes = "0.4"
 clap = "^2.32"
 chrono = "0.4.6"

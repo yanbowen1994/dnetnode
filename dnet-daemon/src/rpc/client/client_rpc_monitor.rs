@@ -57,7 +57,7 @@ impl RpcMonitor {
                 RpcEvent::TunnelConnected => {
                     self.run_status = RunStatus::SendHearbeat;
                     if let Some(executor_tx) = &self.executor_tx {
-                        let _ = executor_tx.send((ExecutorCmd::Heartbeat, None));
+                        let _ = executor_tx.send((ExecutorCmd::Start, None));
                     }
                 }
 
@@ -66,7 +66,7 @@ impl RpcMonitor {
                         self.run_status = RunStatus::Login;
                     }
                     if let Some(executor_tx) = &self.executor_tx {
-                        let _ = executor_tx.send((ExecutorCmd::HeartbeatStop, None));
+                        let _ = executor_tx.send((ExecutorCmd::Stop, None));
                     }
                 }
 
@@ -167,7 +167,6 @@ impl RpcMonitor {
             }
         }
     }
-
 
     fn handle_get_users_by_team(&self, team_id: String) -> Response {
         info!("handle_get_users_by_team");
@@ -278,8 +277,14 @@ impl RpcMonitor {
 
 enum ExecutorCmd {
     Stop,
-    Heartbeat,
-    HeartbeatStop,
+    Start,
+}
+
+#[derive(PartialEq)]
+enum ExecutorStatus {
+    Inited,
+    Uninit,
+    Running,
 }
 
 struct Executor {
@@ -287,6 +292,7 @@ struct Executor {
     executor_rx:        mpsc::Receiver<(ExecutorCmd, Option<mpsc::Sender<bool>>)>,
     executor_tx:        mpsc::Sender<(ExecutorCmd, Option<mpsc::Sender<bool>>)>,
     rpc_tx:             mpsc::Sender<RpcEvent>,
+    status:             ExecutorStatus,
 }
 
 impl Executor {
@@ -297,6 +303,7 @@ impl Executor {
             executor_rx,
             executor_tx,
             rpc_tx,
+            status:     ExecutorStatus::Uninit,
         }
     }
 
@@ -304,23 +311,13 @@ impl Executor {
         thread::spawn(||self.start_monitor());
     }
 
-    fn start_monitor(self) {
+    fn start_monitor(mut self) {
         let timeout_millis: u32 = 1000;
-        let mut init_success = false;
-        let mut send_heartbeat = false;
         let mut heartbeat_start = Instant::now() - Duration::from_secs(20);
         let mut fresh_team = Instant::now() - Duration::from_secs(20);
-        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-            let route_not_bound_sleep = Instant::now();
         loop {
-            let start = Instant::now();
-
-            if let Some(remaining) = Duration::from_millis(3000)
-                .checked_sub(start.elapsed()) {
-                thread::sleep(remaining);
-            }
-
-            if let Ok((cmd, tx)) = self.executor_rx.try_recv() {
+            if let Ok((cmd, tx))
+            = self.executor_rx.recv_timeout(Duration::from_secs(3)) {
                 match cmd {
                     ExecutorCmd::Stop => {
                         if let Some(tx) = tx {
@@ -328,22 +325,32 @@ impl Executor {
                         }
                         return;
                     },
-                    ExecutorCmd::Heartbeat => {
-                        send_heartbeat = true;
-                    },
-                    ExecutorCmd::HeartbeatStop => {
-                        send_heartbeat = false;
+                    ExecutorCmd::Start => {
+                        if self.status == ExecutorStatus::Inited {
+                            self.status = ExecutorStatus::Running;
+                            if let Some(tx) = tx {
+                                let _ = tx.send(true);
+                            }
+                        }
+                        else {
+                            if let Some(tx) = tx {
+                                let _ = tx.send(false);
+                            }
+                        }
                     },
                 }
             }
-            if init_success && send_heartbeat {
+
+            let start = Instant::now();
+
+            if self.status == ExecutorStatus::Running {
                 if start - heartbeat_start > Duration::from_secs(HEARTBEAT_FREQUENCY_SEC as u64) {
                     if let Ok(_) = self.exec_online_proxy() {
                         heartbeat_start = start;
                         info!("Rpc Executor get online proxy.");
                     } else {
                         error!("exec_online_proxy failed.");
-                        init_success = false;
+                        self.status = ExecutorStatus::Uninit;
                     }
                 }
 
@@ -353,9 +360,9 @@ impl Executor {
                 }
             }
 
-            if !init_success {
+            if self.status == ExecutorStatus::Uninit {
                 match self.init() {
-                    Ok(_) => init_success = true,
+                    Ok(_) => self.status = ExecutorStatus::Inited,
                     Err(e) => {
                         let (need_return, res) = match &e {
                             Error::http(code) => {
@@ -394,7 +401,7 @@ impl Executor {
                 if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
                     return;
                 }
-                if init_success {
+                if self.status == ExecutorStatus::Inited {
                     info!("rpc init success");
                 }
             }

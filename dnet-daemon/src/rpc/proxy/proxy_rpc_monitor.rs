@@ -48,41 +48,16 @@ impl RpcMonitor {
                        web_server_tx,
             )
         );
-        thread::spawn(||self.run(rpc_rx));
+        thread::spawn(||cmd_handle(rpc_rx));
+        thread::spawn(||self.run());
     }
 
-    fn cmd_handle(&self, rpc_rx: &Receiver<RpcEvent>) {
-        if let Ok(rpc_cmd) = rpc_rx.try_recv() {
-            match rpc_cmd {
-                RpcEvent::Proxy(cmd) => {
-                    match cmd {
-                        RpcProxyCmd::HostStatusChange(host_status_change) => {
-                            if let Err(e) = self.client.center_update_tinc_status(host_status_change) {
-                                error!("{:?}", e.to_response());
-                            }
-                        }
-                    }
-                },
-                RpcEvent::TunnelConnected => {
-                    if get_settings().common.mode == RunMode::Center {
-                        if let Err(e) = self.client.center_get_team_info() {
-                            error!("center_get_team_info {:?}", e.to_response());
-                        }
-                    }
-                },
-                _ => ()
-            }
-        }
-    }
-
-    fn run(self, rpc_rx: Receiver<RpcEvent>) {
+    fn run(self) {
         let timeout_secs: u32 = HEARTBEAT_FREQUENCY_SEC;
         loop {
-            self.cmd_handle(&rpc_rx);
             self.init();
             loop {
                 let start = Instant::now();
-
                 if let Err(_) = self.exec_heartbeat() {
                     break
                 }
@@ -90,7 +65,6 @@ impl RpcMonitor {
                 if let Err(_) = self.exec_online_proxy() {
                     break
                 }
-
                 if let Some(remaining) = Duration::from_secs(
                     timeout_secs.into())
                     .checked_sub(start.elapsed()) {
@@ -203,6 +177,34 @@ impl RpcMonitor {
                 return Err(Error::RpcTimeout);
             }
             thread::sleep(Duration::from_millis(1000));
+        }
+    }
+}
+
+
+fn cmd_handle(rpc_rx: Receiver<RpcEvent>) {
+    while let Ok(rpc_cmd) = rpc_rx.recv() {
+        info!("rpc event {:?}", rpc_cmd);
+        match rpc_cmd {
+            RpcEvent::Proxy(cmd) => {
+                match cmd {
+                    RpcProxyCmd::HostStatusChange(host_status_change) => {
+                        if let Err(e) = RpcClient::new()
+                            .center_update_tinc_status(host_status_change) {
+                            error!("{:?}", e.to_response());
+                        }
+                    }
+                }
+            },
+            RpcEvent::TunnelConnected => {
+                if get_settings().common.mode == RunMode::Center {
+                    if let Err(e) = RpcClient::new()
+                        .center_get_team_info() {
+                        error!("center_get_team_info {:?}", e.to_response());
+                    }
+                }
+            },
+            _ => ()
         }
     }
 }

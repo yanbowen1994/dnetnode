@@ -2,7 +2,7 @@
 home_path = "/opt/dnet"
 log_level = "debug"
 log_dir = "/var/log/dnet/"
-mode = "center"
+mode = "proxy"
 conductor_url = "https://api.vlan.cn"
 accept_conductor_invalid_certs = true
 username = "proxyovr"

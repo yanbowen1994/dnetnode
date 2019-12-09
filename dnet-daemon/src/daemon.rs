@@ -170,7 +170,7 @@ impl Daemon {
     fn handle_shutdown(&mut self) {
         let (res_tx, res_rx) = mpsc::channel::<Response>();
         let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-        let _ = res_rx.recv_timeout(Duration::from_secs(3));
+        let _ = res_rx.recv_timeout(Duration::from_secs(5));
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("stop dnet firewall config.");
@@ -266,7 +266,6 @@ impl Daemon {
             ManagementCommand::HostStatusChange(ipc_tx, host_status_change) => {
                 // No call back.
                 let _ = Self::oneshot_send(ipc_tx, (), "");
-
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
@@ -276,11 +275,13 @@ impl Daemon {
                         self.handle_tunnel_disconnected()
                     },
                     _ => {
-                        let _ = self.rpc_command_tx.send(
+                        if let Err(e) = self.rpc_command_tx.send(
                             RpcEvent::Proxy(
                                 RpcProxyCmd::HostStatusChange(host_status_change)
                             )
-                        );
+                        ) {
+                            error!("{:?}", e);
+                        };
                     },
                 }
             }

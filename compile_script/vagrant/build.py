@@ -16,13 +16,14 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
 
     print("download openssl")
 
-    os.system("git clone -b OpenSSL_1_1_1c https://github.com/openssl/openssl.git " + openssl_dir)
+    os.system("git clone -b OpenSSL_1_1_1 https://github.com/openssl/openssl.git " + openssl_dir)
     print("download openssl finish.")
 
     os.chdir(openssl_dir)
     os.system("chmod 777 config")
     os.system("./config shared")
     os.system("make install")
+    os.system("cp /root/openssl/libcrypto.so.1.1 " + tinc_lib_dir + "/libcrypto.so.1.1")
 
     readline_dir = "/root/readline-8.0"
     os.chdir("/root")

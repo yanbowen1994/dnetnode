@@ -3,6 +3,7 @@ mod device_select_proxy;
 mod get_users_by_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod connect_disconnect_team;
+mod fresh_route;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod join_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
@@ -86,7 +87,7 @@ impl RpcClient {
         self.disconnect_team(team_id)
     }
 
-    pub fn search_team_by_user(&self) -> Result<bool> {
+    pub fn search_team_by_user(&self) -> Result<()> {
         search_team_by_user::search_team_by_user()
     }
 }

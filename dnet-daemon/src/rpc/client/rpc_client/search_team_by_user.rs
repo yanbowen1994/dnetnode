@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dnet_types::team::Team;
 
 use crate::info::get_mut_info;
@@ -5,10 +7,9 @@ use crate::settings::get_settings;
 use crate::rpc::http_request::get;
 use crate::rpc::{Error, Result};
 use crate::rpc::client::rpc_client::types::ResponseTeam;
-use std::collections::HashMap;
+use crate::rpc::client::rpc_client::fresh_route;
 
-// if return true restart tunnel.
-pub(super) fn search_team_by_user() -> Result<bool> {
+pub(super) fn search_team_by_user() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryMyAll";
 
@@ -39,7 +40,9 @@ pub(super) fn search_team_by_user() -> Result<bool> {
     }
 
     let mut info = get_mut_info().lock().unwrap();
+    let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
-
-    Ok(true)
+    std::mem::drop(info);
+    fresh_route::fresh_route(&add, &del);
+    Ok(())
 }

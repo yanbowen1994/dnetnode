@@ -1,15 +1,13 @@
 use std::collections::HashMap;
-use std::net::IpAddr;
 
 use dnet_types::team::Team;
-use sandbox::route;
 
 use crate::settings::get_settings;
 use crate::rpc::http_request::get;
 use crate::rpc::{Result, Error};
 use crate::info::{get_info, get_mut_info};
 use super::types::ResponseTeam;
-use crate::settings::default_settings::TINC_INTERFACE;
+use super::fresh_route;
 
 pub fn search_team_by_mac() -> Result<()> {
     let info = get_info().lock().unwrap();
@@ -48,31 +46,6 @@ pub fn search_team_by_mac() -> Result<()> {
     let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
     std::mem::drop(info);
-    fresh_route(&add, &del);
+    fresh_route::fresh_route(&add, &del);
     Ok(())
 }
-
-fn fresh_route(adds: &Vec<IpAddr>, dels: &Vec<IpAddr>) {
-    let now_route = route::parse_routing_table();
-    for add in adds {
-        if !route::is_in_routing_table(
-            &now_route,
-            add,
-            32,
-            TINC_INTERFACE) {
-            route::add_route(add, 32, TINC_INTERFACE)
-        }
-    }
-
-    for del in dels {
-        if route::is_in_routing_table(
-            &now_route,
-            del,
-            32,
-            TINC_INTERFACE) {
-            route::del_route(del, 32, TINC_INTERFACE)
-        }
-    }
-}
-
-

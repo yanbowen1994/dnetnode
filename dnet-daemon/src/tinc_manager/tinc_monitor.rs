@@ -51,6 +51,9 @@ impl TincMonitor {
                         Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
                     };
 
+                    thread::spawn(move || {
+                        inner.run();
+                    });
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
@@ -72,10 +75,6 @@ impl TincMonitor {
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Connected => {
-                    let inner = get_monitor_inner();
-                    thread::spawn(move || {
-                        inner.run();
-                    });
                     let _ = res_tx.send(Response::success());
                 }
                 TunnelCommand::Disconnected => {
@@ -163,16 +162,14 @@ impl MonitorInner {
             let (tx, rx) = mpsc::channel();
             if let Err(err) = self.stop_sign_tx.send(tx) {
                 error!("disconnect {:?}", err);
-                let mut tinc = TincOperator::new();
-                tinc.stop_tinc()?;
             }
             else {
                 let _ = rx.recv_timeout(Duration::from_secs(5));
-                let mut tinc = TincOperator::new();
-                tinc.stop_tinc()?;
             }
-            info!("tinc_monitor stop tinc");
         }
+        let mut tinc = TincOperator::new();
+        tinc.stop_tinc()?;
+        info!("tinc_monitor stop tinc");
         Ok(())
     }
 

@@ -211,8 +211,8 @@ impl RpcMonitor {
             };
             return response;
         } else {
-            info!("search_user_team");
-            if let Err(error) = self.client.search_user_team() {
+            info!("search_team_by_user");
+            if let Err(error) = self.client.search_team_by_user() {
                 let response = match error {
                     Error::http(code) => Response::new_from_code(code),
                     _ => Response::internal_error().set_msg(error.to_string()),
@@ -233,7 +233,7 @@ impl RpcMonitor {
             };
             return response;
         } else {
-            if let Err(error) = self.client.search_user_team() {
+            if let Err(error) = self.client.search_team_by_user() {
                 return Response::internal_error().set_msg(error.to_string());
             }
         }
@@ -241,7 +241,7 @@ impl RpcMonitor {
     }
 
     fn handle_fresh_team(&self) -> Response {
-        if let Err(error) = self.client.search_user_team() {
+        if let Err(error) = self.client.search_team_by_user() {
             let res = error.to_response();
             return res;
         }
@@ -443,8 +443,8 @@ impl Executor {
         self.client.client_login()?;
         info!("device_add");
         self.client.device_add()?;
-        info!("search_user_team");
-        self.client.search_user_team()?;
+        info!("search_team_by_user");
+        self.client.search_team_by_user()?;
         info!("client_get_online_proxy");
         let connect_to = self.client.client_get_online_proxy()?;
         let mut info = get_mut_info().lock().unwrap();

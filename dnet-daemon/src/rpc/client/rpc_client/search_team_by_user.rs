@@ -8,7 +8,7 @@ use crate::rpc::client::rpc_client::types::ResponseTeam;
 use std::collections::HashMap;
 
 // if return true restart tunnel.
-pub(super) fn search_user_team() -> Result<bool> {
+pub(super) fn search_team_by_user() -> Result<bool> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryMyAll";
 

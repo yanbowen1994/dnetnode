@@ -8,7 +8,7 @@ mod join_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod out_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-mod search_user_team;
+mod search_team_by_user;
 mod select_proxy;
 mod types;
 mod search_team_by_mac;
@@ -86,7 +86,7 @@ impl RpcClient {
         self.disconnect_team(team_id)
     }
 
-    pub fn search_user_team(&self) -> Result<bool> {
-        search_user_team::search_user_team()
+    pub fn search_team_by_user(&self) -> Result<bool> {
+        search_team_by_user::search_team_by_user()
     }
 }

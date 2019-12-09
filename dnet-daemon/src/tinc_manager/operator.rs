@@ -122,7 +122,7 @@ impl TincOperator {
                 let mut members_lan = vec![];
                 for running_team_id in &info.teams.running_teams {
                     if let Some(running_team) = info.teams.all_teams.get(running_team_id) {
-                        for member in running_team.members {
+                        for member in &running_team.members {
                             for member_lan in &member.lan {
                                 if local_vip.contains(&member_lan) {
                                     continue;

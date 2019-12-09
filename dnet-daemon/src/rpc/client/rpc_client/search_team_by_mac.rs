@@ -45,44 +45,32 @@ pub fn search_team_by_mac() -> Result<()> {
     }
 
     let mut info = get_mut_info().lock().unwrap();
-    info.fresh_team_info_from_new_teams(teams);
+    let (add, del) = info.compare_team_info_with_new_teams(&teams);
+    info.teams.all_teams = teams;
+    std::mem::drop(info);
+    fresh_route(&add, &del);
     Ok(())
 }
 
-fn fresh_route() {
-    let mut connect_client: Vec<IpAddr> = vec![];
-
-    let info = get_info().lock().unwrap();
-    let self_vip = match info.tinc_info.vip {
-        Some(x) => x,
-        None => return,
-    };
-    let running_team = &info.teams.running_teams;
-    for (team_id, team) in &info.teams.all_teams {
-        if running_team.contains(team_id) {
-            let mut this_team_connect_client = team.members.iter()
-                .filter_map(|member| {
-                    if member.vip != self_vip && member.status == 1 {
-                        Some(member.vip.clone())
-                    }
-                    else {
-                        None
-                    }
-                })
-                .collect::<Vec<IpAddr>>();
-            connect_client.append(&mut this_team_connect_client);
+fn fresh_route(adds: &Vec<IpAddr>, dels: &Vec<IpAddr>) {
+    let now_route = route::parse_routing_table();
+    for add in adds {
+        if !route::is_in_routing_table(
+            &now_route,
+            add,
+            32,
+            TINC_INTERFACE) {
+            route::add_route(add, 32, TINC_INTERFACE)
         }
     }
 
-    let now_route = route::parse_routing_table();
-
-    for client_vip in &connect_client {
-        if !route::is_in_routing_table(
+    for del in dels {
+        if route::is_in_routing_table(
             &now_route,
-            client_vip,
+            del,
             32,
             TINC_INTERFACE) {
-            route::add_route(client_vip, 32, TINC_INTERFACE)
+            route::del_route(del, 32, TINC_INTERFACE)
         }
     }
 }

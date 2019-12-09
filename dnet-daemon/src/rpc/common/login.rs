@@ -1,20 +1,16 @@
-use serde_json::json;
-
 use crate::settings::get_settings;
 use crate::rpc::http_request::post;
 use crate::info::{UserInfo, get_mut_info};
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+use crate::info::get_info;
 use crate::rpc::{Error, Result};
 
 pub fn login() -> Result<()> {
     let settings = get_settings();
     let url = settings.common.conductor_url.clone() + "/vlan/login";
 
-    let username = settings.common.username.clone();
-    let password = settings.common.password.clone();
-
-    let data: serde_json::Value = json!({"username": username, "password": password});
-
-    let res = post(&url, &data.to_string())?;
+    let data = UserRequest::new().to_json();
+    let res = post(&url, &data)?;
     info!("result: {:?}", res);
 
     let token = res.get("token")
@@ -36,6 +32,41 @@ pub fn login() -> Result<()> {
     info.node.token = token.to_owned();
     info.user = user_info;
     Ok(())
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct UserRequest {
+    username: String,
+    password: String,
+}
+
+impl UserRequest {
+    fn new() -> Self {
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+            {
+                let info = get_info().lock().unwrap();
+                let username = info.client_info.device_name.clone();
+                let password = info.client_info.device_password.clone();
+                Self {
+                    username,
+                    password,
+                }
+            }
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let settings = get_settings();
+                let username = settings.common.username.clone();
+                let password = settings.common.password.clone();
+                Self {
+                    username,
+                    password,
+                }
+            }
+    }
+
+    fn to_json(&self) -> String {
+        return serde_json::to_string(self).unwrap();
+    }
 }
 
 #[allow(non_snake_case)]

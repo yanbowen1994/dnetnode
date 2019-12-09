@@ -1,3 +1,4 @@
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 use std::path::PathBuf;
 
 #[macro_use]

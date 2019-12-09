@@ -48,10 +48,6 @@ impl RpcTrait for RpcMonitor {
 }
 
 impl RpcMonitor {
-    fn start_monitor(self) {
-        thread::spawn(|| self.start_cmd_recv());
-    }
-
     // If return false restart rpc connect.
     fn start_cmd_recv(mut self) {
         let mut rpc_restart_tx_cache: Option<mpsc::Sender<Response>> = None;
@@ -96,6 +92,11 @@ impl RpcMonitor {
                             rpc_restart_tx_cache = Some(rpc_restart_tx);
                         },
 
+                        RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
+                            let response = self.handle_select_proxy();
+                            let _ = response_tx.send(response);
+                        },
+
                         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                         RpcClientCmd::JoinTeam(team_id, res_tx) => {
                             let response = self.handle_connect_team(team_id);
@@ -107,12 +108,8 @@ impl RpcMonitor {
                             let response = self.handle_out_team(team_id);
                             let _ = res_tx.send(response);
                         },
-
-                        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-                        RpcClientCmd::ReportDeviceSelectProxy(response_tx) => {
-                            let response = self.handle_select_proxy();
-                            let _ = response_tx.send(response);
-                        },
+                        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+                        _ => ()
                     }
                 }
                 RpcEvent::Executor(event) => {
@@ -188,10 +185,24 @@ impl RpcMonitor {
             Err(e) => Response::internal_error().set_msg(e.to_string()),
         }
     }
+
+    fn handle_select_proxy(&self) -> Response {
+        info!("handle_select_proxy");
+        let response;
+        match self.client.device_select_proxy() {
+            Ok(_) => response = Response::success(),
+            Err(e) => response = e.to_response(),
+        }
+        response
+    }
 }
 
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 impl RpcMonitor {
+    fn start_monitor(self) {
+        thread::spawn(|| self.start_cmd_recv());
+    }
+
     fn handle_connect_team(&self, team_id: String) -> Response {
         info!("handle_connect_team");
         if let Err(error) = self.client.join_team(&team_id) {
@@ -239,26 +250,21 @@ impl RpcMonitor {
             return Response::success();
         }
     }
-
-    fn handle_select_proxy(&self) -> Response {
-        info!("handle_select_proxy");
-        let response;
-        match self.client.device_select_proxy() {
-            Ok(_) => response = Response::success(),
-            Err(e) => response = e.to_response(),
-        }
-        response
-    }
 }
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 impl RpcMonitor {
+    fn start_monitor(mut self) {
+        self.start_executor();
+        thread::spawn(|| self.start_cmd_recv());
+    }
+
     // init means copy info.team to info.client.running_teams
     // use for client run as muti-team.
-    fn start_team(&self) {
-        let mut info = get_mut_info().lock().unwrap();
-        info.teams.running_teams = info.teams.running_teams.clone();
-    }
+//    fn start_team(&self) {
+//        let mut info = get_mut_info().lock().unwrap();
+//        info.teams.running_teams = info.teams.running_teams.clone();
+//    }
 
     fn handle_fresh_team(&self) -> Response {
         if let Err(error) = self.client.search_team_by_mac() {
@@ -305,9 +311,15 @@ impl Executor {
         let mut heartbeat_start = Instant::now() - Duration::from_secs(20);
         let mut fresh_team = Instant::now() - Duration::from_secs(20);
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-            let mut route_not_bound_sleep = Instant::now();
+            let route_not_bound_sleep = Instant::now();
         loop {
             let start = Instant::now();
+
+            if let Some(remaining) = Duration::from_millis(3000)
+                .checked_sub(start.elapsed()) {
+                thread::sleep(remaining);
+            }
+
             if let Ok((cmd, tx)) = self.executor_rx.try_recv() {
                 match cmd {
                     ExecutorCmd::Stop => {
@@ -342,35 +354,32 @@ impl Executor {
             }
 
             if !init_success {
-                #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-                    {
-                        match self.init() {
-                            Ok(_) => init_success = true,
-                            Err(e) => {
-                                let (need_return, res) = match &e {
-                                    Error::http(code) => {
-                                        let res = Response::new_from_code(*code);
-                                        (true, res)
-                                    },
-                                    _ => {
-                                        error!("rpc init unknown error {:?}", e);
-                                        let res = Response::internal_error();
-                                        (true, res)
-                                    },
-                                };
+                match self.init() {
+                    Ok(_) => init_success = true,
+                    Err(e) => {
+                        let (need_return, res) = match &e {
+                            Error::http(code) => {
+                                let res = Response::new_from_code(*code);
+                                (true, res)
+                            },
+                            _ => {
+                                error!("rpc init unknown error {:?}", e);
+                                let res = Response::internal_error();
+                                (true, res)
+                            },
+                        };
 
-                                if let Err(send_err) = self.rpc_tx.send(
-                                    RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
-                                    error!("self.rpc_tx.send(\
-                                    RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
-                                    return;
-                                }
-                                if need_return {
-                                    return;
-                                }
-                            }
+                        if let Err(send_err) = self.rpc_tx.send(
+                            RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
+                            error!("self.rpc_tx.send(\
+                            RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
+                            return;
+                        }
+                        if need_return {
+                            return;
                         }
                     }
+                }
 
 //                #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 //                    {
@@ -440,18 +449,12 @@ impl Executor {
     fn init(&self) -> std::result::Result<(), Error> {
         info!("client_login");
         self.client.client_login()?;
-        info!("client_key_report");
-        self.client.client_key_report()?;
-        info!("search_team_by_mac");
-        self.client.search_team_by_mac()?;
-        info!("start_team");
-        self.start_team()?;
+        info!("device_add");
+        self.client.device_add()?;
         info!("client_get_online_proxy");
         let connect_to = self.client.client_get_online_proxy()?;
         let mut info = get_mut_info().lock().unwrap();
         info.tinc_info.connect_to = connect_to;
-        info!("connect_team_broadcast");
-        self.client.connect_team_broadcast()?;
         Ok(())
     }
 }

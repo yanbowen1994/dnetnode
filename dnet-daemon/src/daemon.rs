@@ -108,7 +108,6 @@ impl Daemon {
             rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
         }
 
-
         let (tinc, tunnel_command_tx) =
             TincMonitor::new(daemon_event_tx.clone());
         tinc.start_monitor();

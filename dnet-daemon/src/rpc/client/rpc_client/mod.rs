@@ -1,10 +1,13 @@
-mod device;
+mod device_add;
 mod device_select_proxy;
 mod get_users_by_team;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod connect_disconnect_team;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod join_team;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod out_team;
-mod route;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod search_user_team;
 mod select_proxy;
 mod types;
@@ -34,7 +37,7 @@ impl RpcClient {
     }
 
     pub fn device_add(&self) -> Result<()> {
-        device::device_add::device_add()
+        device_add::device_add()
     }
 
     pub fn client_get_online_proxy(&self) -> Result<Vec<ConnectTo>> {

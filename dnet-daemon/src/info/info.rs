@@ -90,7 +90,7 @@ impl Info {
     }
 
     // return (adds, removes)
-    pub fn fresh_team_info_from_new_teams(&mut self, new_team_info: HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
+    pub fn compare_team_info_with_new_teams(&mut self, new_team_info: &HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
         let mut add: Vec<IpAddr> = vec![];
         let mut del: Vec<IpAddr> = vec![];
 
@@ -99,7 +99,7 @@ impl Info {
             None => return (add, del),
         };
         let running_team = &self.teams.running_teams;
-        for (team_id, team) in &new_team_info {
+        for (team_id, team) in new_team_info {
             if running_team.contains(team_id) {
                 if let Some(old_team) =
                 &self.teams.all_teams.get(team_id) {
@@ -121,7 +121,6 @@ impl Info {
                 }
             }
         }
-        self.teams.all_teams = new_team_info;
         return (add, del);
     }
 }

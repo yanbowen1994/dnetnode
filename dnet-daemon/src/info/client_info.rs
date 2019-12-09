@@ -15,31 +15,36 @@ use dnet_types::device_type::DeviceType;
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
-    pub devicetype:     DeviceType,
-    pub lan:            String,
-    pub wan:            String,
-    pub device_name:     String,
+    pub devicetype:             DeviceType,
+    pub lan:                    String,
+    pub wan:                    String,
+    pub device_name:            String,
     #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-    pub device_info:    DeviceInfo,
+    pub device_password:        String,
+    #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+    pub device_info:            DeviceInfo,
 }
 impl ClientInfo {
     pub fn new() -> Result<Self> {
-        let device_type = DeviceType::get_device_type();
         let client_info;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
+                let device_type = DeviceType::get_device_type();
                 let device_name = Self::get_uid(&device_type)?;
+                let device_password = base64::encode(&device_name);
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
                 client_info = Self {
                     devicetype:          device_type,
                     lan:                 "".to_string(),
                     wan:                 "".to_string(),
                     device_name,
+                    device_password,
                     device_info,
                 }
             }
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
+                let device_type = DeviceType::get_device_type();
                 let device_name = Self::get_uid(&device_type)?;
                 client_info = Self {
                     devicetype:         device_type,

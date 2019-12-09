@@ -67,6 +67,7 @@ pub struct TeamMember {
     pub update_time:          Option<String>,
     pub username:             Option<String>,
     pub wan:                  Option<String>,
+    pub is_self:              Option<bool>,
 }
 
 // mask CIDR.

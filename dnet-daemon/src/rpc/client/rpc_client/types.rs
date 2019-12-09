@@ -2,7 +2,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 
 use dnet_types::team::{TeamMember, Team, NetSegment};
-use crate::info::get_mut_info;
+use crate::info::{get_mut_info, get_info};
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -92,6 +92,8 @@ impl ResponseTeamMember {
     pub fn parse_to_team_member(self) -> Option<TeamMember> {
         let vip = IpAddr::from_str(&self.ip).ok()?;
         let lan: Vec<NetSegment> = serde_json::from_str(&self.ip).ok().unwrap_or(vec![]);
+        let is_self =
+            self.deviceName == Some(get_info().lock().unwrap().client_info.device_name.clone());
         Some(TeamMember {
             alias:             self.alias,
             app_version:       self.appVersion,
@@ -117,6 +119,7 @@ impl ResponseTeamMember {
             update_time:       self.updateTime,
             username:          self.username,
             wan:               self.wan,
+            is_self:           Some(is_self),
         })
     }
 }

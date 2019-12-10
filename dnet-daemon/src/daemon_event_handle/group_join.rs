@@ -4,10 +4,10 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::State;
+use dnet_types::states::{State, TunnelState};
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
-use crate::info::{get_info, get_mut_info};
+use crate::info::get_mut_info;
 use super::tunnel::send_tunnel_connect;
 use super::handle_settings;
 use super::common::is_not_proxy;
@@ -38,7 +38,7 @@ pub fn group_join(
             info!("add_start_team");
             add_start_team(&team_id);
             info!("need_tunnel_connect");
-            if need_tunnel_connect() {
+            if need_tunnel_connect(&status) {
                 info!("handle_connect_select_proxy");
                 handle_connect_select_proxy(ipc_tx, rpc_command_tx)
                     .and_then(|ipc_tx| {
@@ -84,13 +84,13 @@ fn add_start_team(team_id: &str) {
     info.teams.add_start_team(team_id);
 }
 
-fn need_tunnel_connect() -> bool {
-    let info = get_info().lock().unwrap();
-    if info.teams.running_teams.len() == 1 {
-       return true;
+fn need_tunnel_connect(status: &State) -> bool {
+    if status.tunnel == TunnelState::Disconnected
+        || status.tunnel == TunnelState::Disconnecting {
+        true
     }
     else {
-        return false;
+        false
     }
 }
 

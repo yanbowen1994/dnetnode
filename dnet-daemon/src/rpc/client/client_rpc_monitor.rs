@@ -12,6 +12,7 @@ use super::RpcClient;
 use super::rpc_client;
 use super::error::{Error as ClientError, Result};
 use crate::rpc::Error;
+use crate::info::get_mut_info;
 
 #[derive(Eq, PartialEq)]
 enum RunStatus {
@@ -179,19 +180,22 @@ impl RpcMonitor {
                 let data = serde_json::Value::Array(data);
                 Response::success().set_data(Some(data))
             },
-            Err(Error::http(code)) => Response::new_from_code(code),
-            Err(e) => Response::internal_error().set_msg(e.to_string()),
+            Err(e) => e.to_response(),
         }
     }
 
     fn handle_select_proxy(&self) -> Response {
         info!("handle_select_proxy");
-        let response;
-        match self.client.device_select_proxy() {
-            Ok(_) => response = Response::success(),
-            Err(e) => response = e.to_response(),
+        match self.client.client_get_online_proxy() {
+            Ok(connect_to) => {
+                get_mut_info().lock().unwrap().tinc_info.connect_to = connect_to;
+            }
+            Err(e) => return e.to_response(),
         }
-        response
+        match self.client.device_select_proxy() {
+            Ok(_) => return Response::success(),
+            Err(e) => return e.to_response(),
+        }
     }
 }
 

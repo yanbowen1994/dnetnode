@@ -181,9 +181,9 @@ impl Daemon {
     }
 
     fn handle_tunnel_connected(&mut self) {
-        if let Err(e) = TincOperator::new().set_routing() {
-            error!("host_status_change tinc-up {:?}", e);
-        }
+//        if let Err(e) = TincOperator::new().set_routing() {
+//            error!("host_status_change tinc-up {:?}", e);
+//        }
         self.status.tunnel = TunnelState::Connected;
 
         let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);

@@ -214,13 +214,9 @@ impl RpcMonitor {
             };
             return response;
         } else {
-            info!("search_team_by_user");
-            if let Err(error) = self.client.search_team_by_user() {
-                let response = match error {
-                    Error::http(code) => Response::new_from_code(code),
-                    _ => Response::internal_error().set_msg(error.to_string()),
-                };
-                return response;
+            info!("connect_team");
+            if let Err(error) = self.client.connect_team(&team_id) {
+                return error.to_response();
             }
         }
         info!("handle_connect_team success");
@@ -234,7 +230,7 @@ impl RpcMonitor {
             error!("handle_out_team {:?}", response);
             return response;
         } else {
-            if let Err(error) = self.client.search_team_by_user() {
+            if let Err(error) = self.client.disconnect_team(&team_id) {
                 return Response::internal_error().set_msg(error.to_string());
             }
         }

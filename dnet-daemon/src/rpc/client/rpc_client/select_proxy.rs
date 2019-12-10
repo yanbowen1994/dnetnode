@@ -38,7 +38,7 @@ pub fn select_proxy(connect_to_vec: Vec<ConnectTo>) -> Result<bool> {
                 // if (min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100
                 //     Bad proxy network need change proxy.
                 if rtt != 0 {
-                    if !((min_rtt as f64 / rtt as f64) < 0.7 && rtt > 100) {
+                    if (min_rtt as f64 / rtt as f64) < 0.5 && rtt > 100000 {
                         need_change_proxy = true;
                     }
                 }

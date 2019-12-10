@@ -49,7 +49,7 @@ impl From<DaemonTeam> for Team {
             let member = Member::from(source_member);
             members.push(member.clone());
 
-            if member.status == 0 {
+            if member.status == false {
                 offline += 1;
             }
             else {
@@ -89,7 +89,6 @@ impl From<DaemonTeamMember> for Member {
             .collect::<Vec<String>>();
         let sub_ip = format!("{:?}", member.lan);
         let svtype = format!("{}", member.device_type.unwrap_or(6));
-        let status =
         Self {
             id:         member.device_name.unwrap_or("".to_string()),
             status:     member.tinc_status && member.connect_status,

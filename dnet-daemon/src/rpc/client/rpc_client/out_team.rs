@@ -10,10 +10,11 @@ pub(super) fn out_team(team_id: &str) -> Result<()> {
         + "/vlan/team/member/deleteBatchByDeviceSerial";
 
     let info = get_info().lock().unwrap();
-    let device_id = info.client_info.device_name.clone();
+    let device_id = vec![info.client_info.device_name.clone()];
+    std::mem::drop(info);
     let data = json!({
-        "teamId":    team_id.to_owned(),
-        "deviceIds": vec![device_id],
+        "teamId":           team_id.to_owned(),
+        "deviceSerials":    device_id,
     }).to_string();
 
     let _ = post(&url, &data)?;

@@ -227,10 +227,8 @@ impl RpcMonitor {
     fn handle_out_team(&self, team_id: String) -> Response {
         info!("handle_out_team");
         if let Err(error) = self.client.out_team(&team_id) {
-            let response = match error {
-                Error::http(code) => Response::new_from_code(code),
-                _ => Response::internal_error().set_msg(error.to_string()),
-            };
+            let response = error.to_response();
+            error!("handle_out_team {:?}", response);
             return response;
         } else {
             if let Err(error) = self.client.search_team_by_user() {

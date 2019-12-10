@@ -181,7 +181,6 @@ impl RpcMonitor {
     }
 }
 
-
 fn cmd_handle(rpc_rx: Receiver<RpcEvent>) {
     while let Ok(rpc_cmd) = rpc_rx.recv() {
         info!("rpc event {:?}", rpc_cmd);
@@ -189,10 +188,12 @@ fn cmd_handle(rpc_rx: Receiver<RpcEvent>) {
             RpcEvent::Proxy(cmd) => {
                 match cmd {
                     RpcProxyCmd::HostStatusChange(host_status_change) => {
-                        if let Err(e) = RpcClient::new()
-                            .center_update_tinc_status(host_status_change) {
-                            error!("{:?}", e.to_response());
-                        }
+                        thread::spawn( move||
+                            if let Err(e) = RpcClient::new()
+                                .center_update_tinc_status(host_status_change) {
+                                error!("{:?}", e.to_response());
+                            }
+                        );
                     }
                 }
             },

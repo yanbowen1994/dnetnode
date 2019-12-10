@@ -275,13 +275,17 @@ impl Daemon {
                         self.handle_tunnel_disconnected()
                     },
                     _ => {
-                        if let Err(e) = self.rpc_command_tx.send(
-                            RpcEvent::Proxy(
-                                RpcProxyCmd::HostStatusChange(host_status_change)
-                            )
-                        ) {
-                            error!("{:?}", e);
-                        };
+                        let run_mode = &get_settings().common.mode;
+                        if *run_mode == RunMode::Proxy ||
+                            *run_mode == RunMode::Center {
+                            if let Err(e) = self.rpc_command_tx.send(
+                                RpcEvent::Proxy(
+                                    RpcProxyCmd::HostStatusChange(host_status_change)
+                                )
+                            ) {
+                                error!("{:?}", e);
+                            };
+                        }
                     },
                 }
             }

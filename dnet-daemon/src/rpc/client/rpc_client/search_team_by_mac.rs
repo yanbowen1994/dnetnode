@@ -43,6 +43,7 @@ pub fn search_team_by_mac() -> Result<()> {
     }
 
     let mut info = get_mut_info().lock().unwrap();
+    info.flush_running_team(&teams);
     let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
     std::mem::drop(info);

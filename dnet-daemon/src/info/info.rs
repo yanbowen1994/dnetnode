@@ -89,8 +89,24 @@ impl Info {
         }
     }
 
+    pub fn flush_running_team(&mut self, new_team_info: &HashMap<String, Team>) {
+        let self_name = &self.client_info.device_name;
+        let mut running_teams = vec![];
+        for (team_id, team) in new_team_info {
+            for member in &team.members {
+                if let Some(device_name) = &member.device_name {
+                    if device_name == self_name {
+                        running_teams.push(team_id.clone());
+                        break
+                    }
+                }
+            }
+        }
+        self.teams.running_teams = running_teams;
+    }
+
     // return (adds, removes)
-    pub fn compare_team_info_with_new_teams(&mut self, new_team_info: &HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
+    pub fn compare_team_info_with_new_teams(&self, new_team_info: &HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
         let mut add: Vec<IpAddr> = vec![];
         let mut del: Vec<IpAddr> = vec![];
 

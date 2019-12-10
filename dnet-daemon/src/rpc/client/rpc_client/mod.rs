@@ -83,8 +83,7 @@ impl RpcClient {
     }
 
     pub fn out_team(&self, team_id: &str) -> Result<()> {
-        out_team::out_team(team_id)?;
-        self.disconnect_team(team_id)
+        out_team::out_team(team_id)
     }
 
     pub fn search_team_by_user(&self) -> Result<()> {

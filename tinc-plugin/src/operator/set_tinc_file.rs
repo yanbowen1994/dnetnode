@@ -21,6 +21,8 @@ impl TincOperator {
 
         self.set_tinc_up(&info)?;
         self.set_tinc_down(info)?;
+        self.clean_host_up();
+        self.clean_host_down();
         if is_proxy {
             self.set_host_up()?;
             self.set_host_down()?;
@@ -184,6 +186,11 @@ impl TincOperator {
         Ok(())
     }
 
+    fn clean_host_up(&self) {
+        let path = self.tinc_settings.tinc_home.clone() + HOST_UP_FILENAME;
+        let _ = fs::remove_file(path);
+    }
+
     fn set_host_up(&self) -> Result<()> {
         let _guard = self.mutex.lock().unwrap();
         #[cfg(windows)]
@@ -199,6 +206,11 @@ impl TincOperator {
         #[cfg(unix)]
             TincTools::set_script_permissions(&path)?;
         Ok(())
+    }
+
+    fn clean_host_down(&self) {
+        let path = self.tinc_settings.tinc_home.clone() + HOST_DOWN_FILENAME;
+        let _ = fs::remove_file(path);
     }
 
     fn set_host_down(&self) -> Result<()> {

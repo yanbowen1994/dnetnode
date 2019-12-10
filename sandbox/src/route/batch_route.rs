@@ -29,11 +29,11 @@ pub fn batch_route(adds: &Vec<IpAddr>, dels: &Vec<IpAddr>, dev: &str) {
     #[cfg(windows)]
         {
             for add in adds {
-                add_route(add, 32, TINC_INTERFACE)
+                add_route(add, 32, dev)
             }
 
             for del in dels {
-                del_route(del, 32, TINC_INTERFACE)
+                del_route(del, 32, dev)
             }
         }
 }

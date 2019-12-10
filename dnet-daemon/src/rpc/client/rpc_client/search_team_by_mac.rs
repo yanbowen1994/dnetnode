@@ -7,7 +7,8 @@ use crate::rpc::http_request::get;
 use crate::rpc::{Result, Error};
 use crate::info::{get_info, get_mut_info};
 use super::types::ResponseTeam;
-use super::fresh_route;
+use sandbox::route;
+use crate::settings::default_settings::TINC_INTERFACE;
 
 pub fn search_team_by_mac() -> Result<()> {
     let info = get_info().lock().unwrap();
@@ -45,6 +46,8 @@ pub fn search_team_by_mac() -> Result<()> {
     let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
     std::mem::drop(info);
-    fresh_route::fresh_route(&add, &del);
+
+    info!("route add {:?}, del {:?}", add, del);
+    route::batch_route(&add, &del, TINC_INTERFACE);
     Ok(())
 }

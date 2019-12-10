@@ -1,11 +1,14 @@
 #[cfg(target_os = "linux")]
 #[path = "linux.rs"]
 mod imp;
-pub mod types;
 
 #[cfg(windows)]
 #[path = "windows.rs"]
 mod imp;
+
+mod batch_route;
+pub use batch_route::batch_route;
+pub mod types;
 
 #[cfg(windows)]
 pub use imp::{

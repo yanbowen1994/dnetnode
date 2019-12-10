@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use dnet_types::team::Team;
+use sandbox::route;
 
 use crate::info::get_mut_info;
 use crate::settings::get_settings;
 use crate::rpc::http_request::get;
 use crate::rpc::{Error, Result};
 use crate::rpc::client::rpc_client::types::ResponseTeam;
-use crate::rpc::client::rpc_client::fresh_route;
+use crate::settings::default_settings::TINC_INTERFACE;
 
 pub(super) fn search_team_by_user() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
@@ -44,6 +45,6 @@ pub(super) fn search_team_by_user() -> Result<()> {
     let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
     std::mem::drop(info);
-    fresh_route::fresh_route(&add, &del);
+    route::batch_route(&add, &del, TINC_INTERFACE);
     Ok(())
 }

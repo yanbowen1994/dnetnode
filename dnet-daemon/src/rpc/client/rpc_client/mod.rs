@@ -3,7 +3,6 @@ mod device_select_proxy;
 mod get_users_by_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod connect_disconnect_team;
-mod fresh_route;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 mod join_team;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]

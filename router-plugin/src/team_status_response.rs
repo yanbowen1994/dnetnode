@@ -72,7 +72,7 @@ impl From<DaemonTeam> for Team {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Member {
     id:         String,
-    status:     i8,
+    status:     bool,
     serial_num: String,
     ip:         String,
     wan_ip:     String,
@@ -89,9 +89,10 @@ impl From<DaemonTeamMember> for Member {
             .collect::<Vec<String>>();
         let sub_ip = format!("{:?}", member.lan);
         let svtype = format!("{}", member.device_type.unwrap_or(6));
+        let status =
         Self {
             id:         member.device_name.unwrap_or("".to_string()),
-            status:     member.status,
+            status:     member.tinc_status && member.connect_status,
             serial_num: member.device_serial,
             ip:         member.vip.to_string(),
             wan_ip:     member.wan.unwrap_or("".to_string()),

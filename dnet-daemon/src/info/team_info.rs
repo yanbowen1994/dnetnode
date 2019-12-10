@@ -101,7 +101,7 @@ impl TeamInfo {
         for team_id in &self.running_teams {
             if let Some(team) = teams.get(team_id) {
                 for member in &team.members {
-                    if member.connect_status == 1 && member.vip != *self_vip {
+                    if member.connect_status == true && member.vip != *self_vip {
                         connects.push(&member.vip)
                     }
                 }

@@ -95,6 +95,10 @@ impl ResponseTeamMember {
         let lan: Vec<NetSegment> = serde_json::from_str(&self.ip).ok().unwrap_or(vec![]);
         let is_self =
             self.deviceName == Some(get_info().lock().unwrap().client_info.device_name.clone());
+
+        let tinc_status = self.tincStatus == 1;
+        let connect_status = self.connectStatus == 1;
+
         Some(TeamMember {
             alias:             self.alias,
             app_version:       self.appVersion,
@@ -115,8 +119,8 @@ impl ResponseTeamMember {
             longitude:         self.longitude,
             pubkey:            self.pubKey.clone(),
             region:            self.region,
-            tinc_status:       self.tincStatus,
-            connect_status:    self.connectStatus,
+            tinc_status,
+            connect_status,
             update_by:         self.updateBy,
             update_time:       self.updateTime,
             username:          self.username,

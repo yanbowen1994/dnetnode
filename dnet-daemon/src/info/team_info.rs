@@ -65,7 +65,7 @@ impl TeamInfo {
         }
     }
 
-        /// return (device_name, in which running team's team_id)
+    /// return (device_name, in which running team's team_id)
     pub fn find_host_in_running(&self, host: &str) -> (String, Vec<String>) {
         let all_teams = &self.all_teams;
         let mut team_id_vec: Vec<String> = vec![];
@@ -92,5 +92,21 @@ impl TeamInfo {
             }
         }
         (device_name, team_id_vec)
+    }
+
+    pub fn get_connect_hosts<'a>(&self,
+                                 teams: &'a HashMap<String, Team>,
+                                 self_vip: &IpAddr) -> Vec<&'a IpAddr> {
+        let mut connects: Vec<&IpAddr> = vec![];
+        for team_id in &self.running_teams {
+            if let Some(team) = teams.get(team_id) {
+                for member in &team.members {
+                    if member.status == 1 && member.vip != *self_vip {
+                        connects.push(&member.vip)
+                    }
+                }
+            }
+        }
+        connects
     }
 }

@@ -9,7 +9,7 @@ use crate::settings::get_settings;
 use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
 use std::net::IpAddr;
 use std::collections::HashMap;
-use dnet_types::team::{Team, TeamMember};
+use dnet_types::team::Team;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -96,53 +96,24 @@ impl Info {
 
         let self_vip = match self.tinc_info.vip {
             Some(x) => x,
-            None => return (add, del),
+            None => return (add, del)
         };
-        let running_team = &self.teams.running_teams;
-        for (team_id, team) in new_team_info {
-            if running_team.contains(team_id) {
-                if let Some(old_team) = &self.teams.all_teams.get(team_id) {
-                    let old_members = old_team.members
-                        .iter()
-                        .filter_map(|member| {
-                            if member.status == 1 {
-                                Some(member)
-                            }
-                            else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<&TeamMember>>();
 
-                    for new_member in &team.members {
-                        if new_member.status == 1 {
-                            if !old_members.contains(&new_member)
-                                && self_vip != new_member.vip {
-                                add.push(new_member.vip.clone());
-                            }
-                        }
-                    }
+        let old_connect_host: Vec<&IpAddr> = self.teams.get_connect_hosts(&self.teams.all_teams, &self_vip);
+        let new_connect_host: Vec<&IpAddr> = self.teams.get_connect_hosts(&new_team_info, &self_vip);
 
-                    let new_members = team.members
-                        .iter()
-                        .filter_map(|member| {
-                            if member.status == 1 {
-                                Some(member)
-                            }
-                            else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<&TeamMember>>();
-                    for old_member in old_members {
-                        if !new_members.contains(&old_member)
-                            && self_vip != old_member.vip {
-                            del.push(old_member.vip.clone());
-                        }
-                    }
-                }
+        for host in &new_connect_host {
+            if !old_connect_host.contains(&host) {
+                add.push((*host).clone());
             }
         }
+
+        for host in old_connect_host {
+            if !new_connect_host.contains(&host) {
+                del.push(host.clone());
+            }
+        }
+
         return (add, del);
     }
 }

@@ -9,7 +9,7 @@ use crate::settings::get_settings;
 use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
 use std::net::IpAddr;
 use std::collections::HashMap;
-use dnet_types::team::Team;
+use dnet_types::team::{Team, TeamMember};
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -117,19 +117,41 @@ impl Info {
         let running_team = &self.teams.running_teams;
         for (team_id, team) in new_team_info {
             if running_team.contains(team_id) {
-                if let Some(old_team) =
-                &self.teams.all_teams.get(team_id) {
-                    let old_members = &old_team.members;
+                if let Some(old_team) = &self.teams.all_teams.get(team_id) {
+                    let old_members = old_team.members
+                        .iter()
+                        .filter_map(|member| {
+                            if member.status == 1 {
+                                Some(member)
+                            }
+                            else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<&TeamMember>>();
+
                     for new_member in &team.members {
-                        if !old_members.contains(new_member)
-                            && self_vip != new_member.vip {
-                            add.push(new_member.vip.clone());
+                        if new_member.status == 1 {
+                            if !old_members.contains(&new_member)
+                                && self_vip != new_member.vip {
+                                add.push(new_member.vip.clone());
+                            }
                         }
                     }
 
-                    let new_members = &team.members;
+                    let new_members = team.members
+                        .iter()
+                        .filter_map(|member| {
+                            if member.status == 1 {
+                                Some(member)
+                            }
+                            else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<&TeamMember>>();
                     for old_member in old_members {
-                        if !new_members.contains(old_member)
+                        if !new_members.contains(&old_member)
                             && self_vip != old_member.vip {
                             del.push(old_member.vip.clone());
                         }

@@ -8,7 +8,6 @@ use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::traits::RpcTrait;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd, ExecutorEvent};
 use crate::settings::default_settings::HEARTBEAT_FREQUENCY_SEC;
-use crate::info::get_mut_info;
 use super::RpcClient;
 use super::rpc_client;
 use super::error::{Error as ClientError, Result};
@@ -443,10 +442,6 @@ impl Executor {
         self.client.device_add()?;
         info!("search_team_by_user");
         self.client.search_team_by_user()?;
-        info!("client_get_online_proxy");
-        let connect_to = self.client.client_get_online_proxy()?;
-        let mut info = get_mut_info().lock().unwrap();
-        info.tinc_info.connect_to = connect_to;
         Ok(())
     }
 
@@ -457,9 +452,6 @@ impl Executor {
         info!("device_add");
         self.client.device_add()?;
         info!("client_get_online_proxy");
-        let connect_to = self.client.client_get_online_proxy()?;
-        let mut info = get_mut_info().lock().unwrap();
-        info.tinc_info.connect_to = connect_to;
         Ok(())
     }
 }

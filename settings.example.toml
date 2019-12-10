@@ -15,9 +15,6 @@ local_https_server_certificate_file = "/opt/dnet/cert.pem"
 local_https_server_privkey_file = "/opt/dnet/key.pem"
 public = true
 
-[client]
-auto_connect = true
-
 [tinc]
 port = 50069
 tinc_memory_limit = 85

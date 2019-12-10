@@ -278,14 +278,15 @@ impl Settings {
             if common.mode == RunMode::Client {
                 file_settings.client.map(|file_client| {
                     let auto_connect = file_client.auto_connect
-                        .map(|file_auto_connect|{
-                            if file_auto_connect.to_lowercase() == "true" {
-                                true
-                            }
-                            else {
-                                false
-                            }
-                        })
+//                        .map(|file_auto_connect|{
+//                            if file_auto_connect.to_lowercase() == "true" {
+//                                true
+//                            }
+//                            else {
+//                                false
+//                            }
+//                        })
+                        .map(|_|false)
                         .unwrap_or(DEFAULT_CLIENT_AUTO_CONNECT.to_owned());
 
                     Client {

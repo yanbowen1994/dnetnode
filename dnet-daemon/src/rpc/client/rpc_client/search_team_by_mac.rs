@@ -35,8 +35,6 @@ pub fn search_team_by_mac() -> Result<()> {
         })
         .ok_or(Error::ResponseParse(res_data.to_string()))?;
 
-    info!("{:?}", teams_vec);
-
     let mut teams = HashMap::new();
     for team in teams_vec {
         teams.insert(team.team_id.clone(), team);

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::net::IpAddr;
+#[cfg(unix)]
 use std::str::FromStr;
 
 use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator,
@@ -99,20 +100,31 @@ impl TincOperator {
 
         std::mem::drop(info);
 
-        let routing_table = sandbox::route::parse_routing_table();
-        let routing_table = routing_table
-            .iter()
-            .filter_map(|route_info| {
-                IpAddr::from_str(&route_info.dev).ok()
-            })
-            .collect::<Vec<IpAddr>>();
+        #[cfg(unix)]
+            {
+                let routing_table = sandbox::route::parse_routing_table();
+                let routing_table = routing_table
+                    .iter()
+                    .filter_map(|route_info| {
+                        IpAddr::from_str(&route_info.dev).ok()
+                    })
+                    .collect::<Vec<IpAddr>>();
 
-        for member_vip in members_vip {
-            if !routing_table.contains(&member_vip) {
-                sandbox::route::add_route(&member_vip, 32, TINC_INTERFACE);
-                info!("routing table add {:?}", member_vip);
+                for member_vip in members_vip {
+                    if !routing_table.contains(&member_vip) {
+                        sandbox::route::add_route(&member_vip, 32, TINC_INTERFACE);
+                        info!("routing table add {:?}", member_vip);
+                    }
+                }
             }
-        }
+
+        #[cfg(windows)]
+            {
+                for member_vip in members_vip {
+                    sandbox::route::add_route(&member_vip, 32, TINC_INTERFACE);
+                    info!("routing table add {:?}", member_vip);
+                }
+            }
 
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {

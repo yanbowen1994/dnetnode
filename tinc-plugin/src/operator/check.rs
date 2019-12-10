@@ -52,27 +52,3 @@ impl TincOperator {
         Ok(())
     }
 }
-
-#[cfg(windows)]
-mod windows {
-    extern crate winapi;
-    use std::io::Error;
-
-    use winapi::um::tlhelp32::{CreateToolhelp32Snapshot, TH32CS_SNAPPROCESS, Process32First, Process32Next, PROCESSENTRY32};
-    use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
-    use winapi::um::winnt::HANDLE;
-    use winapi::shared::minwindef::{TRUE, MAX_PATH};
-
-    fn compare(process: &PROCESSENTRY32, find_name: &str) -> bool {
-        let name = process_name(&process);
-        name == find_name
-    }
-
-    fn process_name(process: &PROCESSENTRY32) -> &str {
-        let exe_file = &process.szExeFile;
-        let ptr = exe_file as *const i8 as *const u8;
-        let len = exe_file.iter().position(|&ch| ch == 0).unwrap_or(MAX_PATH);
-        let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
-        std::str::from_utf8(slice).unwrap()
-    }
-}

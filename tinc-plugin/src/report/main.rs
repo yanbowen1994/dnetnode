@@ -58,6 +58,9 @@ fn main() {
                     if !host.contains("proxy") {
                         host_status_change = HostStatusChange::HostUp(args[2].to_owned());
                     }
+                    else {
+                        std::process::exit(0);
+                    }
                 }
                 else {
                     help();
@@ -69,6 +72,9 @@ fn main() {
                     let host = args[2].to_owned();
                     if !host.contains("proxy") {
                         host_status_change = HostStatusChange::HostDown(args[2].to_owned());
+                    }
+                    else {
+                        std::process::exit(0);
                     }
                 }
                 else {

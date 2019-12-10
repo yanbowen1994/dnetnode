@@ -54,7 +54,10 @@ fn main() {
             "-d" => host_status_change = HostStatusChange::TincDown,
             "-hu" => {
                 if args.len() > 2 {
-                    host_status_change = HostStatusChange::HostUp(args[2].to_owned());
+                    let host = args[2].to_owned();
+                    if !host.contains("proxy") {
+                        host_status_change = HostStatusChange::HostUp(args[2].to_owned());
+                    }
                 }
                 else {
                     help();
@@ -63,7 +66,10 @@ fn main() {
             },
             _ if args[1] == "-hd" => {
                 if args.len() > 2 {
-                    host_status_change = HostStatusChange::HostDown(args[2].to_owned());
+                    let host = args[2].to_owned();
+                    if !host.contains("proxy") {
+                        host_status_change = HostStatusChange::HostDown(args[2].to_owned());
+                    }
                 }
                 else {
                     help();

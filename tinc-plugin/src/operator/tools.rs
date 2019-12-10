@@ -1,11 +1,13 @@
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::str::FromStr;
 
-use super::{Error, Result};
 use std::net::{IpAddr, Ipv4Addr};
 
+use super::{Error, Result};
 extern crate openssl;
 use openssl::rsa::Rsa;
+use sysinfo::{System, SystemExt, ProcessExt};
+use crate::operator::TINC_BIN_FILENAME;
 
 pub struct TincTools;
 
@@ -152,5 +154,30 @@ impl TincTools {
                 .map_err(|_|Error::CreatePubKeyError))?;
 
         Ok((priv_key, pubkey))
+    }
+
+    pub fn get_tinc_pid_by_sys(tinc_home: &str) -> Option<u32> {
+        let config_buf = "--config=".to_string() + tinc_home;
+
+        let sys = System::new();
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                if info.cmd().contains(&config_buf) {
+                    return Some(info.pid() as u32);
+                }
+            }
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::TincTools;
+
+    #[test]
+    fn test_get_tinc_pid() {
+        let res = TincTools::get_tinc_pid_by_sys("/opt/dnet/tinc/");
+        println!("{:?}", res);
     }
 }

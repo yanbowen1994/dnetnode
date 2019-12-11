@@ -1,4 +1,6 @@
-use crate::{TincStream, TincTools};
+use crate::TincStream;
+#[cfg(unix)]
+use crate::TincTools;
 use super::{Error, Result, TincOperator, PID_FILENAME, TINC_BIN_FILENAME};
 use std::process::Command;
 
@@ -76,21 +78,23 @@ impl TincOperator {
                         Ok(())
                     });
                 }
-
-            if let Some(pid) = TincTools::get_tinc_pid_by_sys(&self.tinc_settings.tinc_home) {
-                #[cfg(unix)]
-                    {
-                        if let Ok(mut res) = Command::new("kill")
-                            .args(vec!["-15", &format!("{}", pid)])
-                            .spawn() {
-                            let _ = res.wait();
+            // TODO windows
+            #[cfg(unix)]
+                {
+                    if let Some(pid) = TincTools::get_tinc_pid_by_sys(&self.tinc_settings.tinc_home) {
+                        {
+                            if let Ok(mut res) = Command::new("kill")
+                                .args(vec!["-15", &format!("{}", pid)])
+                                .spawn() {
+                                let _ = res.wait();
+                            }
                         }
                     }
-                #[cfg(windows)]
+                    #[cfg(windows)]
                     {
 
                     }
-            }
+                }
             Ok(())
         }
     }

@@ -1,8 +1,10 @@
 use clap::App;
 use clap::value_t_or_exit;
+use prettytable::{Table, Cell, Attr, color};
 
 use crate::{new_ipc_client, Command};
 use crate::error::{Error, Result};
+use dnet_types::team::Team;
 
 pub struct Group;
 
@@ -84,7 +86,7 @@ impl Group {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_list()
             .map_err(Error::ipc_connect_failed)?;
-        println!("{:#?}", res);
+        print_team(res);
         Ok(())
     }
 
@@ -92,7 +94,7 @@ impl Group {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_info(team_id)
             .map_err(Error::ipc_connect_failed)?;
-        println!("{:#?}", res);
+        print_team(res);
         Ok(())
     }
 
@@ -119,4 +121,55 @@ impl Group {
         println!("{:#?}", res);
         Ok(())
     }
+}
+
+fn print_team(teams: Vec<Team>) {
+    // Create the table
+    let mut table = Table::new();
+    // Add a row per time
+    table.add_row(row!["Team Name", "Team Id", "Members Ip",
+                                "Alias", "Connect Status", "Tunnel Status"]);
+    let mut i = 0;
+    for mut team in teams {
+        if i == 0 {
+            i = 1;
+        }
+        else {
+            table.add_row(row![""]);
+        }
+
+        team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
+        for member in team.members {
+            let connect_status = if member.tinc_status {
+                Cell::new("connect")
+                    .with_style(Attr::ForegroundColor(color::GREEN))
+            }
+            else {
+                Cell::new("disconnect")
+                    .with_style(Attr::ForegroundColor(color::RED))
+            };
+
+
+            let tinc_status = if member.tinc_status {
+                Cell::new("connect")
+                    .with_style(Attr::ForegroundColor(color::GREEN))
+            }
+            else {
+                Cell::new("disconnect")
+                    .with_style(Attr::ForegroundColor(color::RED))
+            };
+
+            table.add_row(row![
+                    team.team_name.clone().unwrap_or("".to_string()),
+                    team.team_id,
+                    member.vip,
+                    member.device_name.unwrap_or("".to_string()),
+                    connect_status,
+                    tinc_status,
+                ]);
+        }
+    }
+
+    // Print the table to stdout
+    table.printstd();
 }

@@ -2,6 +2,8 @@ use std::path::Path;
 
 extern crate ipc_server;
 extern crate dnet_path;
+#[macro_use]
+extern crate prettytable;
 use management_client::{new_standalone_ipc_client, DaemonRpcClient};
 use clap::App;
 

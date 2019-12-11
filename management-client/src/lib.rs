@@ -93,7 +93,7 @@ impl DaemonRpcClient {
         self.call("tunnel_connect", &NO_ARGS)
     }
 
-    pub fn tunnel_disconnect(&mut self, team_id: String) -> Result<()> {
+    pub fn tunnel_disconnect(&mut self, team_id: String) -> Result<Response> {
         self.call("tunnel_disconnect", &team_id)
     }
 

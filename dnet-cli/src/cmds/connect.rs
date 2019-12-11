@@ -1,6 +1,6 @@
 use clap::App;
 use crate::{new_ipc_client, Command};
-use crate::error::Result;
+use crate::error::{Result, Error};
 
 pub struct Connect;
 
@@ -16,9 +16,9 @@ impl Command for Connect {
 
     fn run(&self, _matches: &clap::ArgMatches<'_>) -> Result<()> {
         let mut ipc = new_ipc_client()?;
-        if let Err(e) = ipc.tunnel_connect() {
-            eprintln!("{:?}", e);
-        }
+        let res = ipc.tunnel_connect()
+            .map_err(Error::ipc_connect_failed)?;
+        println!("{:#?}", res);
         Ok(())
     }
 }

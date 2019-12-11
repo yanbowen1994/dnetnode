@@ -1,6 +1,6 @@
 use clap::{App, Arg, value_t_or_exit};
 use crate::{new_ipc_client, Command};
-use crate::error::Result;
+use crate::error::{Result, Error};
 
 pub struct Disconnect;
 
@@ -20,9 +20,9 @@ impl Command for Disconnect {
     fn run(&self, matches: &clap::ArgMatches<'_>) -> Result<()> {
         let team_id: String = value_t_or_exit!(matches.value_of("team_id"), String);
         let mut ipc = new_ipc_client()?;
-        if let Err(e) = ipc.tunnel_disconnect(team_id) {
-            eprintln!("{:?}", e);
-        }
+        let res = ipc.tunnel_disconnect(team_id)
+            .map_err(Error::ipc_connect_failed)?;
+        println!("{:#?}", res);
         Ok(())
     }
 }

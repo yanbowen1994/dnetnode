@@ -197,10 +197,16 @@ impl Daemon {
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
-            ManagementCommand::TeamConnect(tx, _team_id) => {
-                let res = Response::internal_error()
-                    .set_msg("Command not support.".to_owned());
-                let _ = Self::oneshot_send(tx, res, "");
+            ManagementCommand::Connect(tx) => {
+                let status = self.status.clone();
+                let tunnel_command_tx = self.tunnel_command_tx.clone();
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(|| daemon_event_handle::connect::connect(
+                    tx,
+                    status,
+                    rpc_command_tx,
+                    tunnel_command_tx)
+                );
             }
 
             ManagementCommand::TeamDisconnect(tx, team_id) => {

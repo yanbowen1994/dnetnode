@@ -1,9 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::process::Command;
-use crate::route::types::RouteInfo;
 extern crate ipconfig;
+use ipconfig::Adapter;
 
+use crate::route::types::RouteInfo;
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
@@ -68,23 +69,115 @@ pub fn parse_netmask_from_cidr(netmask: u32) -> IpAddr {
     IpAddr::from(mask)
 }
 
+fn parse_routing_table() {
+    let adapters = Adapters::new();
+
+    if let Ok(output) = Command::new("wmic")
+        .args(vec!["path", "Win32_IP4RouteTable", "get", "Destination,Mask,InterfaceIndex", "/value"])
+        .output() {
+        let output = String::from_utf8(output.stdout).unwrap();
+        let lines: Vec<&str> = output.split("\r\r\n\r\r\n\r\r\n")
+            .collect::<Vec<&str>>();
+        for line in lines {
+            let segments: Vec<&str> = line.split("\r\r\n")
+                .collect::<Vec<&str>>()
+                .into_iter()
+                .filter_map(|seg|{
+                    if seg == "" {
+                        None
+                    }
+                    else {
+                        Some(seg)
+                    }
+                })
+                .collect::<Vec<&str>>();
+            if segments.len() == 3 {
+                println!("{:?}", segments);
+                let mut dst = None;
+                let mut dev = None;
+                let mut mask = None;
+                for seg in segments {
+                    if seg.contains("Destination=") {
+                        dst = Some(seg.replace("Destination=", ""));
+                    }
+                    else if seg.contains("InterfaceIndex=") {
+                        dev = match seg.replace("InterfaceIndex=", "")
+                            .parse::<u32>()
+                            .ok()
+                            .and_then(|index| {
+                                adapters.get_vnic_dev(index)
+                            }) {
+                            Some(dev) => Some(dev),
+                            None => break,
+                        };
+                    }
+                    else if seg.contains("Mask=") {
+                        mask = match parse_netmask_to_cidr(
+                            &seg.replace("Mask=", "")) {
+                            Some(x) => Some(x),
+                            None => break,
+                        };
+                    }
+                }
+
+                if let Some(dst) = dst {
+                    if let Some(dev) = dev {
+                        if let Some(mask) = mask {
+                            let route = RouteInfo {
+                                dst,
+                                gw:         String::new(),
+                                mask,
+                                flags:      String::new(),
+                                metric:     0,
+                                ref_:       String::new(),
+                                use_:       String::new(),
+                                dev,
+                            };
+                            println!("{:?}", route);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct Adapters {
+    adapters:   Vec<Adapter>,
+}
+
+impl Adapters {
+    fn new() -> Self {
+        let adapters = ipconfig::get_adapters().unwrap();
+        Self {
+            adapters,
+        }
+    }
+
+    fn get_vnic_dev(&self, index: u32) -> Option<String> {
+        for interface in &self.adapters {
+            if interface.ipv6_if_index() == index {
+                return Some(interface.friendly_name().to_string());
+            }
+        }
+        None
+    }
+
+    fn get_vnic_index(&self, dev: &str) -> u32 {
+        for interface in &self.adapters {
+            if interface.friendly_name() == dev {
+                return interface.ipv6_if_index();
+            }
+        }
+        0
+    }
+}
+
+
 #[test]
 fn test() {
     let ip = IpAddr::from_str("12.12.12.12").unwrap();
     add_route(&ip, 32, "本地连接");
-
     del_route(&ip, 32, "本地连接");
     parse_routing_table();
-}
-
-
-#[cfg(windows)]
-fn get_vnic_index(dev: &str) -> u32 {
-    let adapters = ipconfig::get_adapters().unwrap();
-    for interface in adapters {
-        if interface.friendly_name() == dev {
-            return interface.ipv6_if_index();
-        }
-    }
-    0
 }

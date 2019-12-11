@@ -16,7 +16,7 @@ impl Command for Disconnect {
             ])
             .about("Try to disconnect if connected, or do nothing if already disconnected.")
     }
-
+    // TODO disconnect all
     fn run(&self, matches: &clap::ArgMatches<'_>) -> Result<()> {
         let team_id: String = value_t_or_exit!(matches.value_of("team_id"), String);
         let mut ipc = new_ipc_client()?;

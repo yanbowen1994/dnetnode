@@ -36,7 +36,7 @@ build_rpc_trait! {
     pub trait ManagementInterfaceApi {
         type Metadata;
         #[rpc(meta, name = "tunnel_connect")]
-        fn tunnel_connect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
+        fn tunnel_connect(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "tunnel_disconnect")]
         fn tunnel_disconnect(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
@@ -75,7 +75,7 @@ build_rpc_trait! {
 
 /// Enum representing commands coming in on the management interface.
 pub enum ManagementCommand {
-    TeamConnect(OneshotSender<Response>, String),
+    Connect(OneshotSender<Response>),
 
     TeamDisconnect(OneshotSender<Response>, String),
 
@@ -216,13 +216,13 @@ for ManagementInterface<T>
 {
     type Metadata = Meta;
 
-    fn tunnel_connect(&self, _: Self::Metadata, team_id: String)
+    fn tunnel_connect(&self, _: Self::Metadata)
                       -> BoxFuture<Response, Error>
     {
         log::info!("management interface tunnel connect");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::TeamConnect(tx, team_id))
+            .send_command_to_daemon(ManagementCommand::Connect(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

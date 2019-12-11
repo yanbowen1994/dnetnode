@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 
 use dnet_types::team::Team;
 use sandbox::route;
@@ -33,7 +34,17 @@ pub(super) fn search_team_by_user() -> Result<()> {
         })
         .ok_or(Error::ResponseParse(res_data.to_string()))?;
 
-    info!("{:?}", teams_vec);
+    let mut id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
+    for team in &teams_vec {
+        let mut members = vec![];
+        for member in &team.members {
+            if member.connect_status == true {
+                members.push(&member.vip)
+            }
+        }
+        id_member.insert(team.team_id.clone(), members);
+    }
+    info!("{:?}", id_member);
 
     let mut teams = HashMap::new();
     for team in teams_vec {
@@ -41,10 +52,10 @@ pub(super) fn search_team_by_user() -> Result<()> {
     }
 
     let mut info = get_mut_info().lock().unwrap();
-    let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
+    let hosts = info.teams.get_connect_hosts(&info.tinc_info.vip);
     std::mem::drop(info);
-    info!("route add {:?}, del {:?}", add, del);
-    route::batch_route(&add, &del, TINC_INTERFACE);
+    info!("route hosts {:?}", hosts);
+    route::keep_route(&hosts, TINC_INTERFACE);
     Ok(())
 }

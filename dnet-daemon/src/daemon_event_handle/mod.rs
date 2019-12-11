@@ -1,4 +1,5 @@
 pub mod common;
+pub mod connect;
 pub mod group_info;
 pub mod group_join;
 pub mod group_out;

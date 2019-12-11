@@ -7,9 +7,6 @@ use dnet_types::settings::RunMode;
 use dnet_types::proxy::ProxyInfo;
 use crate::settings::get_settings;
 use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
-use std::net::IpAddr;
-use std::collections::HashMap;
-use dnet_types::team::Team;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -89,32 +86,20 @@ impl Info {
         }
     }
 
-    // return (adds, removes)
-    pub fn compare_team_info_with_new_teams(&self, new_team_info: &HashMap<String, Team>) -> (Vec<IpAddr>, Vec<IpAddr>) {
-        let mut add: Vec<IpAddr> = vec![];
-        let mut del: Vec<IpAddr> = vec![];
-
-        let self_vip = match self.tinc_info.vip {
-            Some(x) => x,
-            None => return (add, del)
-        };
-
-        let old_connect_host: Vec<&IpAddr> = self.teams.get_connect_hosts(&self.teams.all_teams, &self_vip);
-        let new_connect_host: Vec<&IpAddr> = self.teams.get_connect_hosts(&new_team_info, &self_vip);
-
-        for host in &new_connect_host {
-            if !old_connect_host.contains(&host) {
-                add.push((*host).clone());
+    pub fn fresh_running_from_all(&mut self) {
+        let self_name = &self.client_info.device_name;
+        let mut running_teams = vec![];
+        for (team_id, team) in &self.teams.all_teams {
+            for member in &team.members {
+                if let Some(device_name) = &member.device_name {
+                    if device_name == self_name && member.connect_status == true {
+                        running_teams.push(team_id.clone());
+                        break
+                    }
+                }
             }
         }
-
-        for host in old_connect_host {
-            if !new_connect_host.contains(&host) {
-                del.push(host.clone());
-            }
-        }
-
-        return (add, del);
+        self.teams.running_teams = running_teams;
     }
 }
 

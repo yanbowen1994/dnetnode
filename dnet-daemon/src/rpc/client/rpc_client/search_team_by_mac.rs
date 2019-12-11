@@ -1,13 +1,14 @@
+use std::net::IpAddr;
 use std::collections::HashMap;
 
 use dnet_types::team::Team;
+use sandbox::route;
 
 use crate::settings::get_settings;
 use crate::rpc::http_request::get;
 use crate::rpc::{Result, Error};
 use crate::info::{get_info, get_mut_info};
 use super::types::ResponseTeam;
-use sandbox::route;
 use crate::settings::default_settings::TINC_INTERFACE;
 
 pub fn search_team_by_mac() -> Result<()> {
@@ -36,16 +37,34 @@ pub fn search_team_by_mac() -> Result<()> {
         })
         .ok_or(Error::ResponseParse(res_data.to_string()))?;
 
+    let mut connect_id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
+    let mut disconnect_id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
+    for team in &teams_vec {
+        let mut connect_members = vec![];
+        let mut disconnect_members = vec![];
+        for member in &team.members {
+            if member.connect_status == true {
+                connect_members.push(&member.vip)
+            }
+            else {
+                disconnect_members.push(&member.vip)
+            }
+        }
+        connect_id_member.insert(team.team_id.clone(), connect_members);
+        disconnect_id_member.insert(team.team_id.clone(), disconnect_members);
+    }
+    info!("connect: {:?} disconnect:{:?}", connect_id_member, disconnect_id_member);
+
     let mut teams = HashMap::new();
     for team in teams_vec {
         teams.insert(team.team_id.clone(), team);
     }
 
     let mut info = get_mut_info().lock().unwrap();
-    let (add, del) = info.compare_team_info_with_new_teams(&teams);
     info.teams.all_teams = teams;
+    let hosts = info.teams.get_connect_hosts(&info.tinc_info.vip);
     std::mem::drop(info);
-    info!("route add {:?}, del {:?}", add, del);
-    route::batch_route(&add, &del, TINC_INTERFACE);
+    info!("route hosts {:?}", hosts);
+    route::keep_route(&hosts, TINC_INTERFACE);
     Ok(())
 }

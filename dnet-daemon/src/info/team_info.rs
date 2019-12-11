@@ -94,15 +94,16 @@ impl TeamInfo {
         (device_name, team_id_vec)
     }
 
-    pub fn get_connect_hosts<'a>(&self,
-                                 teams: &'a HashMap<String, Team>,
-                                 self_vip: &IpAddr) -> Vec<&'a IpAddr> {
-        let mut connects: Vec<&IpAddr> = vec![];
-        for team_id in &self.running_teams {
-            if let Some(team) = teams.get(team_id) {
-                for member in &team.members {
-                    if member.connect_status == true && member.vip != *self_vip {
-                        connects.push(&member.vip)
+    pub fn get_connect_hosts(&self,
+                             self_vip: &Option<IpAddr>) -> Vec<IpAddr> {
+        let mut connects: Vec<IpAddr> = vec![];
+        if let Some(self_vip) = self_vip {
+            for team_id in &self.running_teams {
+                if let Some(team) = self.all_teams.get(team_id) {
+                    for member in &team.members {
+                        if member.connect_status == true && member.vip != *self_vip {
+                            connects.push(member.vip.clone())
+                        }
                     }
                 }
             }

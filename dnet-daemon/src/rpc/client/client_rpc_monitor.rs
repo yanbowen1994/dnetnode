@@ -108,6 +108,12 @@ impl RpcMonitor {
                             let response = self.handle_out_team(team_id);
                             let _ = res_tx.send(response);
                         },
+                        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+                        RpcClientCmd::DisconnectTeam(team_id, res_tx) => {
+                                let response = self.handle_disconnect_team(team_id);
+                                let _ = res_tx.send(response);
+                            },
+
                         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
                         _ => ()
                     }
@@ -233,6 +239,16 @@ impl RpcMonitor {
             if let Err(error) = self.client.disconnect_team(&team_id) {
                 return Response::internal_error().set_msg(error.to_string());
             }
+        }
+        Response::success()
+    }
+
+    fn handle_disconnect_team(&self, team_id: String) -> Response {
+        info!("handle_disconnect_team");
+        if let Err(error) = self.client.disconnect_team(&team_id) {
+            let response = error.to_response();
+            error!("handle_disconnect_team {:?}", response);
+            return response;
         }
         Response::success()
     }

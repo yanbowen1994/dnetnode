@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::TunnelTrait;
-use crate::info::{self, Info, get_mut_info};
+use crate::info::{self, Info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::management_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -210,10 +210,14 @@ impl Daemon {
             }
 
             ManagementCommand::TeamDisconnect(tx, team_id) => {
-                let mut info = get_mut_info().lock().unwrap();
-                info.teams.del_start_team(&team_id);
-                let res = Response::success();
-                let _ = Self::oneshot_send(tx, res, "");
+                let status = self.status.clone();
+                let rpc_command_tx = self.rpc_command_tx.clone();
+                thread::spawn(move|| daemon_event_handle::disconnect_team::disconnect_team(
+                    tx,
+                    status,
+                    team_id,
+                    rpc_command_tx)
+                );
             }
 
             ManagementCommand::State(ipc_tx) => {

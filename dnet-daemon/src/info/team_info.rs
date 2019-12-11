@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use dnet_types::team::Team;
-use sandbox::route::del_route;
-use crate::settings::default_settings::TINC_INTERFACE;
 use tinc_plugin::{TincTeam, TincTools};
 use std::net::IpAddr;
 
@@ -33,16 +31,6 @@ impl TeamInfo {
                 self.running_teams.remove(i);
                 break
             }
-        }
-        let team = self.all_teams.get(team_id);
-        if let Some(team) = team {
-            self.del_start_team_route(team);
-        }
-    }
-
-    fn del_start_team_route(&self, team: &Team) {
-        for memeber in &team.members {
-            del_route(&memeber.vip, 32, TINC_INTERFACE);
         }
     }
 

@@ -15,7 +15,6 @@ pub fn device_add() -> Result<()> {
         + "/vlan/device/add";
 
     let data = JavaDevice::new().to_json();
-
     info!("Request {}", data);
 
     let res_data = post(&url, &data.to_string())?;

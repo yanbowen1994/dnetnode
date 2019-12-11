@@ -38,14 +38,14 @@ pub fn group_out(
         .and_then(|ipc_tx| {
             info!("del_start_team");
             del_local_team(&team_id);
-            info!("need_tunnel_disconnect");
-            if need_tunnel_disconnect(&status) {
-                info!("handle_tunnel_disconnect");
-                handle_tunnel_disconnect(ipc_tx, tunnel_command_tx)
-            }
-            else {
-                Some(ipc_tx)
-            }
+//            info!("need_tunnel_disconnect");
+//            if need_tunnel_disconnect(&status) {
+//                info!("handle_tunnel_disconnect");
+//                handle_tunnel_disconnect(ipc_tx, tunnel_command_tx)
+//            }
+//            else {
+            Some(ipc_tx)
+//            }
         })
         .and_then(|ipc_tx| {
             info!("handle_rpc_stop_heartbeat");

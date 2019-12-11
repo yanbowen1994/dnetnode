@@ -279,9 +279,11 @@ impl Daemon {
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
+                        self.status.tunnel = TunnelState::Connected;
                         self.handle_tunnel_connected()
                     },
                     dnet_types::tinc_host_status_change::HostStatusChange::TincDown => {
+                        self.status.tunnel = TunnelState::Disconnected;
                         self.handle_tunnel_disconnected()
                     },
                     _ => {

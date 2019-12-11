@@ -130,6 +130,11 @@ impl RpcMonitor {
                             if let Some(rpc_restart_tx) = &rpc_restart_tx_cache {
                                 let _ = rpc_restart_tx.send(response);
                             }
+                            else {
+                                if response.code != 623 {
+                                    error!("ExecutorEvent::InitFailed {:?}", response);
+                                }
+                            }
                             rpc_restart_tx_cache = None;
                         },
                         ExecutorEvent::NeedRestartTunnel => {
@@ -386,7 +391,6 @@ impl Executor {
                         }
                     }
                 }
-
 
                 if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
                     return;

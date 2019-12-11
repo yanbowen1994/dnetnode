@@ -10,15 +10,7 @@ mod keep_route;
 pub use keep_route::keep_route;
 pub mod types;
 
-#[cfg(windows)]
-pub use imp::{
-    add_route,
-    del_route,
-    is_in_routing_table,
-    parse_netmask_to_cidr,
-};
 
-#[cfg(unix)]
 pub use imp::{
     add_route,
     del_route,

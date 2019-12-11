@@ -4,7 +4,7 @@ use std::str::FromStr;
 use super::*;
 
 pub fn keep_route(new_hosts: &Vec<IpAddr>, dev: &str) {
-    let mut now_route = parse_routing_table();
+    let now_route = parse_routing_table();
     let old_hosts: Vec<IpAddr> = now_route.iter()
         .filter_map(|route| {
             if route.dev == dev {

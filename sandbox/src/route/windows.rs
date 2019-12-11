@@ -9,7 +9,7 @@ use crate::route::types::RouteInfo;
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     let mask = parse_netmask_from_cidr(netmask).to_string();
-    let idx_if = get_vnic_index(dev);
+    let idx_if = Adapters::new().get_vnic_index(dev);
     let res = Command::new("route")
         .args(vec!["add", &ip.clone().to_string(), "mask", &mask, &(ip.clone().to_string()), "if", &format!("{}", idx_if)])
         .spawn();
@@ -69,8 +69,10 @@ pub fn parse_netmask_from_cidr(netmask: u32) -> IpAddr {
     IpAddr::from(mask)
 }
 
-fn parse_routing_table() {
+pub fn parse_routing_table() -> Vec<RouteInfo> {
     let adapters = Adapters::new();
+
+    let mut route_info = vec![];
 
     if let Ok(output) = Command::new("wmic")
         .args(vec!["path", "Win32_IP4RouteTable", "get", "Destination,Mask,InterfaceIndex", "/value"])
@@ -92,7 +94,6 @@ fn parse_routing_table() {
                 })
                 .collect::<Vec<&str>>();
             if segments.len() == 3 {
-                println!("{:?}", segments);
                 let mut dst = None;
                 let mut dev = None;
                 let mut mask = None;
@@ -133,13 +134,14 @@ fn parse_routing_table() {
                                 use_:       String::new(),
                                 dev,
                             };
-                            println!("{:?}", route);
+                            route_info.push(route);
                         }
                     }
                 }
             }
         }
     }
+    route_info
 }
 
 struct Adapters {

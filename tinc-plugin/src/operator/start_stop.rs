@@ -1,3 +1,4 @@
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 use crate::TincStream;
 #[cfg(unix)]
 use crate::TincTools;

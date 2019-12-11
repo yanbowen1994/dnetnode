@@ -6,7 +6,7 @@ use super::error::{Error, Result};
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 use router_plugin::device_info::DeviceInfo;
-#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+#[cfg(all(target_os = "linux", feature = "router_debug"))]
 use crate::settings::get_settings;
 #[cfg(target_arch = "arm")]
 use router_plugin::get_sn;
@@ -28,11 +28,12 @@ pub struct ClientInfo {
 }
 impl ClientInfo {
     pub fn new() -> Result<Self> {
+        let device_type = DeviceType::get_device_type();
+        let device_name = Self::get_uid(&device_type)?;
+
         let client_info;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
-                let device_type = DeviceType::get_device_type();
-                let device_name = Self::get_uid(&device_type)?;
                 let device_password = base64::encode(&device_name);
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
                 client_info = Self {
@@ -46,8 +47,6 @@ impl ClientInfo {
             }
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
-                let device_type = DeviceType::get_device_type();
-                let device_name = Self::get_uid(&device_type)?;
                 client_info = Self {
                     devicetype:         device_type,
                     lan:                "".to_string(),

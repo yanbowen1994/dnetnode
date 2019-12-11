@@ -65,9 +65,8 @@ impl TincOperator {
                 dev=dnet\n\
                 vpngw=".to_string() + &tinc_info.vip.to_string() + "\n" +
                     "ifconfig ${dev} up\n\
-                     ifconfig ${dev} ${vpngw} netmask " + netmask;
-
-                buf = buf + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
+                     ifconfig ${dev} ${vpngw} netmask " + netmask
+                    + "\n" + &self.tinc_settings.tinc_home + "tinc-report -u";
             }
         #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
             {

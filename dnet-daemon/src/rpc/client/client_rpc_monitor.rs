@@ -377,40 +377,17 @@ impl Executor {
                 match self.init() {
                     Ok(_) => self.status = ExecutorStatus::Inited,
                     Err(e) => {
-                        let (need_return, res) = match &e {
-                            Error::http(code) => {
-                                let res = Response::new_from_code(*code);
-                                (true, res)
-                            },
-                            _ => {
-                                error!("rpc init unknown error {:?}", e);
-                                let res = Response::internal_error();
-                                (true, res)
-                            },
-                        };
-
+                        let res = e.to_response();
                         if let Err(send_err) = self.rpc_tx.send(
                             RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
                             error!("self.rpc_tx.send(\
                             RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
                             return;
                         }
-                        if need_return {
-                            return;
-                        }
                     }
                 }
 
-//                #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-//                    {
-//                        if Instant::now() - route_not_bound_sleep > Duration::from_secs(10) {
-//                            match self.init() {
-//                                Ok(_) => init_success = true,
-//                                Err(RpcError::client_not_bound) => route_not_bound_sleep = Instant::now(),
-//                                _ => (),
-//                            }
-//                        }
-//                    }
+
                 if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
                     return;
                 }

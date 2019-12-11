@@ -140,7 +140,7 @@ fn print_team(teams: Vec<Team>) {
 
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
         for member in team.members {
-            let connect_status = if member.tinc_status {
+            let connect_status = if member.connect_status {
                 Cell::new("connect")
                     .with_style(Attr::ForegroundColor(color::GREEN))
             }

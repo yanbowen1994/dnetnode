@@ -157,14 +157,18 @@ impl TincTools {
     }
 
     pub fn get_tinc_pid_by_sys(tinc_home: &str) -> Option<u32> {
-        let config_buf = "--config=".to_string() + tinc_home;
-
         let sys = System::new();
         for (_, info) in sys.get_process_list() {
             if info.name() == TINC_BIN_FILENAME {
-                if info.cmd().contains(&config_buf) {
+                #[cfg(unix)]
+                    {
+                        let config_buf = "--config=".to_string() + tinc_home;
+                        if info.cmd().contains(&config_buf) {
+                            return Some(info.pid() as u32);
+                        }
+                    }
+                #[cfg(windows)]
                     return Some(info.pid() as u32);
-                }
             }
         }
         None

@@ -17,7 +17,7 @@ pub fn group_out(
     team_id:                String,
     status:                 State,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
-    tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
+    _tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
     info!("is_not_proxy");
     let _ = is_not_proxy(ipc_tx)
@@ -98,35 +98,35 @@ fn del_local_team(team_id: &str) {
     info.teams.del_start_team(team_id);
 }
 
-fn need_tunnel_disconnect(status: &State) -> bool {
-    let info = get_info().lock().unwrap();
-    if info.teams.running_teams.len() == 0 {
-        if status.tunnel == TunnelState::Connected
-            || status.tunnel == TunnelState::Connecting {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-    else {
-        return false;
-    }
-}
-
-fn handle_tunnel_disconnect(
-    ipc_tx:             oneshot::Sender<Response>,
-    tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-) -> Option<oneshot::Sender<Response>> {
-    let response = send_tunnel_disconnect(tunnel_command_tx);
-    if response.code == 200 {
-        return Some(ipc_tx);
-    }
-    else {
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
-    }
-}
+//fn need_tunnel_disconnect(status: &State) -> bool {
+//    let info = get_info().lock().unwrap();
+//    if info.teams.running_teams.len() == 0 {
+//        if status.tunnel == TunnelState::Connected
+//            || status.tunnel == TunnelState::Connecting {
+//            return true;
+//        }
+//        else {
+//            return false;
+//        }
+//    }
+//    else {
+//        return false;
+//    }
+//}
+//
+//fn handle_tunnel_disconnect(
+//    ipc_tx:             oneshot::Sender<Response>,
+//    tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
+//) -> Option<oneshot::Sender<Response>> {
+//    let response = send_tunnel_disconnect(tunnel_command_tx);
+//    if response.code == 200 {
+//        return Some(ipc_tx);
+//    }
+//    else {
+//        let _ = Daemon::oneshot_send(ipc_tx, response, "");
+//        return None;
+//    }
+//}
 
 fn handle_rpc_stop_heartbeat(
     ipc_tx:             oneshot::Sender<Response>,

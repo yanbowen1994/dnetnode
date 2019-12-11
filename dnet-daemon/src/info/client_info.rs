@@ -10,6 +10,8 @@ use router_plugin::device_info::DeviceInfo;
 use crate::settings::get_settings;
 #[cfg(target_arch = "arm")]
 use router_plugin::get_sn;
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+extern crate base64;
 
 use dnet_types::device_type::DeviceType;
 

@@ -21,7 +21,9 @@ use crate::info::UserInfo;
 use crate::rpc::common::login::login;
 use crate::rpc::common::get_online_proxy;
 
-use crate::rpc::{Result, Error};
+use crate::rpc::Result;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+use crate::rpc::Error;
 pub use select_proxy::select_proxy;
 
 #[derive(Debug)]

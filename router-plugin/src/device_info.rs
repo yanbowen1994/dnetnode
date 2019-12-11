@@ -1,7 +1,11 @@
+#[cfg(target_arch = "arm")]
 use std::net::Ipv4Addr;
+#[cfg(target_arch = "arm")]
 use std::str::FromStr;
 
+#[cfg(target_arch = "arm")]
 extern crate nix;
+#[cfg(target_arch = "arm")]
 use nix::sys::socket::{AddressFamily, SockAddr};
 use dnet_types::team::NetSegment;
 
@@ -20,21 +24,26 @@ impl DeviceInfo {
                     cloud_led_on: false,
                 });
             }
-        let mut lan = Self::get_lans(vec![
-            "br0".to_owned(),
-            "br1".to_owned(),
-            "br2".to_owned(),
-            "br3".to_owned(),
-        ]);
-        if lan.len() == 0 {
-            return None;
-        }
-        Some(DeviceInfo {
-            lan,
-            cloud_led_on: false,
-        })
+        #[cfg(target_arch = "arm")]
+            {
+                let mut lan = Self::get_lans(vec![
+                    "br0".to_owned(),
+                    "br1".to_owned(),
+                    "br2".to_owned(),
+                    "br3".to_owned(),
+                ]);
+                if lan.len() == 0 {
+                    return None;
+                }
+                return Some(DeviceInfo {
+                    lan,
+                    cloud_led_on: false,
+                });
+            }
+
     }
 
+    #[cfg(target_arch = "arm")]
     fn get_lans(if_name: Vec<String>) -> Vec<NetSegment> {
         let mut net_segment = vec![];
         for interface in nix::ifaddrs::getifaddrs().unwrap() {
@@ -67,6 +76,7 @@ impl DeviceInfo {
 }
 
 // CIDR classless inter-domain routing
+#[cfg(target_arch = "arm")]
 fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
     let mut cidr: u32 = 32;
     if let Ok(a) = Ipv4Addr::from_str(netmask) {

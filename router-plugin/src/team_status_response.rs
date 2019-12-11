@@ -82,7 +82,7 @@ struct Member {
 
 impl From<DaemonTeamMember> for Member {
     fn from(member: DaemonTeamMember) -> Self {
-        let lans = member.lan.iter()
+        let _lans = member.lan.iter()
             .map(|lan| {
                 lan.to_string()
             })

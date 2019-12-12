@@ -327,7 +327,7 @@ impl TincOperator {
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    Device = /dev/net/tun\n\
-                   AutoConnect = no\n\
+                   AutoConnect = yes\n\
                    MaxConnectionBurst=1000\n";
 //                   Type = " + tinc_type + "\n\
             }
@@ -342,7 +342,7 @@ impl TincOperator {
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
                    Device = /dev/tap0\n\
-                   AutoConnect=no\n\
+                   AutoConnect=yes\n\
                    MaxConnectionBurst=1000\n";
 //                   Type = " + tinc_type + "\n\
             }
@@ -356,7 +356,7 @@ impl TincOperator {
                    BindToAddress = * "  + &format!("{}", port) + "\n\
                    ProcessPriority = high\n\
                    PingTimeout=3\n\
-                   AutoConnect=no\n\
+                   AutoConnect=yes\n\
                    MaxConnectionBurst=1000\n";
 //                   Type = " + tinc_type + "\n\
             }

@@ -143,13 +143,13 @@ impl Group {
     }
 }
 
-fn print_team(teams: Vec<Team>) {
+fn print_team(mut teams: Vec<Team>) {
     // Create the table
     let mut table = Table::new();
     // Add a row per time
     table.add_row(row!["Team Name", "Team Id", "Members Ip", "Self",
                                 "Alias", "Connect Status", "Tunnel Status"]);
-
+    teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
     for mut team in teams {
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
         if team.members.len() == 0 {

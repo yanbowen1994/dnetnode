@@ -20,7 +20,7 @@ pub fn set_shutdown_signal_handler(tx: Sender<DaemonEvent>) -> Result<(), io::Er
 #[cfg(windows)]
 pub fn set_shutdown_signal_handler(tx: Sender<DaemonEvent>) -> Result<(), io::Error> {
     ctrlc::set_handler(move || {
-        log::debug!("Process received Ctrl-c");
+        log::info!("Process received Ctrl-c");
         let _ = tx.send(DaemonEvent::ShutDown);
     })
         .map_err(|_|io::Error::new(io::ErrorKind::NotFound, "123"))

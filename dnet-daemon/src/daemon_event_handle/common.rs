@@ -9,6 +9,7 @@ use dnet_types::settings::RunMode;
 use crate::settings::get_settings;
 use crate::daemon::Daemon;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+use crate::info::get_mut_info;
 
 pub fn is_not_proxy(ipc_tx: oneshot::Sender<Response>) -> Option<oneshot::Sender<Response>> {
     let run_mode = get_settings().common.mode.clone();
@@ -48,4 +49,10 @@ pub fn send_rpc_group_fresh(
     else {
         Response::exec_timeout()
     }
+}
+
+pub fn daemon_event_handle_fresh_running_from_all() {
+    let mut info = get_mut_info().lock().unwrap();
+    info.fresh_running_from_all();
+    info!("fresh_running_from_all running teams {:?}", info.teams.running_teams);
 }

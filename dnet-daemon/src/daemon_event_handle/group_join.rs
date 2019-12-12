@@ -7,11 +7,10 @@ use dnet_types::response::Response;
 use dnet_types::states::{State, TunnelState};
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
-use crate::info::get_mut_info;
 use super::tunnel::send_tunnel_connect;
 use super::handle_settings;
 use super::common::is_not_proxy;
-use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh};
+use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
 
 pub fn group_join(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -35,8 +34,6 @@ pub fn group_join(
             send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
         })
         .and_then(|ipc_tx| {
-            info!("add_start_team");
-            add_start_team(&team_id);
             info!("need_tunnel_connect");
             if need_tunnel_connect(&status) {
                 info!("handle_connect_select_proxy");
@@ -53,6 +50,7 @@ pub fn group_join(
         .and_then(|ipc_tx| {
             let response = send_rpc_group_fresh(rpc_command_tx);
             if response.code == 200{
+                daemon_event_handle_fresh_running_from_all();
                 Some(ipc_tx)
             }
             else {
@@ -87,11 +85,6 @@ fn send_rpc_join_group(
     else {
         return Some(ipc_tx);
     }
-}
-
-fn add_start_team(team_id: &str) {
-    let mut info = get_mut_info().lock().unwrap();
-    info.teams.add_start_team(team_id);
 }
 
 fn need_tunnel_connect(status: &State) -> bool {

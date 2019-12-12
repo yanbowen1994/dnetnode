@@ -9,7 +9,7 @@ use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_info, get_mut_info};
 use super::common::is_not_proxy;
-use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh};
+use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
 
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -53,6 +53,7 @@ pub fn group_out(
         .and_then(|ipc_tx| {
             let response = send_rpc_group_fresh(rpc_command_tx);
             if response.code == 200{
+                daemon_event_handle_fresh_running_from_all();
                 Some(ipc_tx)
             }
             else {

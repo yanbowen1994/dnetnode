@@ -6,11 +6,10 @@ use dnet_types::response::Response;
 use dnet_types::states::{State, TunnelState};
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
-use crate::info::get_mut_info;
 use super::tunnel::send_tunnel_connect;
 use super::handle_settings;
 use super::common::is_not_proxy;
-use crate::daemon_event_handle::common::is_rpc_connected;
+use crate::daemon_event_handle::common::{is_rpc_connected, daemon_event_handle_fresh_running_from_all, send_rpc_group_fresh};
 
 pub fn connect(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -29,8 +28,18 @@ pub fn connect(
             is_rpc_connected(ipc_tx, &status)
         })
         .and_then(|ipc_tx| {
-            info!("fresh_running_from_all");
-            fresh_running_from_all();
+            info!("send_rpc_group_fresh");
+            let response = send_rpc_group_fresh(rpc_command_tx.clone());
+            if response.code == 200{
+                daemon_event_handle_fresh_running_from_all();
+                Some(ipc_tx)
+            }
+            else {
+                let _ = Daemon::oneshot_send(ipc_tx, response, "");
+                None
+            }
+        })
+        .and_then(|ipc_tx| {
             info!("need_tunnel_connect");
             if need_tunnel_connect(&status) {
                 info!("handle_connect_select_proxy");
@@ -50,12 +59,6 @@ pub fn connect(
             info!("success");
             Some(())
         });
-}
-
-fn fresh_running_from_all() {
-    let mut info = get_mut_info().lock().unwrap();
-    info.fresh_running_from_all();
-    info!("fresh_running_from_all running teams {:?}", info.teams.running_teams);
 }
 
 fn need_tunnel_connect(status: &State) -> bool {

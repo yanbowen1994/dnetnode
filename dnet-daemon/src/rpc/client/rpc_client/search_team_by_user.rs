@@ -10,6 +10,7 @@ use crate::rpc::http_request::get;
 use crate::rpc::{Error, Result};
 use crate::rpc::client::rpc_client::types::ResponseTeam;
 use crate::settings::default_settings::TINC_INTERFACE;
+use crate::rpc::client::rpc_client::select_proxy::ping;
 
 pub(super) fn search_team_by_user() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
@@ -58,6 +59,10 @@ pub(super) fn search_team_by_user() -> Result<()> {
     let local_vip = info.tinc_info.vip.clone();
     std::mem::drop(info);
     info!("route hosts {:?}", hosts);
+    for host in &hosts {
+        let host = host.clone();
+        std::thread::spawn(move ||ping(host));
+    }
     std::thread::spawn(move ||
         route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())
     );

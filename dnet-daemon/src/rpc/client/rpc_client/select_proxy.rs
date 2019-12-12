@@ -80,7 +80,7 @@ fn select_min_rtt_proxys(proxy_rtt: HashMap<ConnectTo, u128>) -> (Vec<ConnectTo>
     (connect_to, min_rtt)
 }
 
-fn ping(addr: IpAddr) -> Option<u128> {
+pub fn ping(addr: IpAddr) -> Option<u128> {
     let timeout = Some(Duration::from_secs(1));
     let ttl = None;
     let ident = None;

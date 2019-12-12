@@ -317,29 +317,38 @@ impl Daemon {
     }
 
     fn handle_rpc_connected(&mut self) {
-        let mut tunnel_auto_connect = false;
-        self.status.rpc = RpcState::Connected;
-        let run_mode = get_settings().common.mode.clone();
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+            {
+                self.status.tunnel = TunnelState::Connecting;
+                let (res_tx, _) = mpsc::channel();
+                let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
+            }
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let mut tunnel_auto_connect = false;
+                self.status.rpc = RpcState::Connected;
+                let run_mode = get_settings().common.mode.clone();
 
-        if run_mode == RunMode::Proxy || run_mode == RunMode::Center {
-            tunnel_auto_connect = true;
-        }
-        else {
-            let auto_connect = get_settings().client.auto_connect;
-            if auto_connect == true {
-                if self.status.tunnel == TunnelState::Disconnected ||
-                    self.status.tunnel == TunnelState::Disconnecting {
+                if run_mode == RunMode::Proxy || run_mode == RunMode::Center {
                     tunnel_auto_connect = true;
                 }
-            }
-        }
+                else {
+                    let auto_connect = get_settings().client.auto_connect;
+                    if auto_connect == true {
+                        if self.status.tunnel == TunnelState::Disconnected ||
+                            self.status.tunnel == TunnelState::Disconnecting {
+                            tunnel_auto_connect = true;
+                        }
+                    }
+                }
 
-        if tunnel_auto_connect {
-            info!("tunnel auto connect");
-            let _response = daemon_event_handle::tunnel::send_tunnel_connect(
-                self.tunnel_command_tx.clone(),
-            );
-        }
+                if tunnel_auto_connect {
+                    info!("tunnel auto connect");
+                    let _response = daemon_event_handle::tunnel::send_tunnel_connect(
+                        self.tunnel_command_tx.clone(),
+                    );
+                }
+            }
     }
 
     pub fn oneshot_send<T>(ipc_tx: oneshot::Sender<T>, t: T, msg: &'static str) {

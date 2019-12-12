@@ -19,13 +19,8 @@ pub fn device_add() -> Result<()> {
 
     let res_data = post(&url, &data.to_string())?;
     info!("Response {:?}", res_data.to_string());
-    let res_device: JavaDevice = serde_json::from_value(res_data.clone())
-        .map_err(|e|{
-            Error::ResponseParse(format!("err: {:?}\n{:?}", e, res_data.to_string()))
-        })?;
-
-
-    let vip = res_device.ip
+    let vip = res_data.get("ip")
+        .and_then(|vip_value|serde_json::from_value::<String>(vip_value.clone()).ok())
         .and_then(|vip|IpAddr::from_str(&vip).ok())
         .ok_or(Error::ResponseParse("device_add response vip.".to_owned()))?;
 

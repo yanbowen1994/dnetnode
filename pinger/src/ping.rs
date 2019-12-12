@@ -71,7 +71,11 @@ pub fn ping(addr: IpAddr,
             Err(_) => return Err(ErrorKind::InternalError.into()),
         }
     };
-    assert_eq!(reply.ident, request.ident);
-    assert_eq!(reply.seq_cnt, request.seq_cnt);
-    return Ok(rtt);
+    if reply.ident == request.ident
+        && reply.seq_cnt == request.seq_cnt {
+        Ok(rtt)
+    }
+    else {
+        Err(ErrorKind::InternalError.into())
+    }
 }

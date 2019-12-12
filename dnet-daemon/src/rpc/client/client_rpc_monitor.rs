@@ -12,7 +12,6 @@ use super::RpcClient;
 use super::rpc_client;
 use super::error::{Error as ClientError, Result};
 use crate::rpc::Error;
-use crate::info::get_mut_info;
 
 #[derive(Eq, PartialEq)]
 enum RunStatus {
@@ -198,10 +197,17 @@ impl RpcMonitor {
     fn handle_select_proxy(&self) -> Response {
         info!("handle_select_proxy");
         match self.client.client_get_online_proxy() {
-            Ok(connect_to) => {
-                get_mut_info().lock().unwrap().tinc_info.connect_to = connect_to;
+            Ok(connect_to_vec) => {
+                if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
+                    if tunnel_restart {
+                        let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+                    }
+                }
             }
-            Err(e) => return e.to_response(),
+            Err(e) => {
+                error!("{:?}", e.to_response());
+                return e.to_response();
+            }
         }
         match self.client.device_select_proxy() {
             Ok(_) => return Response::success(),

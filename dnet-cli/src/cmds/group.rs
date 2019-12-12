@@ -131,13 +131,15 @@ fn print_team(teams: Vec<Team>) {
                                 "Alias", "Connect Status", "Tunnel Status"]);
     let mut i = 0;
     for mut team in teams {
+        if team.members.len() = 0 {
+            continue
+        }
+
         if i == 0 {
             i = 1;
         }
         else {
-            if team.members.len() > 0 {
-                table.add_row(row![""]);
-            }
+            table.add_row(row![""]);
         }
 
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
@@ -150,7 +152,6 @@ fn print_team(teams: Vec<Team>) {
                 Cell::new("disconnect")
                     .with_style(Attr::ForegroundColor(color::RED))
             };
-
 
             let tinc_status = if member.tinc_status {
                 Cell::new("connect")

@@ -109,6 +109,7 @@ fn main() {
                 let team_status_response = TeamStatusResponse::from(teams);
                 let json = team_status_response.to_json_str();
                 println!("{}", json);
+                return;
             }
         }
     }

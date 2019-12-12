@@ -23,7 +23,6 @@ use dnet_types::response::Response;
 use crate::cmd_api::types::EventListener;
 use crate::mpsc::IntoSender;
 use crate::settings::Settings;
-use dnet_types::team::Team;
 use dnet_types::tinc_host_status_change::HostStatusChange;
 use dnet_types::user::User;
 
@@ -48,7 +47,7 @@ build_rpc_trait! {
         fn status(&self, Self::Metadata) -> BoxFuture<State, Error>;
 
         #[rpc(meta, name = "group_info")]
-        fn group_info(&self, Self::Metadata, String) -> BoxFuture<Vec<Team>, Error>;
+        fn group_info(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_users")]
         fn group_users(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
@@ -60,7 +59,7 @@ build_rpc_trait! {
         fn group_out(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_list")]
-        fn group_list(&self, Self::Metadata) -> BoxFuture<Vec<Team>, Error>;
+        fn group_list(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "login")]
         fn login(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
@@ -83,10 +82,10 @@ pub enum ManagementCommand {
     State(OneshotSender<State>),
 
     /// Get the current geographical location.
-    GroupList(OneshotSender<Vec<Team>>),
+    GroupList(OneshotSender<Response>),
 
     /// Get the current geographical location.
-    GroupInfo(OneshotSender<Vec<Team>>, String),
+    GroupInfo(OneshotSender<Response>, String),
 
     /// Get the current geographical location.
     GroupUsers(OneshotSender<Response>, String),
@@ -256,7 +255,7 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn group_list(&self, _: Self::Metadata) -> BoxFuture<Vec<Team>, Error> {
+    fn group_list(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
         log::info!("management interface group list");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
@@ -284,7 +283,7 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Vec<Team>, Error> {
+    fn group_info(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
         log::info!("management interface group info");
         let (tx, rx) = sync::oneshot::channel();
         let future = self

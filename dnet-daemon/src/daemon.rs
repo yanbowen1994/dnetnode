@@ -229,10 +229,12 @@ impl Daemon {
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {
                 let rpc_command_tx = self.rpc_command_tx.clone();
+                let status = self.status.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
                     rpc_command_tx,
-                    Some(team_id))
+                    Some(team_id),
+                    status),
                 );
             }
 
@@ -247,10 +249,12 @@ impl Daemon {
 
             ManagementCommand::GroupList(ipc_tx) => {
                 let rpc_command_tx = self.rpc_command_tx.clone();
+                let status = self.status.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
                     rpc_command_tx,
-                    None)
+                    None,
+                    status)
                 );
             }
 
@@ -279,11 +283,9 @@ impl Daemon {
                 // TODO tunnel ipc -> monitor
                 match host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
-                        self.status.tunnel = TunnelState::Connected;
                         self.handle_tunnel_connected()
                     },
                     dnet_types::tinc_host_status_change::HostStatusChange::TincDown => {
-                        self.status.tunnel = TunnelState::Disconnected;
                         self.handle_tunnel_disconnected()
                     },
                     _ => {

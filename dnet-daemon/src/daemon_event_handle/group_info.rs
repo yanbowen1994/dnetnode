@@ -1,60 +1,61 @@
 use std::sync::mpsc;
-use std::time::Duration;
 
 use futures::sync::oneshot;
-
+use dnet_types::team::Team;
 use dnet_types::response::Response;
-use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
+
+use crate::rpc::rpc_cmd::RpcEvent;
 use crate::daemon::Daemon;
 use crate::info::get_info;
-use dnet_types::team::Team;
+use crate::daemon_event_handle::common::{send_rpc_group_fresh, is_rpc_connected};
+use dnet_types::states::State;
 
 pub fn handle_group_info(
-    ipc_tx:                 oneshot::Sender<Vec<Team>>,
+    ipc_tx:                 oneshot::Sender<Response>,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
-    team_id:                Option<String>
+    team_id:                Option<String>,
+    status:                 State,
 ) {
-    info!("send_rpc_group_fresh");
-    let res = send_rpc_group_fresh(rpc_command_tx);
+    if let Some(ipc_tx) = is_rpc_connected(ipc_tx, &status) {
+        info!("send_rpc_group_fresh");
+        let res = send_rpc_group_fresh(rpc_command_tx);
 
-    if res.code == 200 {
-        if let Some(team_id) = team_id {
-            if let Some(team) = get_info().lock().unwrap()
-                .teams
-                .all_teams
-                .get(&team_id)
-                .cloned() {
-                let _ = Daemon::oneshot_send(ipc_tx, vec![team], "");
+        if res.code == 200 {
+            if let Some(team_id) = team_id {
+                if let Some(team) = get_info().lock().unwrap()
+                    .teams
+                    .all_teams
+                    .get(&team_id)
+                    .cloned() {
+                    if let Ok(data) = serde_json::to_value(vec![team]) {
+                        let res = Response::success().set_data(Some(data));
+                        let _ = Daemon::oneshot_send(ipc_tx, res, "");
+                        return;
+                    }
+                }
+
+                let _ = Daemon::oneshot_send(
+                    ipc_tx,
+                    Response::internal_error().set_msg("Group Not Found.".to_string()),
+                    ""
+                );
             }
             else {
-                let _ = Daemon::oneshot_send(ipc_tx, vec![], "");
+                let team = get_info().lock().unwrap()
+                    .teams
+                    .all_teams
+                    .values()
+                    .cloned()
+                    .collect::<Vec<Team>>();
+                if let Ok(data) = serde_json::to_value(team) {
+                    let res = Response::success().set_data(Some(data));
+                    let _ = Daemon::oneshot_send(ipc_tx, res, "");
+                    return;
+                }
             }
         }
         else {
-            let team =  get_info().lock().unwrap()
-                .teams
-                .all_teams
-                .values()
-                .cloned()
-                .collect::<Vec<Team>>();
-            let _ = Daemon::oneshot_send(ipc_tx, team, "");
+            let _ = Daemon::oneshot_send(ipc_tx, res, "");
         }
-    }
-    else {
-        let response = vec![];
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-    }
-}
-
-fn send_rpc_group_fresh(
-    rpc_command_tx:     mpsc::Sender<RpcEvent>
-) -> Response {
-    let (res_tx, res_rx) = mpsc::channel();
-    let _ = rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::FreshTeam(res_tx)));
-    if let Ok(res) = res_rx.recv_timeout(Duration::from_secs(5)) {
-        res
-    }
-    else {
-        Response::exec_timeout()
     }
 }

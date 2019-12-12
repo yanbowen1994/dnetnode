@@ -101,11 +101,11 @@ impl DaemonRpcClient {
         self.call("shutdown", &NO_ARGS)
     }
 
-    pub fn group_list(&mut self, ) -> Result<Vec<Team>> {
+    pub fn group_list(&mut self, ) -> Result<Response> {
         self.call("group_list", &NO_ARGS)
     }
 
-    pub fn group_info(&mut self, team_id: String) -> Result<Vec<Team>> {
+    pub fn group_info(&mut self, team_id: String) -> Result<Response> {
         self.call("group_info", &team_id)
     }
 

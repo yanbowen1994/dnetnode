@@ -4,13 +4,12 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::{TunnelState, State};
+use dnet_types::states::State;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_info, get_mut_info};
-use super::tunnel::send_tunnel_disconnect;
 use super::common::is_not_proxy;
-use crate::daemon_event_handle::common::is_rpc_connected;
+use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh};
 
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -49,7 +48,17 @@ pub fn group_out(
         })
         .and_then(|ipc_tx| {
             info!("handle_rpc_stop_heartbeat");
-            handle_rpc_stop_heartbeat(ipc_tx, rpc_command_tx)
+            handle_rpc_stop_heartbeat(ipc_tx, rpc_command_tx.clone())
+        })
+        .and_then(|ipc_tx| {
+            let response = send_rpc_group_fresh(rpc_command_tx);
+            if response.code == 200{
+                Some(ipc_tx)
+            }
+            else {
+                let _ = Daemon::oneshot_send(ipc_tx, response, "");
+                None
+            }
         })
         .and_then(|ipc_tx| {
             info!("success");

@@ -45,8 +45,8 @@ impl Command for Group {
                     ),
             )
             .subcommand(
-                clap::SubCommand::with_name("out")
-                    .about("This device out group.")
+                clap::SubCommand::with_name("quit")
+                    .about("This device quit group.")
                     .arg(
                         clap::Arg::with_name("team_id")
                             .help("Dnet team id.")
@@ -71,7 +71,7 @@ impl Command for Group {
         } else if let Some(set_matches) = matches.subcommand_matches("join") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
             self.group_join(team_id)?;
-        } else if let Some(set_matches) = matches.subcommand_matches("out") {
+        } else if let Some(set_matches) = matches.subcommand_matches("quit") {
             let team_id = value_t_or_exit!(set_matches.value_of("team_id"), String);
             self.group_out(team_id)?;
         } else {
@@ -148,7 +148,7 @@ fn print_team(mut teams: Vec<Team>) {
     let mut table = Table::new();
     // Add a row per time
     table.add_row(row!["Team Name", "Team Id", "Members Ip", "Self",
-                                "Alias", "Connect Status", "Tunnel Status"]);
+                                "Alias", "Connect Status", "Proxy Status"]);
     teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
     for mut team in teams {
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));

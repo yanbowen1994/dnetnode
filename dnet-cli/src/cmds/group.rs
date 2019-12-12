@@ -131,7 +131,7 @@ fn print_team(teams: Vec<Team>) {
                                 "Alias", "Connect Status", "Tunnel Status"]);
     let mut i = 0;
     for mut team in teams {
-        if team.members.len() = 0 {
+        if team.members.len() == 0 {
             continue
         }
 

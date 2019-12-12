@@ -41,13 +41,19 @@ pub fn handle_group_info(
                 );
             }
             else {
-                let team = get_info().lock().unwrap()
+                let mut teams = get_info().lock().unwrap()
                     .teams
                     .all_teams
                     .values()
                     .cloned()
                     .collect::<Vec<Team>>();
-                if let Ok(data) = serde_json::to_value(team) {
+                let _ = teams.iter_mut()
+                    .map(|team| {
+                        team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
+                    })
+                    .collect::<Vec<()>>();
+                teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
+                if let Ok(data) = serde_json::to_value(teams) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");
                     return;

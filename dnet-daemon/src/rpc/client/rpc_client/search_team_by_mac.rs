@@ -63,8 +63,11 @@ pub fn search_team_by_mac() -> Result<()> {
     let mut info = get_mut_info().lock().unwrap();
     info.teams.all_teams = teams;
     let hosts = info.teams.get_connect_hosts(&info.tinc_info.vip);
+    let local_vip = info.tinc_info.vip.clone();
     std::mem::drop(info);
     info!("route hosts {:?}", hosts);
-    route::keep_route(&hosts, TINC_INTERFACE);
+    std::thread::spawn(move ||
+        route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())
+    );
     Ok(())
 }

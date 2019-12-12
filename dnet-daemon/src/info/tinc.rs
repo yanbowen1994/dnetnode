@@ -11,14 +11,15 @@ use super::error::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub struct TincInfo {
-    pub vip:            Option<IpAddr>,
-    pub pub_key:        String,
-    pub port:           u16,
-    pub connections:    u32,
-    pub edges:          u32,
-    pub nodes:          u32,
-    pub connect_to:     Vec<ConnectTo>,
-    pub last_runtime:   Option<String>,
+    pub vip:                    Option<IpAddr>,
+    pub pub_key:                String,
+    pub port:                   u16,
+    pub connections:            u32,
+    pub edges:                  u32,
+    pub nodes:                  u32,
+    pub connect_to:             Vec<ConnectTo>,
+    pub last_runtime:           Option<String>,
+    pub current_connect:        Vec<IpAddr>,
     tinc_home:          String,
 }
 impl TincInfo {
@@ -27,15 +28,16 @@ impl TincInfo {
             .join("tinc").to_str().unwrap().to_string() + "/";
         let pub_key = "".to_owned();
         TincInfo {
-            vip:            None,
+            vip:                    None,
             pub_key,
-            port:           DEFAULT_TINC_PORT,
-            connections:    0,
-            edges:          0,
-            nodes:          0,
-            last_runtime:   None,
+            port:                   DEFAULT_TINC_PORT,
+            connections:            0,
+            edges:                  0,
+            nodes:                  0,
+            last_runtime:           None,
             tinc_home,
-            connect_to:     vec![],
+            current_connect:        vec![],
+            connect_to:             vec![],
         }
     }
 
@@ -75,5 +77,16 @@ impl TincInfo {
         _file.read_to_string(&mut res)
             .map_err(Error::FileNotExit)?;
         Ok(res)
+    }
+
+    pub fn remove_current_connect(&mut self, vip: &IpAddr) {
+        let mut index = 0;
+        for connect_vip in &self.current_connect {
+            if connect_vip == vip {
+                break
+            }
+            index += 1;
+        }
+        self.current_connect.remove(index);
     }
 }

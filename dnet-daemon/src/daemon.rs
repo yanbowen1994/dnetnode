@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
 
 use crate::traits::TunnelTrait;
-use crate::info::{self, Info};
+use crate::info::{self, Info, get_mut_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::management_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -17,6 +17,7 @@ use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcProxyCmd};
 use std::time::Duration;
 use super::daemon_event_handle;
+use tinc_plugin::TincTools;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -280,27 +281,40 @@ impl Daemon {
             ManagementCommand::HostStatusChange(ipc_tx, host_status_change) => {
                 // No call back.
                 let _ = Self::oneshot_send(ipc_tx, (), "");
+                let mut send_to_rpc = false;
                 // TODO tunnel ipc -> monitor
-                match host_status_change {
+                match &host_status_change {
                     dnet_types::tinc_host_status_change::HostStatusChange::TincUp => {
                         self.handle_tunnel_connected()
                     },
                     dnet_types::tinc_host_status_change::HostStatusChange::TincDown => {
                         self.handle_tunnel_disconnected()
                     },
-                    _ => {
-                        let run_mode = &get_settings().common.mode;
-                        if *run_mode == RunMode::Proxy ||
-                            *run_mode == RunMode::Center {
-                            if let Err(e) = self.rpc_command_tx.send(
-                                RpcEvent::Proxy(
-                                    RpcProxyCmd::HostStatusChange(host_status_change)
-                                )
-                            ) {
-                                error!("{:?}", e);
-                            };
+                    dnet_types::tinc_host_status_change::HostStatusChange::HostUp(host) => {
+                        if let Some(vip) = TincTools::get_vip_by_filename(host) {
+                            get_mut_info().lock().unwrap().tinc_info.current_connect.push(vip);
+                            send_to_rpc = true;
                         }
-                    },
+                    }
+                    dnet_types::tinc_host_status_change::HostStatusChange::HostDown(host) => {
+                        if let Some(vip) = TincTools::get_vip_by_filename(host) {
+                            get_mut_info().lock().unwrap().tinc_info.remove_current_connect(&vip);
+                            send_to_rpc = true;
+                        }
+                    }
+                }
+                if send_to_rpc {
+                    let run_mode = &get_settings().common.mode;
+                    if *run_mode == RunMode::Proxy ||
+                        *run_mode == RunMode::Center {
+                        if let Err(e) = self.rpc_command_tx.send(
+                            RpcEvent::Proxy(
+                                RpcProxyCmd::HostStatusChange(host_status_change)
+                            )
+                        ) {
+                            error!("{:?}", e);
+                        };
+                    }
                 }
             }
 

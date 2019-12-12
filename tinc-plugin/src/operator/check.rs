@@ -9,7 +9,8 @@ impl TincOperator {
     pub fn check_tinc_status(&self) -> Result<()> {
         TincTools::get_tinc_pid_by_sys(&self.tinc_settings.tinc_home)
             .ok_or(Error::TincNotExist)
-            .and_then(|_|Ok(()))
+            .and_then(|_|Ok(()))?;
+        self.check_tinc_listen()
     }
 
     pub fn check_tinc_listen(&self) -> Result<()> {

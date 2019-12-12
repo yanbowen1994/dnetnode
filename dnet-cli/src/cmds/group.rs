@@ -86,7 +86,17 @@ impl Group {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_list()
             .map_err(Error::ipc_connect_failed)?;
-        print_team(res);
+        if let Some(teams_json) = res.data.clone() {
+            if let Ok(teams) = serde_json::from_value::<Vec<Team>>(teams_json) {
+                print_team(teams);
+            }
+            else {
+                println!("Can't parse response. {:#?}", res);
+            }
+        }
+        else {
+            println!("{:#?}", res);
+        }
         Ok(())
     }
 
@@ -94,7 +104,17 @@ impl Group {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_info(team_id)
             .map_err(Error::ipc_connect_failed)?;
-        print_team(res);
+        if let Some(teams_json) = res.data.clone() {
+            if let Ok(teams) = serde_json::from_value::<Vec<Team>>(teams_json) {
+                print_team(teams);
+            }
+            else {
+                println!("Can't parse response. {:#?}", res);
+            }
+        }
+        else {
+            println!("{:#?}", res);
+        }
         Ok(())
     }
 
@@ -127,49 +147,65 @@ fn print_team(teams: Vec<Team>) {
     // Create the table
     let mut table = Table::new();
     // Add a row per time
-    table.add_row(row!["Team Name", "Team Id", "Members Ip",
+    table.add_row(row!["Team Name", "Team Id", "Members Ip", "Self",
                                 "Alias", "Connect Status", "Tunnel Status"]);
-    let mut i = 0;
-    for mut team in teams {
-        if team.members.len() == 0 {
-            continue
-        }
 
-        if i == 0 {
-            i = 1;
+    for mut team in teams {
+        team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
+        if team.members.len() == 0 {
+            table.add_row(row![
+                            team.team_name.clone().unwrap_or("".to_string()),
+                            team.team_id,
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                        ]);
         }
         else {
-            table.add_row(row![""]);
-        }
+            for member in team.members {
+                let connect_status =
+                    if member.connect_status {
+                        Cell::new("connect")
+                            .with_style(Attr::BackgroundColor(color::GREEN))
+                    }
+                    else {
+                        Cell::new("disconnect")
+                            .with_style(Attr::BackgroundColor(color::RED))
+                    };
 
-        team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
-        for member in team.members {
-            let connect_status = if member.connect_status {
-                Cell::new("connect")
-                    .with_style(Attr::ForegroundColor(color::GREEN))
+                    let tinc_status = if member.tinc_status {
+                        Cell::new("connect")
+                            .with_style(Attr::BackgroundColor(color::GREEN))
+                    }
+                    else {
+                        Cell::new("disconnect")
+                            .with_style(Attr::BackgroundColor(color::RED))
+                    };
+
+                    let is_self = match member.is_self {
+                        Some(x) => {
+                            if x {
+                                "yes"
+                            }
+                            else {
+                                ""
+                            }
+                        },
+                        None => "",
+                    };
+
+                    table.add_row(row![
+                            team.team_name.clone().unwrap_or("".to_string()),
+                            team.team_id,
+                            member.vip,
+                            is_self,
+                            member.device_name.unwrap_or("".to_string()),
+                            connect_status,
+                            tinc_status,
+                        ]);
             }
-            else {
-                Cell::new("disconnect")
-                    .with_style(Attr::ForegroundColor(color::RED))
-            };
-
-            let tinc_status = if member.tinc_status {
-                Cell::new("connect")
-                    .with_style(Attr::ForegroundColor(color::GREEN))
-            }
-            else {
-                Cell::new("disconnect")
-                    .with_style(Attr::ForegroundColor(color::RED))
-            };
-
-            table.add_row(row![
-                    team.team_name.clone().unwrap_or("".to_string()),
-                    team.team_id,
-                    member.vip,
-                    member.device_name.unwrap_or("".to_string()),
-                    connect_status,
-                    tinc_status,
-                ]);
         }
     }
 

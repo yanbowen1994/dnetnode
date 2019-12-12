@@ -12,9 +12,6 @@ pub(super) fn get_users_by_team(teamid: &str) -> Result<Vec<UserInfo>> {
 
     let res_data = get(&url)?;
 
-    let res_data = res_data.get("records")
-        .ok_or(Error::ResponseParse(res_data.to_string()))?;
-
     let recv: Vec<Value> = res_data.as_array()
         .ok_or({
             Error::ResponseParse(res_data.to_string())
@@ -53,6 +50,6 @@ pub(super) fn get_users_by_team(teamid: &str) -> Result<Vec<UserInfo>> {
         };
         user_infos.push(user_info);
     }
-    println!("{:?}", user_infos);
+    info!("{:?}", user_infos);
     return Ok(user_infos);
 }

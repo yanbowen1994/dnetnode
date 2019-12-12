@@ -122,7 +122,7 @@ impl Group {
         let mut ipc = new_ipc_client()?;
         let res = ipc.group_users(team_id)
             .map_err(Error::ipc_connect_failed)?;
-        println!("{:#?}", res);
+        print_user(res.data);
         Ok(())
     }
 
@@ -175,28 +175,28 @@ fn print_team(mut teams: Vec<Team>) {
                             .with_style(Attr::BackgroundColor(color::RED))
                     };
 
-                    let tinc_status = if member.tinc_status {
-                        Cell::new("connect")
-                            .with_style(Attr::BackgroundColor(color::GREEN))
-                    }
-                    else {
-                        Cell::new("disconnect")
-                            .with_style(Attr::BackgroundColor(color::RED))
-                    };
+                let tinc_status = if member.tinc_status {
+                    Cell::new("connect")
+                        .with_style(Attr::BackgroundColor(color::GREEN))
+                }
+                else {
+                    Cell::new("disconnect")
+                        .with_style(Attr::BackgroundColor(color::RED))
+                };
 
-                    let is_self = match member.is_self {
-                        Some(x) => {
-                            if x {
-                                "yes"
-                            }
-                            else {
-                                ""
-                            }
-                        },
-                        None => "",
-                    };
+                let is_self = match member.is_self {
+                    Some(x) => {
+                        if x {
+                            "yes"
+                        }
+                        else {
+                            ""
+                        }
+                    },
+                    None => "",
+                };
 
-                    table.add_row(row![
+                table.add_row(row![
                             team.team_name.clone().unwrap_or("".to_string()),
                             team.team_id,
                             member.vip,
@@ -209,6 +209,45 @@ fn print_team(mut teams: Vec<Team>) {
         }
     }
 
+    // Print the table to stdout
+    table.printstd();
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UserInfo {
+    pub name:              Option<String>,
+    pub email:             Option<String>,
+    pub photo:             Option<String>,
+}
+
+fn print_user(user_json: Option<serde_json::Value>) {
+    let mut users = match user_json
+        .and_then(|user_json| {
+            serde_json::from_value::<Vec<serde_json::Value>>(user_json).ok()
+        })
+        .and_then(|user_json| {
+            Some(user_json
+                .into_iter()
+                .filter_map(|user_json| {
+                    serde_json::from_value::<UserInfo>(user_json).ok()
+                })
+                .collect::<Vec<UserInfo>>())
+        }) {
+        Some(x) => x,
+        None => return,
+    };
+
+    // Create the table
+    let mut table = Table::new();
+    // Add a row per time
+    table.add_row(row!["Account", "Email"]);
+    users.sort_by(|a, b|a.name.cmp(&b.name));
+    for user in users {
+        table.add_row(row![
+                            user.name.unwrap_or("".to_string()),
+                            user.email.unwrap_or("".to_string()),
+                        ]);
+    }
     // Print the table to stdout
     table.printstd();
 }

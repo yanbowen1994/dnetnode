@@ -10,7 +10,6 @@ pub use jsonrpc_client_pubsub::Error as PubSubError;
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::states::State;
 use dnet_types::response::Response;
-use dnet_types::team::Team;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

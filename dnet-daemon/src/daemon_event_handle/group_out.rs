@@ -2,12 +2,12 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use futures::sync::oneshot;
-
 use dnet_types::response::Response;
 use dnet_types::states::State;
+
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
-use crate::info::{get_info, get_mut_info};
+use crate::info::get_info;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
 
@@ -33,18 +33,6 @@ pub fn group_out(
             else {
                 Some(ipc_tx)
             }
-        })
-        .and_then(|ipc_tx| {
-            info!("del_start_team");
-            del_local_team(&team_id);
-//            info!("need_tunnel_disconnect");
-//            if need_tunnel_disconnect(&status) {
-//                info!("handle_tunnel_disconnect");
-//                handle_tunnel_disconnect(ipc_tx, tunnel_command_tx)
-//            }
-//            else {
-            Some(ipc_tx)
-//            }
         })
         .and_then(|ipc_tx| {
             info!("handle_rpc_stop_heartbeat");
@@ -100,12 +88,6 @@ fn send_rpc_out_group(
     else {
         return Some(ipc_tx);
     }
-}
-
-fn del_local_team(team_id: &str) {
-    let mut info = get_mut_info().lock().unwrap();
-    info.teams.all_teams.remove(team_id);
-    info.teams.del_start_team(team_id);
 }
 
 //fn need_tunnel_disconnect(status: &State) -> bool {

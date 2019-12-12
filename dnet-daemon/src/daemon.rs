@@ -388,14 +388,12 @@ impl Daemon {
     ) {
         let status = self.status.clone();
         let rpc_command_tx = self.rpc_command_tx.clone();
-        let tunnel_command_tx = self.tunnel_command_tx.clone();
         thread::spawn( ||
             daemon_event_handle::group_join::group_join(
                 ipc_tx,
                 team_id,
                 status,
                 rpc_command_tx,
-                tunnel_command_tx,
             )
         );
     }

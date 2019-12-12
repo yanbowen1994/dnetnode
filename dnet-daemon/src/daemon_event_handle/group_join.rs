@@ -4,10 +4,10 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::{State, TunnelState};
+use dnet_types::states::State;
+
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::daemon::{Daemon, TunnelCommand};
-use super::tunnel::send_tunnel_connect;
+use crate::daemon::Daemon;
 use super::handle_settings;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
@@ -17,7 +17,6 @@ pub fn group_join(
     team_id:                String,
     status:                 State,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
-    tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
     info!("is_not_proxy");
     let _ = is_not_proxy(ipc_tx)
@@ -32,20 +31,6 @@ pub fn group_join(
         .and_then(|ipc_tx|{
             info!("send_rpc_join_group");
             send_rpc_join_group(&team_id, ipc_tx, rpc_command_tx.clone())
-        })
-        .and_then(|ipc_tx| {
-            info!("need_tunnel_connect");
-            if need_tunnel_connect(&status) {
-                info!("handle_connect_select_proxy");
-                handle_connect_select_proxy(ipc_tx, rpc_command_tx.clone())
-                    .and_then(|ipc_tx| {
-                        info!("handle_tunnel_connect");
-                        handle_tunnel_connect(ipc_tx, tunnel_command_tx)
-                    })
-            }
-            else {
-                Some(ipc_tx)
-            }
         })
         .and_then(|ipc_tx| {
             let response = send_rpc_group_fresh(rpc_command_tx);
@@ -84,54 +69,5 @@ fn send_rpc_join_group(
     }
     else {
         return Some(ipc_tx);
-    }
-}
-
-fn need_tunnel_connect(status: &State) -> bool {
-    if status.tunnel == TunnelState::Disconnected
-        || status.tunnel == TunnelState::Disconnecting {
-        true
-    }
-    else {
-        false
-    }
-}
-
-fn handle_connect_select_proxy(
-    ipc_tx: oneshot::Sender<Response>,
-    rpc_command_tx: mpsc::Sender<RpcEvent>,
-) -> Option<oneshot::Sender<Response>> {
-    let (rpc_response_tx, rpc_response_rx) = mpsc::channel();
-    let _ = rpc_command_tx.send(
-        RpcEvent::Client(RpcClientCmd::ReportDeviceSelectProxy(rpc_response_tx)));
-
-    if let Ok(response) = rpc_response_rx.recv() {
-        if response.code == 200 {
-            return Some(ipc_tx);
-        }
-        else {
-            let _ = Daemon::oneshot_send(ipc_tx, response, "");
-            return None;
-        }
-    }
-    else {
-        let response = Response::internal_error().set_msg("Exec failed.".to_owned());
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
-    }
-
-}
-
-fn handle_tunnel_connect(
-    ipc_tx:             oneshot::Sender<Response>,
-    tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-) -> Option<oneshot::Sender<Response>> {
-    let response = send_tunnel_connect(tunnel_command_tx);
-    if response.code == 200 {
-        return Some(ipc_tx);
-    }
-    else {
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
     }
 }

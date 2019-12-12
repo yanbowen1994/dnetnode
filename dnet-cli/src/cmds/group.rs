@@ -135,7 +135,9 @@ fn print_team(teams: Vec<Team>) {
             i = 1;
         }
         else {
-            table.add_row(row![""]);
+            if team.members.len() > 0 {
+                table.add_row(row![""]);
+            }
         }
 
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));

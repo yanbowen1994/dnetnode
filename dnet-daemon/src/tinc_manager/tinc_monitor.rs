@@ -8,7 +8,7 @@ use tinc_plugin::TincOperatorError;
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
-use crate::info::get_info;
+use crate::info::get_mut_info;
 use dnet_types::status::TunnelState;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
@@ -45,10 +45,13 @@ impl TincMonitor {
             info!("TincMonitor event {:?}", event);
             match event {
                 TunnelCommand::Connect => {
-                    let tunnel_status = get_info().lock().unwrap().status.tunnel.clone();
+                    let mut info = get_mut_info().lock().unwrap();
                     let res =
-                        if tunnel_status == TunnelState::Disconnected
-                            || tunnel_status == TunnelState::Disconnecting {
+                        if info.status.tunnel == TunnelState::Disconnected
+                            || info.status.tunnel == TunnelState::Disconnecting {
+                            info.status.tunnel = TunnelState::Connecting;
+                            std::mem::drop(info);
+
                             let inner = get_monitor_inner();
 
                             match inner.connect() {
@@ -62,16 +65,20 @@ impl TincMonitor {
                             }
                         }
                         else {
+                            std::mem::drop(info);
                             Response::success()
                         };
 
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
-                    let tunnel_status = get_info().lock().unwrap().status.tunnel.clone();
+                    let mut info = get_mut_info().lock().unwrap();
                     let res =
-                        if tunnel_status == TunnelState::Connected
-                            || tunnel_status == TunnelState::Connecting {
+                        if info.status.tunnel == TunnelState::Connected
+                            || info.status.tunnel == TunnelState::Connecting {
+                            info.status.tunnel = TunnelState::Disconnecting;
+                            std::mem::drop(info);
+
                             let inner = get_monitor_inner();
                             match inner.disconnect() {
                                 Ok(_) => Response::success(),
@@ -79,6 +86,7 @@ impl TincMonitor {
                             }
                         }
                         else {
+                            std::mem::drop(info);
                             Response::success()
                         };
 
@@ -204,6 +212,7 @@ impl MonitorInner {
                 Err(_) => return Err(TincOperatorError::StopTincError),
             }
         }
+
         self.connect()?;
         info!("tinc_monitor restart tinc success");
         Ok(())

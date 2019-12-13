@@ -83,11 +83,11 @@ impl TincInfo {
         let mut index = 0;
         for connect_vip in &self.current_connect {
             if connect_vip == vip {
-                break
+                self.current_connect.remove(index);
+                return;
             }
             index += 1;
         }
-        self.current_connect.remove(index);
     }
 
 }

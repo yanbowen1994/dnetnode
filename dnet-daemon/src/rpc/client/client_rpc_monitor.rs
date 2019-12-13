@@ -395,16 +395,22 @@ impl Executor {
                     },
                     Err(e) => {
                         let res = e.to_response();
-                        error!("rpc init {:?}", res);
                         if res.code == 411
                             || res.code == 405
                         {
+                            error!("rpc init {:?}", res);
                             if let Err(send_err) = self.rpc_tx.send(
                                 RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
                                 error!("self.rpc_tx.send(\
                                 RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
                             }
                             return;
+                        }
+                        else if res.code == 623 {
+                            ()
+                        }
+                        else {
+                            error!("rpc init {:?}", res);
                         }
                     }
                 }

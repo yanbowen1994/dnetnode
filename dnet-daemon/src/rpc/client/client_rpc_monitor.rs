@@ -386,9 +386,16 @@ impl Executor {
 
             if self.status == ExecutorStatus::Uninit {
                 match self.init() {
-                    Ok(_) => self.status = ExecutorStatus::Inited,
+                    Ok(_) => {
+                        if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
+                            return;
+                        }
+                        self.status = ExecutorStatus::Inited;
+                        info!("rpc init success");
+                    },
                     Err(e) => {
                         let res = e.to_response();
+                        error!("rpc init {:?}", res);
                         if res.code == 411
                             || res.code == 405
                         {
@@ -400,13 +407,6 @@ impl Executor {
                             return;
                         }
                     }
-                }
-
-                if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
-                    return;
-                }
-                if self.status == ExecutorStatus::Inited {
-                    info!("rpc init success");
                 }
             }
 

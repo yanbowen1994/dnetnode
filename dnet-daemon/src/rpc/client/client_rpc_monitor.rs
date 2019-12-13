@@ -389,10 +389,14 @@ impl Executor {
                     Ok(_) => self.status = ExecutorStatus::Inited,
                     Err(e) => {
                         let res = e.to_response();
-                        if let Err(send_err) = self.rpc_tx.send(
-                            RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
-                            error!("self.rpc_tx.send(\
-                            RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
+                        if res.code == 411
+                            || res.code == 405
+                        {
+                            if let Err(send_err) = self.rpc_tx.send(
+                                RpcEvent::Executor(ExecutorEvent::InitFailed(res))) {
+                                error!("self.rpc_tx.send(\
+                                RpcEvent::Executor(ExecutorEvent::InitFailed(e))) {:?}", send_err);
+                            }
                             return;
                         }
                     }

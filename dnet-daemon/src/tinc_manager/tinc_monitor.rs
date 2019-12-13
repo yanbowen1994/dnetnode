@@ -50,6 +50,7 @@ impl TincMonitor {
             match event {
                 TunnelCommand::Connect => {
                     let res = Self::connect();
+                    let _ = self.inner_cmd_tx.send(InnerStatus::Start);
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
@@ -190,7 +191,11 @@ impl MonitorInner {
             if status == InnerStatus::Start {
                 if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
                     debug!("exec_tinc_check");
-                    if let Err(_) = self.exec_tinc_check() {
+                    if let Ok(_) = self.exec_tinc_check() {
+                        get_mut_info().lock().unwrap().status.tunnel = TunnelState::Connected;
+                    }
+                    else {
+                        get_mut_info().lock().unwrap().status.tunnel = TunnelState::Disconnected;
                         let (tx, _) = mpsc::channel();
                         let _ = self.tunnel_command_tx.send((TunnelCommand::Reconnect, tx));
                         info!("tinc check stop.");

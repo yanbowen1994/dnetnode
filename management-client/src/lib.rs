@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 pub use jsonrpc_client_pubsub::Error as PubSubError;
 
 use dnet_types::daemon_broadcast::DaemonBroadcast;
-use dnet_types::status::Status;
 use dnet_types::response::Response;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -84,7 +83,7 @@ pub struct DaemonRpcClient {
 
 
 impl DaemonRpcClient {
-    pub fn status(&mut self) -> Result<Status> {
+    pub fn status(&mut self) -> Result<Response> {
         self.call("status", &NO_ARGS)
     }
 

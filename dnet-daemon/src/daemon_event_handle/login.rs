@@ -29,7 +29,7 @@ pub fn handle_login(ipc_tx: oneshot::Sender<Response>,
             RpcEvent::Client(RpcClientCmd::RestartRpcConnect(rpc_restart_tx))
         ) {
             response =
-                if let Ok(mut res) = rpc_restart_rx.recv_timeout(Duration::from_secs(10)) {
+                if let Ok(mut res) = rpc_restart_rx.recv_timeout(Duration::from_secs(20)) {
                     info!("handle_login {:?}", res);
                     let info = get_info().lock().unwrap();
                     let user = info.user.clone();

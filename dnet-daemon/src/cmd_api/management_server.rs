@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 use ipc_server;
-use dnet_types::status::{TunnelState, Status};
+use dnet_types::status::TunnelState;
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::response::Response;
 
@@ -44,7 +44,7 @@ build_rpc_trait! {
         fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "status")]
-        fn status(&self, Self::Metadata) -> BoxFuture<Status, Error>;
+        fn status(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_info")]
         fn group_info(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
@@ -79,7 +79,7 @@ pub enum ManagementCommand {
     TeamDisconnect(OneshotSender<Response>, String),
 
     /// Request the current Status.
-    Status(OneshotSender<Status>),
+    Status(OneshotSender<Response>),
 
     /// Get the current geographical location.
     GroupList(OneshotSender<Response>),
@@ -246,7 +246,7 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn status(&self, _: Self::Metadata) -> BoxFuture<Status, Error> {
+    fn status(&self, _: Self::Metadata) -> BoxFuture<Response, Error> {
         log::info!("management interface get status.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self

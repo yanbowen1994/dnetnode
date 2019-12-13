@@ -4,6 +4,8 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
+use dnet_types::status::RpcState;
+
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::settings::get_mut_settings;
 use crate::daemon::{Daemon, TunnelCommand};
@@ -21,6 +23,7 @@ pub fn handle_logout(
             send_rpc_disconnect(ipc_tx, rpc_command_tx)})
         .and_then(|ipc_tx| {
             let response = send_tunnel_disconnect(tunnel_command_tx);
+            get_mut_info().lock().unwrap().status.rpc = RpcState::Disconnected;
             let _ = Daemon::oneshot_send(ipc_tx, response, "");
             Some(())
         });

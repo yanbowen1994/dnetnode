@@ -219,8 +219,15 @@ impl Daemon {
             }
 
             ManagementCommand::Status(ipc_tx) => {
-                let status = get_info().lock().unwrap().status.clone();
-                let _ = Self::oneshot_send(ipc_tx, status, "");
+                let info =  get_info().lock().unwrap();
+                let status = info.status.clone();
+                let vip = info.tinc_info.vip.clone();
+                let data = serde_json::json!({
+                    "status": status,
+                    "vip": vip,
+                });
+                let response = Response::success().set_data(Some(data));
+                let _ = Self::oneshot_send(ipc_tx, response, "");
             }
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {

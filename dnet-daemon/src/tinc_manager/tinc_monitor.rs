@@ -1,34 +1,38 @@
 use std::thread;
 use std::time::{Duration, Instant};
-use std::sync::{mpsc, Mutex, Arc};
+use std::sync::mpsc;
 
 use dnet_types::response::Response;
+use dnet_types::status::TunnelState;
 use tinc_plugin::TincOperatorError;
 
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
 use crate::info::get_mut_info;
-use dnet_types::status::TunnelState;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
 const TINC_FREQUENCY: u32 = 5;
 
-static mut EL: *mut MonitorInner = 0 as *mut _;
-
 pub struct TincMonitor {
     tunnel_command_rx:      mpsc::Receiver<(TunnelCommand, mpsc::Sender<Response>)>,
+    inner_cmd_tx:           mpsc::Sender<InnerStatus>,
 }
 
 impl TunnelTrait for TincMonitor {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>) {
+        Self::init_tinc(daemon_event_tx);
+
         let (tunnel_command_tx, tunnel_command_rx) = mpsc::channel();
 
-        MonitorInner::new(daemon_event_tx.clone());
+        let inner_cmd_tx = MonitorInner::new(
+            tunnel_command_tx.clone()
+        );
 
         let tinc_monitor = TincMonitor {
             tunnel_command_rx,
+            inner_cmd_tx,
         };
 
         return (tinc_monitor, tunnel_command_tx)
@@ -45,82 +49,32 @@ impl TincMonitor {
             info!("TincMonitor event {:?}", event);
             match event {
                 TunnelCommand::Connect => {
-                    let mut info = get_mut_info().lock().unwrap();
-                    let res =
-                        if info.status.tunnel == TunnelState::Disconnected
-                            || info.status.tunnel == TunnelState::Disconnecting {
-                            info.status.tunnel = TunnelState::Connecting;
-                            std::mem::drop(info);
-
-                            let inner = get_monitor_inner();
-
-                            match inner.connect() {
-                                Ok(_) => {
-                                    thread::spawn(move || {
-                                        inner.run();
-                                    });
-                                    Response::success()
-                                },
-                                Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
-                            }
-                        }
-                        else {
-                            std::mem::drop(info);
-                            Response::success()
-                        };
-
+                    let res = Self::connect();
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
-                    let mut info = get_mut_info().lock().unwrap();
-                    let res =
-                        if info.status.tunnel == TunnelState::Connected
-                            || info.status.tunnel == TunnelState::Connecting {
-                            info.status.tunnel = TunnelState::Disconnecting;
-                            std::mem::drop(info);
-
-                            let inner = get_monitor_inner();
-                            match inner.disconnect() {
-                                Ok(_) => Response::success(),
-                                Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
-                            }
-                        }
-                        else {
-                            std::mem::drop(info);
-                            Response::success()
-                        };
-
+                    let res = self.disconnect();
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Reconnect => {
-                    let inner = get_monitor_inner();
-                    let res = match inner.reconnect() {
-                        Ok(_) => {
-                            Response::success()
-                        },
-                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
-                    };
+                    let res = Self::reconnect();
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Connected => {
-                    let _ = res_tx.send(Response::success());
+                    let inner_cmd_tx = self.inner_cmd_tx.clone();
+                    thread::spawn(move || {
+                        let _ = inner_cmd_tx.send(InnerStatus::Start);
+                        let _ = res_tx.send(Response::success());
+                    });
                 }
                 TunnelCommand::Disconnected => {
-                    ()
+                    let _ = res_tx.send(Response::success());
                 }
             }
         }
     }
-}
 
-struct MonitorInner {
-    stop_sign_tx:                       mpsc::Sender<mpsc::Sender<bool>>,
-    stop_sign_rx:                       mpsc::Receiver<mpsc::Sender<bool>>,
-    is_running:                         Arc<Mutex<bool>>,
-}
-
-impl MonitorInner {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) {
+    fn init_tinc(daemon_event_tx: mpsc::Sender<DaemonEvent>) {
         let tinc = TincOperator::new();
         // 初始化tinc操作
         // 监测tinc pub key 不存在或生成时间超过一个月，将生成tinc pub key
@@ -130,92 +84,123 @@ impl MonitorInner {
                 daemon_event_tx.send(DaemonEvent::TunnelInitFailed(e.to_string()))
             )
             .unwrap_or(());
-
-
-        let (tx, rx) = mpsc::channel();
-
-        let inner = Self {
-            stop_sign_tx:       tx,
-            stop_sign_rx:       rx,
-            is_running:         Arc::new(Mutex::new(false)),
-        };
-
-        unsafe {
-            EL = Box::into_raw(Box::new(inner));
-        };
     }
 
-    fn connect(&mut self) -> Result<()> {
-        TincOperator::new().start_tinc()?;
-        info!("tinc_monitor start tinc");
-        Ok(())
+    fn connect() -> Response {
+        let mut info = get_mut_info().lock().unwrap();
+        let res =
+            if info.status.tunnel == TunnelState::Disconnected
+                || info.status.tunnel == TunnelState::Disconnecting {
+                info.status.tunnel = TunnelState::Connecting;
+                std::mem::drop(info);
+
+                match TincOperator::new().start_tinc() {
+                    Ok(_) => {
+                        info!("tinc_monitor start tinc");
+                        Response::success()
+                    },
+                    Err(err) => {
+                        error!("connect {:?}", err);
+                        Response::internal_error().set_msg(format!("{:?}", err))
+                    },
+                }
+            }
+            else {
+                std::mem::drop(info);
+                Response::success()
+            };
+        res
+    }
+
+    fn reconnect() -> Response {
+        let res =
+            match TincOperator::new().restart_tinc() {
+                Ok(_) => {
+                    info!("tinc_monitor restart tinc");
+                    Response::success()
+                },
+                Err(err) => {
+                    error!("reconnect {:?}", err);
+                    Response::internal_error().set_msg(format!("{:?}", err))
+                },
+            };
+        res
+    }
+
+    fn disconnect(&self) -> Response {
+        let mut info = get_mut_info().lock().unwrap();
+        let res =
+            if info.status.tunnel == TunnelState::Connected
+                || info.status.tunnel == TunnelState::Connecting {
+                info.status.tunnel = TunnelState::Disconnecting;
+                std::mem::drop(info);
+
+                match self.inner_cmd_tx.send(InnerStatus::Stop) {
+                    Ok(_) => {
+                        Response::success()
+                    }
+                    Err(_) => {
+                        Response::internal_error().set_msg("Can't stop tinc check.".to_string())
+                    }
+                }
+            }
+            else {
+                std::mem::drop(info);
+                Response::success()
+            };
+        res
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum InnerStatus {
+    Start,
+    Stop
+}
+
+struct MonitorInner {
+    tunnel_command_tx:   mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
+    start_stop_sign_rx:  mpsc::Receiver<InnerStatus>,
+}
+
+impl MonitorInner {
+    fn new(tunnel_command_tx: mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>
+    ) -> mpsc::Sender<InnerStatus> {
+        let (inner_cmd_tx, start_stop_sign_rx) = mpsc::channel();
+
+        thread::spawn(|| {
+            Self {
+                tunnel_command_tx,
+                start_stop_sign_rx,
+            }.run();
+        });
+
+        inner_cmd_tx
     }
 
     fn run(&mut self) {
-        let mut is_running = self.is_running.lock().unwrap();
-        if *is_running {
-            return;
-        }
-        else {
-            *is_running = true;
-        }
-        std::mem::drop(is_running);
-
+        let mut status = InnerStatus::Stop;
         let mut check_time = Instant::now();
-
         info!("tinc check start.");
-
         loop {
-            if let Ok(res_tx) = self.stop_sign_rx.try_recv() {
-                let _ = res_tx.send(true);
-                let mut is_running = self.is_running.lock().unwrap();
-                *is_running = false;
-                break
+            if let Ok(res_status) = self.start_stop_sign_rx.try_recv() {
+                info!("tinc check cmd:{:?}", res_status);
+                status = res_status;
             }
-
-            if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
-                debug!("exec_tinc_check");
-                if let Err(_) = self.exec_tinc_check() {
-                    self.exec_restart();
+            if status == InnerStatus::Start {
+                if Instant::now() - check_time > Duration::from_secs(TINC_FREQUENCY.into()) {
+                    debug!("exec_tinc_check");
+                    if let Err(_) = self.exec_tinc_check() {
+                        let (tx, _) = mpsc::channel();
+                        let _ = self.tunnel_command_tx.send((TunnelCommand::Reconnect, tx));
+                        info!("tinc check stop.");
+                        status = InnerStatus::Stop;
+                    }
+                    check_time = Instant::now();
                 }
-                check_time = Instant::now();
             }
             thread::sleep(Duration::from_millis(1500));
         }
-        info!("tinc check stop.");
-    }
-
-    fn disconnect(&mut self) -> Result<()> {
-        if *self.is_running.lock().unwrap() {
-            let (tx, rx) = mpsc::channel();
-            if let Err(err) = self.stop_sign_tx.send(tx) {
-                error!("disconnect {:?}", err);
-            }
-            else {
-                let _ = rx.recv_timeout(Duration::from_secs(5));
-            }
-        }
-        let mut tinc = TincOperator::new();
-        tinc.stop_tinc()?;
-        info!("tinc_monitor stop tinc");
-        Ok(())
-    }
-
-    fn reconnect(&mut self) -> Result<()> {
-        if *self.is_running.lock().unwrap() {
-            let (tx, rx) = mpsc::channel();
-            match self.stop_sign_tx.send(tx) {
-                Ok(_) => {
-                    let _ = rx.recv_timeout(Duration::from_secs(5));
-                    ()
-                },
-                Err(_) => return Err(TincOperatorError::StopTincError),
-            }
-        }
-
-        self.connect()?;
-        info!("tinc_monitor restart tinc success");
-        Ok(())
     }
 
     fn exec_tinc_check(&mut self) -> Result<()> {
@@ -242,38 +227,5 @@ impl MonitorInner {
                 return Err(err);
             }
         }
-    }
-
-    fn exec_restart(&mut self) {
-        let mut tinc = TincOperator::new();
-        let mut i = 1;
-        loop {
-            let result;
-            {
-                result = tinc.restart_tinc();
-            }
-            match result {
-                Ok(_) => {
-                    info!("check tinc process: execute restart tinc.");
-                    return;
-                },
-                Err(e) => {
-                    error!("Restart tinc failed.\n{:?}\n try again after {} secs.", e, i * 5);
-                    thread::sleep(Duration::from_secs(i * 5));
-                    if i < 12 {
-                        i += 1;
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn get_monitor_inner() ->  &'static mut MonitorInner {
-    unsafe {
-        if EL == 0 as *mut _ {
-            panic!("Get settings instance, before init");
-        }
-        &mut *EL
     }
 }

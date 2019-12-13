@@ -8,7 +8,7 @@ pub struct Status {
 impl Status {
     pub fn new() -> Self {
         Status {
-            rpc:    RpcState::Connecting,
+            rpc:    RpcState::Disconnected,
             tunnel: TunnelState::Disconnected,
             daemon: DaemonExecutionState::Running,
         }
@@ -19,6 +19,7 @@ impl Status {
 pub enum RpcState {
     Connecting,
     Connected,
+    Disconnected,
     ReConnecting,
 }
 

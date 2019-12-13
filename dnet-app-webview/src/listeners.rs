@@ -15,7 +15,7 @@ use neutrino::widgets::textinput::{TextInputListener, TextInputState};
 use neutrino::WindowListener;
 
 
-use super::models::{Panes, State};
+use super::models::{Panes, Status};
 
 /*
  Window listener: waits for menu shortcuts
@@ -59,12 +59,12 @@ impl MyTabsListener {
 }
 
 impl TabsListener for MyTabsListener {
-    fn on_update(&self, state: &mut TabsState) {
-        state.set_selected(u32::from(self.panes.borrow().value()));
+    fn on_update(&self, Status: &mut TabsState) {
+        Status.set_selected(u32::from(self.panes.borrow().value()));
     }
 
-    fn on_change(&self, state: &TabsState) {
-        self.panes.borrow_mut().set_value(state.selected() as u8);
+    fn on_change(&self, Status: &TabsState) {
+        self.panes.borrow_mut().set_value(Status.selected() as u8);
     }
 }
 
@@ -80,14 +80,14 @@ impl MyMenuBarListener {
 }
 
 impl MenuBarListener for MyMenuBarListener {
-    fn on_change(&self, state: &MenuBarState) {
-        match state.selected_item() {
+    fn on_change(&self, Status: &MenuBarState) {
+        match Status.selected_item() {
             None => (),
             Some(selected_item) => {
                 if selected_item == 0 {
                     std::process::exit(0);
                 } else if selected_item == 1 {
-                    match state.selected_function() {
+                    match Status.selected_function() {
                         None => (),
                         Some(selected_function) => {
                             self.panes
@@ -101,80 +101,80 @@ impl MenuBarListener for MyMenuBarListener {
     }
 }
 
-/* Range Listener: update State when the user scroll the Range widget */
+/* Range Listener: update Status when the user scroll the Range widget */
 pub struct MyRangeListener {
-    state: Rc<RefCell<State>>,
+    Status: Rc<RefCell<Status>>,
 }
 
 impl MyRangeListener {
-    pub fn new(state: Rc<RefCell<State>>) -> Self {
-        Self { state }
+    pub fn new(Status: Rc<RefCell<Status>>) -> Self {
+        Self { Status }
     }
 }
 
 impl RangeListener for MyRangeListener {
-    fn on_update(&self, state: &mut RangeState) {
-        state.set_value(self.state.borrow().range());
-        state.set_disabled(self.state.borrow().disabled());
+    fn on_update(&self, Status: &mut RangeState) {
+        Status.set_value(self.Status.borrow().range());
+        Status.set_disabled(self.Status.borrow().disabled());
     }
-    fn on_change(&self, state: &RangeState) {
-        self.state.borrow_mut().set_range(state.value());
+    fn on_change(&self, Status: &RangeState) {
+        self.Status.borrow_mut().set_range(Status.value());
     }
 }
 
 /* Progress Bar Listener: update the Progress Bar value to the current
-State value*/
+Status value*/
 pub struct MyProgressBarListener {
-    state: Rc<RefCell<State>>,
+    Status: Rc<RefCell<Status>>,
 }
 
 impl MyProgressBarListener {
-    pub fn new(state: Rc<RefCell<State>>) -> Self {
-        Self { state }
+    pub fn new(Status: Rc<RefCell<Status>>) -> Self {
+        Self { Status }
     }
 }
 
 impl ProgressBarListener for MyProgressBarListener {
-    fn on_update(&self, state: &mut ProgressBarState) {
-        state.set_value(self.state.borrow().range());
+    fn on_update(&self, Status: &mut ProgressBarState) {
+        Status.set_value(self.Status.borrow().range());
     }
 }
 
-/* Label Listenr: update the Label text to show the current State value,
+/* Label Listenr: update the Label text to show the current Status value,
 formatted as a percent */
 pub struct MyLabelListener {
-    state: Rc<RefCell<State>>,
+    Status: Rc<RefCell<Status>>,
 }
 
 impl MyLabelListener {
-    pub fn new(state: Rc<RefCell<State>>) -> Self {
-        Self { state }
+    pub fn new(Status: Rc<RefCell<Status>>) -> Self {
+        Self { Status }
     }
 }
 
 impl LabelListener for MyLabelListener {
-    fn on_update(&self, state: &mut LabelState) {
+    fn on_update(&self, Status: &mut LabelState) {
         let text = format!("{}%", self.state.borrow().range());
         state.set_text(&text);
     }
 }
 
 /* Text Input Listener: update the TextInput value to the
-current State value or set the State when the user
+current Status value or set the Status when the user
 changes the TextInput value */
 pub struct MyTextInputListener {
-    state: Rc<RefCell<State>>,
+    Status: Rc<RefCell<Status>>,
 }
 
 impl MyTextInputListener {
-    pub fn new(state: Rc<RefCell<State>>) -> Self {
-        Self { state }
+    pub fn new(Status: Rc<RefCell<Status>>) -> Self {
+        Self { Status }
     }
 }
 
 impl TextInputListener for MyTextInputListener {
-    fn on_update(&self, state: &mut TextInputState) {
-        state.set_value(&self.state.borrow().range().to_string());
+    fn on_update(&self, Status: &mut TextInputState) {
+        Status.set_value(&self.Status.borrow().range().to_string());
         state.set_disabled(self.state.borrow().disabled());
     }
     fn on_change(&self, state: &TextInputState) {

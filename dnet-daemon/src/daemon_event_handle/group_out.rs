@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use futures::sync::oneshot;
 use dnet_types::response::Response;
-use dnet_types::states::State;
+use dnet_types::status::Status;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
@@ -14,7 +14,7 @@ use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh,
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
     team_id:                String,
-    status:                 State,
+    status:                 Status,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     _tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
@@ -90,7 +90,7 @@ fn send_rpc_out_group(
     }
 }
 
-//fn need_tunnel_disconnect(status: &State) -> bool {
+//fn need_tunnel_disconnect(status: &Status) -> bool {
 //    let info = get_info().lock().unwrap();
 //    if info.teams.running_teams.len() == 0 {
 //        if status.tunnel == TunnelState::Connected

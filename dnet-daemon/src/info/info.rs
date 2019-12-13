@@ -1,13 +1,14 @@
 use std::sync::Mutex;
 
-use super::error::{Error, Result};
-
 use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use dnet_types::settings::RunMode;
 use dnet_types::proxy::ProxyInfo;
-use crate::settings::get_settings;
-use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
 use dnet_types::team::Team;
+use dnet_types::status::Status;
+
+use crate::settings::get_settings;
+use super::error::{Error, Result};
+use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -16,6 +17,7 @@ pub struct Info {
     pub client_info:        ClientInfo,
     pub proxy_info:         ProxyInfo,
     pub tinc_info:          TincInfo,
+    pub status:             Status,
     pub teams:              TeamInfo,
     pub user:               UserInfo,
     pub node:               NodeInfo,
@@ -40,6 +42,7 @@ impl Info {
             client_info,
             proxy_info,
             tinc_info,
+            status: Status::new(),
             teams:  TeamInfo::new(),
             user:   UserInfo::new(),
             node:   NodeInfo::new(),

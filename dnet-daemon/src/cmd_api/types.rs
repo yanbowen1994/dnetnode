@@ -1,9 +1,9 @@
-use dnet_types::states::TunnelState;
+use dnet_types::status::TunnelState;
 use crate::settings::Settings;
 
 /// Trait representing something that can broadcast daemon events.
 pub trait EventListener {
-    /// Notify that the tunnel state changed.
+    /// Notify that the tunnel Status changed.
     fn notify_new_state(&self, new_state: TunnelState);
 
     /// Notify that the settings changed.

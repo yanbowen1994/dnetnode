@@ -1,13 +1,13 @@
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct State {
+pub struct Status {
     pub rpc:        RpcState,
     pub tunnel:     TunnelState,
     pub daemon:     DaemonExecutionState,
 }
 
-impl State {
+impl Status {
     pub fn new() -> Self {
-        State {
+        Status {
             rpc:    RpcState::Connecting,
             tunnel: TunnelState::Disconnected,
             daemon: DaemonExecutionState::Running,

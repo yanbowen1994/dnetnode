@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::{State, TunnelState};
+use dnet_types::status::{Status, TunnelState};
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
 use super::tunnel::send_tunnel_connect;
@@ -13,7 +13,7 @@ use crate::daemon_event_handle::common::{is_rpc_connected, daemon_event_handle_f
 
 pub fn connect(
     ipc_tx:                 oneshot::Sender<Response>,
-    status:                 State,
+    status:                 Status,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
@@ -61,7 +61,7 @@ pub fn connect(
         });
 }
 
-fn need_tunnel_connect(status: &State) -> bool {
+fn need_tunnel_connect(status: &Status) -> bool {
     if status.tunnel == TunnelState::Disconnected
         || status.tunnel == TunnelState::Disconnecting {
         true

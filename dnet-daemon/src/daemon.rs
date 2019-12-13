@@ -3,7 +3,7 @@ use std::thread;
 
 use futures::sync::oneshot;
 
-use dnet_types::states::{DaemonExecutionState, TunnelState, State, RpcState};
+use dnet_types::status::{DaemonExecutionState, TunnelState, Status, RpcState};
 
 use crate::traits::TunnelTrait;
 use crate::info::{self, Info, get_mut_info};
@@ -74,7 +74,7 @@ impl From<ManagementCommand> for DaemonEvent {
 pub struct Daemon {
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
-    status:                 State,
+    status:                 Status,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
 }
@@ -116,7 +116,7 @@ impl Daemon {
         Ok(Daemon {
             daemon_event_tx,
             daemon_event_rx,
-            status: State::new(),
+            status: Status::new(),
             tunnel_command_tx,
             rpc_command_tx,
         })
@@ -221,11 +221,11 @@ impl Daemon {
                 );
             }
 
-            ManagementCommand::State(ipc_tx) => {
+            ManagementCommand::Status(ipc_tx) => {
 //                let mut response = CommandResponse::success();
 //                response.data = Some(to_value(&self.status.rpc).unwrap());
-                let state = self.status.clone();
-                let _ = Self::oneshot_send(ipc_tx, state, "");
+                let status = self.status.clone();
+                let _ = Self::oneshot_send(ipc_tx, Status, "");
             }
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {

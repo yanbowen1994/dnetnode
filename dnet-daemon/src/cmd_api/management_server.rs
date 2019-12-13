@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 use ipc_server;
-use dnet_types::states::{TunnelState, State};
+use dnet_types::status::{TunnelState, Status};
 use dnet_types::daemon_broadcast::DaemonBroadcast;
 use dnet_types::response::Response;
 
@@ -44,7 +44,7 @@ build_rpc_trait! {
         fn shutdown(&self, Self::Metadata) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "status")]
-        fn status(&self, Self::Metadata) -> BoxFuture<State, Error>;
+        fn status(&self, Self::Metadata) -> BoxFuture<Status, Error>;
 
         #[rpc(meta, name = "group_info")]
         fn group_info(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
@@ -78,8 +78,8 @@ pub enum ManagementCommand {
 
     TeamDisconnect(OneshotSender<Response>, String),
 
-    /// Request the current state.
-    State(OneshotSender<State>),
+    /// Request the current Status.
+    Status(OneshotSender<Status>),
 
     /// Get the current geographical location.
     GroupList(OneshotSender<Response>),
@@ -158,9 +158,9 @@ pub struct ManagementInterfaceEventBroadcaster {
 }
 
 impl EventListener for ManagementInterfaceEventBroadcaster {
-    /// Sends a new state update to all `new_state` subscribers of the management interface.
+    /// Sends a new Status update to all `new_state` subscribers of the management interface.
     fn notify_new_state(&self, new_state: TunnelState) {
-        log::info!("Broadcasting new state: {:?}", new_state);
+        log::info!("Broadcasting new Status: {:?}", new_state);
         self.notify(DaemonBroadcast::TunnelState(new_state));
     }
 
@@ -246,11 +246,11 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn status(&self, _: Self::Metadata) -> BoxFuture<State, Error> {
+    fn status(&self, _: Self::Metadata) -> BoxFuture<Status, Error> {
         log::info!("management interface get status.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::State(tx))
+            .send_command_to_daemon(ManagementCommand::Status(tx))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

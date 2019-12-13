@@ -4,7 +4,7 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::states::State;
+use dnet_types::status::Status;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::Daemon;
@@ -15,7 +15,7 @@ use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh,
 pub fn group_join(
     ipc_tx:                 oneshot::Sender<Response>,
     team_id:                String,
-    status:                 State,
+    status:                 Status,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
 ) {
     info!("is_not_proxy");

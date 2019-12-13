@@ -21,7 +21,7 @@ use dnet_app_webview::listeners::{
     MyRadioListener, MyRangeListener, MyTabsListener, MyTextInputListener,
     MyWindowListener,
 };
-use dnet_app_webview::models::{Panes, State};
+use dnet_app_webview::models::{Panes, Status};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -30,9 +30,9 @@ use std::env;
 fn main() {
     let panes = Rc::new(RefCell::new(Panes::new()));
 
-    let state = Rc::new(RefCell::new(State::new()));
+    let Status = Rc::new(RefCell::new(Status::new()));
 
-    let textinput_listener = MyTextInputListener::new(Rc::clone(&state));
+    let textinput_listener = MyTextInputListener::new(Rc::clone(&Status));
 
     let mut textinput1 = TextInput::new("input1");
     textinput1.set_listener(Box::new(textinput_listener));
@@ -40,7 +40,7 @@ fn main() {
     textinput1.set_placeholder("0-100");
     textinput1.set_size(4);
 
-    let button_listener = MyButtonListener::new(Rc::clone(&state));
+    let button_listener = MyButtonListener::new(Rc::clone(&Status));
 
     let mut button1 = Button::new("button1");
     button1.set_text("Button");
@@ -48,20 +48,20 @@ fn main() {
     button1.set_icon(Box::new(BreezeIcon::Check));
     button1.set_listener(Box::new(button_listener));
 
-    let progressbar_listener = MyProgressBarListener::new(Rc::clone(&state));
+    let progressbar_listener = MyProgressBarListener::new(Rc::clone(&Status));
 
     let mut progressbar1 = ProgressBar::new("progressbar1");
     progressbar1.set_listener(Box::new(progressbar_listener));
     progressbar1.set_value(0);
     progressbar1.set_stretched();
 
-    let label_listener = MyLabelListener::new(Rc::clone(&state));
+    let label_listener = MyLabelListener::new(Rc::clone(&Status));
 
     let mut label1 = Label::new("label1");
     label1.set_listener(Box::new(label_listener));
     label1.set_text("0%");
 
-    let checkbox_listener = MyCheckBoxListener::new(Rc::clone(&state));
+    let checkbox_listener = MyCheckBoxListener::new(Rc::clone(&Status));
 
     let mut checkbox1 = CheckBox::new("checkbox1");
     checkbox1.set_text("Checkbox");
@@ -69,27 +69,27 @@ fn main() {
     checkbox1.set_listener(Box::new(checkbox_listener));
 
     let checkbox_disabled_listener =
-        MyCheckBoxDisabledListener::new(Rc::clone(&state));
+        MyCheckBoxDisabledListener::new(Rc::clone(&Status));
 
     let mut checkbox_disabled = CheckBox::new("checkbox_disabled");
     checkbox_disabled.set_text("Disabled");
     checkbox_disabled.set_listener(Box::new(checkbox_disabled_listener));
 
-    let radio_listener = MyRadioListener::new(Rc::clone(&state));
+    let radio_listener = MyRadioListener::new(Rc::clone(&Status));
 
     let mut radio1 = Radio::new("radio1");
     radio1.set_choices(vec!["Radio Button", "Radio Button"]);
     radio1.set_selected(0);
     radio1.set_listener(Box::new(radio_listener));
 
-    let combo_listener = MyComboListener::new(Rc::clone(&state));
+    let combo_listener = MyComboListener::new(Rc::clone(&Status));
 
     let mut combo1 = Combo::new("combo1");
     combo1.set_choices(vec!["Combo Box", "Jumbo Fox"]);
     combo1.set_selected(0);
     combo1.set_listener(Box::new(combo_listener));
 
-    let range_listener = MyRangeListener::new(Rc::clone(&state));
+    let range_listener = MyRangeListener::new(Rc::clone(&Status));
 
     let mut range1 = Range::new("range1");
     range1.set_listener(Box::new(range_listener));

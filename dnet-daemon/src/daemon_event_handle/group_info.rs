@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use futures::sync::oneshot;
 use dnet_types::response::Response;
+use dnet_types::team::Team;
 
 use crate::rpc::rpc_cmd::RpcEvent;
 use crate::daemon::Daemon;
@@ -19,23 +20,22 @@ pub fn handle_group_info(
 
         if res.code == 200 {
             if let Some(team_id) = team_id {
-                if let Some(team) = get_info().lock().unwrap()
-                    .teams
-                    .all_teams
-                    .get(&team_id)
-                    .cloned() {
-                    if let Ok(data) = serde_json::to_value(vec![team]) {
-                        let res = Response::success().set_data(Some(data));
-                        let _ = Daemon::oneshot_send(ipc_tx, res, "");
-                        return;
-                    }
+                let teams = get_info().lock().unwrap().get_current_team_connect();
+                let team = teams.into_iter()
+                    .filter_map(|team| {
+                        if team.team_id == team_id {
+                            Some(team)
+                        }
+                        else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<Team>>();
+                if let Ok(data) = serde_json::to_value(team) {
+                    let res = Response::success().set_data(Some(data));
+                    let _ = Daemon::oneshot_send(ipc_tx, res, "");
+                    return;
                 }
-
-                let _ = Daemon::oneshot_send(
-                    ipc_tx,
-                    Response::internal_error().set_msg("Group Not Found.".to_string()),
-                    ""
-                );
             }
             else {
                 let teams = get_info().lock().unwrap().get_current_team_connect();

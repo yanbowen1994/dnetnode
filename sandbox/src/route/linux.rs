@@ -8,12 +8,9 @@ pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
             let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let res = Command::new("ip")
+            let _ = Command::new("ip")
                 .args(vec!["route", "add", &ip_mask, "dev", dev])
-                .spawn();
-            if let Ok(mut res) = res {
-                let _ = res.wait();
-            }
+                .output();
         }
 }
 
@@ -21,12 +18,9 @@ pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
     #[cfg(not(target_os = "windows"))]
         {
             let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let res = Command::new("ip")
+            let _ = Command::new("ip")
                 .args(vec!["route", "del", &ip_mask, "dev", dev])
-                .spawn();
-            if let Ok(mut res) = res {
-                let _ = res.wait();
-            }
+                .output();
         }
 }
 

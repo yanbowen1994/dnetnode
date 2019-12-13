@@ -89,4 +89,5 @@ impl TincInfo {
         }
         self.current_connect.remove(index);
     }
+
 }

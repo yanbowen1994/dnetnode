@@ -7,6 +7,7 @@ use dnet_types::settings::RunMode;
 use dnet_types::proxy::ProxyInfo;
 use crate::settings::get_settings;
 use super::{TeamInfo, NodeInfo, UserInfo, ClientInfo, TincInfo};
+use dnet_types::team::Team;
 
 static mut EL: *mut Mutex<Info> = 0 as *mut _;
 
@@ -100,6 +101,31 @@ impl Info {
             }
         }
         self.teams.running_teams = running_teams;
+    }
+
+    pub fn get_current_team_connect(&self) -> Vec<Team> {
+        let mut teams = self.teams.all_teams
+            .values()
+            .cloned()
+            .collect::<Vec<Team>>();
+        let _ = teams.iter_mut()
+            .map(|team| {
+                let _ = team.members.iter_mut()
+                    .map(|member| {
+                        if self.tinc_info.current_connect.contains(&member.vip) {
+                            member.is_local_tinc_host_up  = Some(true);
+                        }
+                        else if let Some(self_vip) = self.tinc_info.vip {
+                            if self_vip == member.vip {
+                                member.is_local_tinc_host_up  = Some(true);
+                            }
+                        }
+                    })
+                    .collect::<Vec<()>>();
+            })
+            .collect::<Vec<()>>();
+
+        teams
     }
 }
 

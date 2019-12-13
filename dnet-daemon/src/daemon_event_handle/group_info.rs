@@ -1,7 +1,6 @@
 use std::sync::mpsc;
 
 use futures::sync::oneshot;
-use dnet_types::team::Team;
 use dnet_types::response::Response;
 
 use crate::rpc::rpc_cmd::RpcEvent;
@@ -41,18 +40,7 @@ pub fn handle_group_info(
                 );
             }
             else {
-                let mut teams = get_info().lock().unwrap()
-                    .teams
-                    .all_teams
-                    .values()
-                    .cloned()
-                    .collect::<Vec<Team>>();
-                let _ = teams.iter_mut()
-                    .map(|team| {
-                        team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
-                    })
-                    .collect::<Vec<()>>();
-                teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
+                let teams = get_info().lock().unwrap().get_current_team_connect();
                 if let Ok(data) = serde_json::to_value(teams) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");

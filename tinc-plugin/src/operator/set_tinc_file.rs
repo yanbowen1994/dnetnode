@@ -23,10 +23,8 @@ impl TincOperator {
         self.set_tinc_down(info)?;
         self.clean_host_up();
         self.clean_host_down();
-        if is_proxy {
-            self.set_host_up()?;
-            self.set_host_down()?;
-        }
+        self.set_host_up()?;
+        self.set_host_down()?;
 
         for online_proxy in info.connect_to.clone() {
             self.set_hosts(Some((online_proxy.ip.clone(), online_proxy.port)),

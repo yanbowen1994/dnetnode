@@ -8,6 +8,8 @@ use tinc_plugin::TincOperatorError;
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
 use crate::daemon::{DaemonEvent, TunnelCommand};
+use crate::info::get_info;
+use dnet_types::status::TunnelState;
 
 pub type Result<T> = std::result::Result<T, TincOperatorError>;
 
@@ -43,25 +45,43 @@ impl TincMonitor {
             info!("TincMonitor event {:?}", event);
             match event {
                 TunnelCommand::Connect => {
-                    let inner = get_monitor_inner();
-                    let res = match inner.connect() {
-                        Ok(_) => {
-                            Response::success()
-                        },
-                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
-                    };
+                    let tunnel_status = get_info().lock().unwrap().status.tunnel.clone();
+                    let res =
+                        if tunnel_status == TunnelState::Disconnected
+                            || tunnel_status == TunnelState::Disconnecting {
+                            let inner = get_monitor_inner();
 
-                    thread::spawn(move || {
-                        inner.run();
-                    });
+                            match inner.connect() {
+                                Ok(_) => {
+                                    thread::spawn(move || {
+                                        inner.run();
+                                    });
+                                    Response::success()
+                                },
+                                Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
+                            }
+                        }
+                        else {
+                            Response::success()
+                        };
+
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Disconnect => {
-                    let inner = get_monitor_inner();
-                    let res = match inner.disconnect() {
-                        Ok(_) => Response::success(),
-                        Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
-                    };
+                    let tunnel_status = get_info().lock().unwrap().status.tunnel.clone();
+                    let res =
+                        if tunnel_status == TunnelState::Connected
+                            || tunnel_status == TunnelState::Connecting {
+                            let inner = get_monitor_inner();
+                            match inner.disconnect() {
+                                Ok(_) => Response::success(),
+                                Err(err) => Response::internal_error().set_msg(format!("{:?}", err)),
+                            }
+                        }
+                        else {
+                            Response::success()
+                        };
+
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Reconnect => {

@@ -147,7 +147,7 @@ fn print_team(mut teams: Vec<Team>) {
     // Create the table
     let mut table = Table::new();
     // Add a row per time
-    table.add_row(row!["Team Name", "Team Id", "Members Ip", "Self",
+    table.set_titles(row!["Team Name", "Team Id", "Members Ip", "Self",
                                 "Alias", "Connect Status", "Proxy Status"]);
     teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
     for mut team in teams {
@@ -168,20 +168,20 @@ fn print_team(mut teams: Vec<Team>) {
                 let connect_status =
                     if member.connect_status {
                         Cell::new("connect")
-                            .with_style(Attr::BackgroundColor(color::GREEN))
+                            .style_spec("Bg")
                     }
                     else {
                         Cell::new("disconnect")
-                            .with_style(Attr::BackgroundColor(color::RED))
+                            .style_spec("Br")
                     };
 
                 let tinc_status = if member.tinc_status {
                     Cell::new("connect")
-                        .with_style(Attr::BackgroundColor(color::GREEN))
+                        .style_spec("Bg")
                 }
                 else {
                     Cell::new("disconnect")
-                        .with_style(Attr::BackgroundColor(color::RED))
+                        .style_spec("Br")
                 };
 
                 let is_self = match member.is_self {

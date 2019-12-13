@@ -3,10 +3,10 @@ use std::thread;
 
 use futures::sync::oneshot;
 
-use dnet_types::status::{DaemonExecutionState, TunnelState, Status, RpcState};
+use dnet_types::status::{TunnelState, RpcState};
 
 use crate::traits::TunnelTrait;
-use crate::info::{self, Info, get_mut_info};
+use crate::info::{self, Info, get_mut_info, get_info};
 use crate::rpc::{self, RpcMonitor};
 use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::management_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
@@ -74,9 +74,9 @@ impl From<ManagementCommand> for DaemonEvent {
 pub struct Daemon {
     daemon_event_tx:        mpsc::Sender<DaemonEvent>,
     daemon_event_rx:        mpsc::Receiver<DaemonEvent>,
-    status:                 Status,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
+    shutdown_sign:          bool,
 }
 
 impl Daemon {
@@ -116,16 +116,16 @@ impl Daemon {
         Ok(Daemon {
             daemon_event_tx,
             daemon_event_rx,
-            status: Status::new(),
             tunnel_command_tx,
             rpc_command_tx,
+            shutdown_sign:      false,
         })
     }
 
     pub fn run(&mut self) {
         while let Ok(event) = self.daemon_event_rx.recv() {
             self.handle_event(event);
-            if self.status.daemon == DaemonExecutionState::Finished {
+            if self.shutdown_sign {
                 break;
             }
         }
@@ -138,12 +138,13 @@ impl Daemon {
                 self.handle_rpc_connected();
             },
             DaemonEvent::RpcConnecting => {
-                if RpcState::Connecting != self.status.rpc {
-                    self.status.rpc = RpcState::ReConnecting;
+                let mut info = get_mut_info().lock().unwrap();
+                if RpcState::Connecting != info.status.rpc {
+                    info.status.rpc = RpcState::ReConnecting;
                 }
             },
             DaemonEvent::TunnelInitFailed(err_str) => {
-                self.status.tunnel = TunnelState::TunnelInitFailed(err_str);
+                get_mut_info().lock().unwrap().status.tunnel  = TunnelState::TunnelInitFailed(err_str);
             },
             DaemonEvent::DaemonInnerCmd(cmd) => {
                 let (res_tx, res_rx) = mpsc::channel::<Response>();
@@ -178,14 +179,14 @@ impl Daemon {
                 let tunnel_port = get_settings().tinc.port;
                 router_plugin::firewall::stop_firewall(tunnel_port);
             }
-        self.status.daemon = DaemonExecutionState::Finished;
+        self.shutdown_sign = true;
     }
 
     fn handle_tunnel_connected(&mut self) {
 //        if let Err(e) = TincOperator::new().set_routing() {
 //            error!("host_status_change tinc-up {:?}", e);
 //        }
-        self.status.tunnel = TunnelState::Connected;
+        get_mut_info().lock().unwrap().status.tunnel = TunnelState::Connected;
 
         let _ = self.rpc_command_tx.send(RpcEvent::TunnelConnected);
         let (res_tx, _res_rx) = mpsc::channel::<Response>();
@@ -193,49 +194,41 @@ impl Daemon {
     }
 
     fn handle_tunnel_disconnected(&mut self) {
-        self.status.tunnel = TunnelState::Disconnected;
+        get_mut_info().lock().unwrap().status.tunnel = TunnelState::Disconnected;
     }
 
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
             ManagementCommand::Connect(tx) => {
-                let status = self.status.clone();
                 let tunnel_command_tx = self.tunnel_command_tx.clone();
                 let rpc_command_tx = self.rpc_command_tx.clone();
                 thread::spawn(|| daemon_event_handle::connect::connect(
                     tx,
-                    status,
                     rpc_command_tx,
                     tunnel_command_tx)
                 );
             }
 
             ManagementCommand::TeamDisconnect(tx, team_id) => {
-                let status = self.status.clone();
                 let rpc_command_tx = self.rpc_command_tx.clone();
                 thread::spawn(move|| daemon_event_handle::disconnect_team::disconnect_team(
                     tx,
-                    status,
                     team_id,
                     rpc_command_tx)
                 );
             }
 
             ManagementCommand::Status(ipc_tx) => {
-//                let mut response = CommandResponse::success();
-//                response.data = Some(to_value(&self.status.rpc).unwrap());
-                let status = self.status.clone();
-                let _ = Self::oneshot_send(ipc_tx, Status, "");
+                let status = get_info().lock().unwrap().status.clone();
+                let _ = Self::oneshot_send(ipc_tx, status, "");
             }
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {
                 let rpc_command_tx = self.rpc_command_tx.clone();
-                let status = self.status.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
                     rpc_command_tx,
-                    Some(team_id),
-                    status),
+                    Some(team_id), ),
                 );
             }
 
@@ -250,13 +243,11 @@ impl Daemon {
 
             ManagementCommand::GroupList(ipc_tx) => {
                 let rpc_command_tx = self.rpc_command_tx.clone();
-                let status = self.status.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
                     rpc_command_tx,
                     None,
-                    status)
-                );
+                ));
             }
 
             ManagementCommand::GroupJoin(ipc_tx, team_id) => {
@@ -333,31 +324,15 @@ impl Daemon {
     fn handle_rpc_connected(&mut self) {
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
-                self.status.tunnel = TunnelState::Connecting;
+                get_mut_info().lock().unwrap().status.tunnel = TunnelState::Connecting;
                 let (res_tx, _) = mpsc::channel();
                 let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
             }
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
-                let mut tunnel_auto_connect = false;
-                self.status.rpc = RpcState::Connected;
+                get_mut_info().lock().unwrap().status.rpc = RpcState::Connected;
                 let run_mode = get_settings().common.mode.clone();
-
                 if run_mode == RunMode::Proxy || run_mode == RunMode::Center {
-                    tunnel_auto_connect = true;
-                }
-                else {
-                    let auto_connect = get_settings().client.auto_connect;
-                    if auto_connect == true {
-                        if self.status.tunnel == TunnelState::Disconnected ||
-                            self.status.tunnel == TunnelState::Disconnecting {
-                            tunnel_auto_connect = true;
-                        }
-                    }
-                }
-
-                if tunnel_auto_connect {
-                    info!("tunnel auto connect");
                     let _response = daemon_event_handle::tunnel::send_tunnel_connect(
                         self.tunnel_command_tx.clone(),
                     );
@@ -409,13 +384,11 @@ impl Daemon {
                          ipc_tx:        oneshot::Sender<Response>,
                          team_id:       String,
     ) {
-        let status = self.status.clone();
         let rpc_command_tx = self.rpc_command_tx.clone();
         thread::spawn( ||
             daemon_event_handle::group_join::group_join(
                 ipc_tx,
                 team_id,
-                status,
                 rpc_command_tx,
             )
         );
@@ -425,14 +398,12 @@ impl Daemon {
                          ipc_tx:        oneshot::Sender<Response>,
                          team_id:       String,
     ) {
-        let status = self.status.clone();
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
         thread::spawn( ||
             daemon_event_handle::group_out::group_out(
                 ipc_tx,
                 team_id,
-                status,
                 rpc_command_tx,
                 tunnel_command_tx,
             )

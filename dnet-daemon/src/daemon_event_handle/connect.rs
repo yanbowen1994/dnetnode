@@ -3,17 +3,17 @@ use std::sync::mpsc;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::status::{Status, TunnelState};
+use dnet_types::status::TunnelState;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
 use super::tunnel::send_tunnel_connect;
 use super::handle_settings;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, daemon_event_handle_fresh_running_from_all, send_rpc_group_fresh};
+use crate::info::get_info;
 
 pub fn connect(
     ipc_tx:                 oneshot::Sender<Response>,
-    status:                 Status,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
@@ -25,7 +25,7 @@ pub fn connect(
         })
         .and_then(|ipc_tx|{
             info!("is_rpc_connected");
-            is_rpc_connected(ipc_tx, &status)
+            is_rpc_connected(ipc_tx)
         })
         .and_then(|ipc_tx| {
             info!("send_rpc_group_fresh");
@@ -41,7 +41,7 @@ pub fn connect(
         })
         .and_then(|ipc_tx| {
             info!("need_tunnel_connect");
-            if need_tunnel_connect(&status) {
+            if need_tunnel_connect() {
                 info!("handle_connect_select_proxy");
                 handle_connect_select_proxy(ipc_tx, rpc_command_tx)
                     .and_then(|ipc_tx| {
@@ -61,9 +61,10 @@ pub fn connect(
         });
 }
 
-fn need_tunnel_connect(status: &Status) -> bool {
-    if status.tunnel == TunnelState::Disconnected
-        || status.tunnel == TunnelState::Disconnecting {
+fn need_tunnel_connect() -> bool {
+    let info = get_info().lock().unwrap();
+    if info.status.tunnel == TunnelState::Disconnected
+        || info.status.tunnel == TunnelState::Disconnecting {
         true
     }
     else {

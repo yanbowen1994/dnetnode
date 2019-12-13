@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use futures::sync::oneshot;
 use dnet_types::response::Response;
-use dnet_types::status::Status;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::{Daemon, TunnelCommand};
@@ -14,7 +13,6 @@ use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh,
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
     team_id:                String,
-    status:                 Status,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     _tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
@@ -22,7 +20,7 @@ pub fn group_out(
     let _ = is_not_proxy(ipc_tx)
         .and_then(|ipc_tx|{
             info!("is_rpc_connected");
-            is_rpc_connected(ipc_tx, &status)
+            is_rpc_connected(ipc_tx)
         })
         .and_then(|ipc_tx|{
             info!("is_joined");

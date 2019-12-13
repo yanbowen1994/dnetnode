@@ -7,15 +7,13 @@ use crate::rpc::rpc_cmd::RpcEvent;
 use crate::daemon::Daemon;
 use crate::info::get_info;
 use crate::daemon_event_handle::common::{send_rpc_group_fresh, is_rpc_connected};
-use dnet_types::status::Status;
 
 pub fn handle_group_info(
     ipc_tx:                 oneshot::Sender<Response>,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
     team_id:                Option<String>,
-    status:                 Status,
 ) {
-    if let Some(ipc_tx) = is_rpc_connected(ipc_tx, &status) {
+    if let Some(ipc_tx) = is_rpc_connected(ipc_tx) {
         info!("send_rpc_group_fresh");
         let res = send_rpc_group_fresh(rpc_command_tx);
 

@@ -4,12 +4,12 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::status::{RpcState, Status};
+use dnet_types::status::RpcState;
 use dnet_types::settings::RunMode;
 use crate::settings::get_settings;
 use crate::daemon::Daemon;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::info::get_mut_info;
+use crate::info::{get_mut_info, get_info};
 
 pub fn is_not_proxy(ipc_tx: oneshot::Sender<Response>) -> Option<oneshot::Sender<Response>> {
     let run_mode = get_settings().common.mode.clone();
@@ -26,9 +26,8 @@ pub fn is_not_proxy(ipc_tx: oneshot::Sender<Response>) -> Option<oneshot::Sender
 
 pub fn is_rpc_connected(
     ipc_tx:   oneshot::Sender<Response>,
-    status:   &Status,
 ) -> Option<oneshot::Sender<Response>> {
-    if status.rpc == RpcState::Connected {
+    if get_info().lock().unwrap().status.rpc == RpcState::Connected {
         return Some(ipc_tx)
     }
     else {

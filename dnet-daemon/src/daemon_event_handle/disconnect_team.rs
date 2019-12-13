@@ -4,7 +4,6 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::response::Response;
-use dnet_types::status::Status;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::Daemon;
 use crate::info::get_mut_info;
@@ -14,7 +13,6 @@ use crate::daemon_event_handle::common::is_rpc_connected;
 
 pub fn disconnect_team(
     ipc_tx:                 oneshot::Sender<Response>,
-    status:                 Status,
     team_id:                String,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
 ) {
@@ -26,7 +24,7 @@ pub fn disconnect_team(
         })
         .and_then(|ipc_tx|{
             info!("is_rpc_connected");
-            is_rpc_connected(ipc_tx, &status)
+            is_rpc_connected(ipc_tx)
         })
         .and_then(|ipc_tx| {
             info!("send_rpc_disconnect_team");

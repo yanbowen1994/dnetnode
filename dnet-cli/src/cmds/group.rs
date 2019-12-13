@@ -1,6 +1,6 @@
 use clap::App;
 use clap::value_t_or_exit;
-use prettytable::{Table, Cell, Attr, color};
+use prettytable::{Table, Cell};
 
 use crate::{new_ipc_client, Command};
 use crate::error::{Error, Result};

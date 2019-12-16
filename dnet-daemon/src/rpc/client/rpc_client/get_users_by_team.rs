@@ -1,21 +1,14 @@
-use serde_json::Value;
-
 use crate::info::UserInfo;
 use crate::settings::get_settings;
-use crate::rpc::{Error, Result};
-use crate::rpc::http_request::get;
+use crate::rpc::Result;
+use crate::rpc::http_request::get_mutipage;
 
 // if return true restart tunnel.
 pub(super) fn get_users_by_team(teamid: &str) -> Result<Vec<UserInfo>> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/user/queryAll?teamId=" + teamid;
 
-    let res_data = get(&url)?;
-
-    let recv: Vec<Value> = res_data.as_array()
-        .ok_or({
-            Error::ResponseParse(res_data.to_string())
-        })?.to_owned();
+    let recv = get_mutipage(&url)?;
 
     let mut user_infos: Vec<UserInfo> = vec![];
     for user in recv {

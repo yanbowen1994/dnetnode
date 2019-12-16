@@ -205,7 +205,7 @@ impl RpcMonitor {
                 }
             }
             Err(e) => {
-                error!("{:?}", e.to_response());
+                error!("handle_select_proxy {:?}", e.to_response());
                 return e.to_response();
             }
         }
@@ -426,8 +426,7 @@ impl Executor {
 
     fn exec_online_proxy(&self) -> Result<()> {
 //         get_online_proxy is not most important. If failed still return Ok.
-        loop {
-            let start = Instant::now();
+        for _ in 0..3 {
             match self.client.client_get_online_proxy() {
                 Ok(connect_to_vec) => {
                     if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
@@ -437,14 +436,10 @@ impl Executor {
                         return Ok(());
                     }
                 }
-                Err(e) => error!("{:?}", e.to_response())
+                Err(e) => error!("exec_online_proxy {:?}", e.to_response())
             }
-
-            if Instant::now().duration_since(start) > Duration::from_secs(5) {
-                return Err(ClientError::RpcTimeout);
-            }
-            thread::sleep(Duration::from_millis(1000));
         }
+        return Err(ClientError::RpcTimeout);
     }
 
     #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]

@@ -6,8 +6,8 @@ use sandbox::route;
 
 use crate::info::get_mut_info;
 use crate::settings::get_settings;
-use crate::rpc::http_request::get;
-use crate::rpc::{Error, Result};
+use crate::rpc::http_request::get_mutipage;
+use crate::rpc::Result;
 use crate::rpc::client::rpc_client::types::ResponseTeam;
 use crate::settings::default_settings::TINC_INTERFACE;
 use crate::rpc::client::rpc_client::select_proxy::ping;
@@ -16,24 +16,19 @@ pub(super) fn search_team_by_user() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryMyAll";
 
-    let res_data = get(&url)?;
+    let res_data = get_mutipage(&url)?;
 
-    let teams_vec = res_data.as_array()
-        .and_then(|team_vec| {
-            let team_vec = team_vec.clone();
-            Some(team_vec
-                .into_iter()
-                .filter_map(|team| {
-                    let res_team = serde_json::from_value::<ResponseTeam>(team.clone())
-                        .map_err(|err| {
-                            error!("parse team info failed.err: {:?} {:?}", err, team);
-                        })
-                        .ok()?;
-                    Some(res_team.parse_to_team())
+    let teams_vec = res_data
+        .into_iter()
+        .filter_map(|team| {
+            let res_team = serde_json::from_value::<ResponseTeam>(team.clone())
+                .map_err(|err| {
+                    error!("parse team info failed.err: {:?} {:?}", err, team);
                 })
-                .collect::<Vec<Team>>())
+                .ok()?;
+            Some(res_team.parse_to_team())
         })
-        .ok_or(Error::ResponseParse(res_data.to_string()))?;
+        .collect::<Vec<Team>>();
 
     let mut id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
     for team in &teams_vec {

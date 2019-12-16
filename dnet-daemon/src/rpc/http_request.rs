@@ -9,6 +9,8 @@ use crate::info::get_info;
 
 use super::error::*;
 
+const PAGESIZE: usize = 10;
+
 pub fn post(url: &str, data: &str) -> Result<serde_json::Value> {
     let res = loop_post(url, data)?;
     http_error(res)
@@ -41,6 +43,39 @@ fn url_post(url: &str, data: &str)
         .send()
         .map_err(Error::Reqwest)?;
     Ok(res)
+}
+
+pub fn get_mutipage(url: &str) -> Result<Vec<serde_json::Value>> {
+    let mut output = vec![];
+    let mut page = 1;
+    let is_have_other_param = url.contains("?");
+    loop {
+        let page_url = if is_have_other_param {
+            format!("{}&pageNum={}&pageSize={}", url, page, PAGESIZE)
+        }
+        else {
+            format!("{}?pageNum={}&pageSize={}", url, page, PAGESIZE)
+        };
+        let res = get(&page_url)?
+            .get("records")
+            .ok_or(Error::ResponseParse(url.to_string() + "Not Found records."))?
+            .to_owned();
+        let mut res = res.as_array()
+            .ok_or(Error::ResponseParse(url.to_string() + " Can not parse to array."))
+            .map_err(|err| {
+                error!("get_mutipage {:?}", err);
+                err
+            })?
+            .to_owned();
+        if res.len() < PAGESIZE {
+            break
+        }
+        else {
+            output.append(res.as_mut());
+            page += 1;
+        }
+    }
+    Ok(output)
 }
 
 pub fn get(url: &str) -> Result<serde_json::Value> {

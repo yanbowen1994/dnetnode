@@ -5,25 +5,21 @@ use serde_json;
 use tinc_plugin::ConnectTo;
 
 use crate::settings::get_settings;
-use crate::rpc::http_request::get;
 use crate::info::get_info;
 use crate::rpc::{Error, Result};
+use crate::rpc::http_request::get_mutipage;
 
 pub fn get_online_proxy() -> Result<Vec<ConnectTo>> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/proxy/queryAllOnline";
-    let res = get(&url)?;
+    let res = get_mutipage(&url)?;
     info!("Response: {:?}", res);
-    let proxy_vec: Vec<GetProxyResponse> = res.as_array()
-        .and_then(|records| {
-            let proxy_vec = records.iter()
-                .filter_map(|record| {
-                    GetProxyResponse::from_json(record.to_owned())
-                })
-                .collect::<Vec<GetProxyResponse>>();
-            Some(proxy_vec)
-        })
-        .ok_or(Error::ResponseParse(res.to_string()))?;
+    let mut proxy_vec: Vec<GetProxyResponse> = vec![];
+    for record in res {
+        let proxy = serde_json::from_value(record)
+            .map_err(|e|Error::ResponseParse(format!("GetProxyResponse error: {:?}", e)))?;
+        proxy_vec.push(proxy);
+    }
 
     let connect_to = parse_response(proxy_vec)?;
     Ok(connect_to)
@@ -108,10 +104,4 @@ struct GetProxyResponse {
     updateTime:            Option<String>,
     userId:                Option<String>,
     vip:                   Option<String>,
-}
-
-impl GetProxyResponse {
-    fn from_json(value: serde_json::Value) -> Option<Self> {
-        return serde_json::from_value(value).ok();
-    }
 }

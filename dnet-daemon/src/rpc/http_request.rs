@@ -68,6 +68,7 @@ pub fn get_mutipage(url: &str) -> Result<Vec<serde_json::Value>> {
             })?
             .to_owned();
         if res.len() < PAGESIZE {
+            output.append(res.as_mut());
             break
         }
         else {

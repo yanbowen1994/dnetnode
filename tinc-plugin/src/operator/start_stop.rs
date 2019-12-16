@@ -85,9 +85,14 @@ impl TincOperator {
                 if info.name() == TINC_BIN_FILENAME {
                     #[cfg(unix)]
                         {
-                            let config_buf = "--config=".to_string() + tinc_home;
+                            let config_buf = "--config=".to_string()
+                                + &self.tinc_settings.tinc_home.to_string();
                             if info.cmd().contains(&config_buf) {
-                                info.kill(Signal::Kill);
+                                if let Ok(mut res) = Command::new("kill")
+                                    .args(vec!["-15", &format!("{}", info.pid())])
+                                    .spawn() {
+                                    let _ = res.wait();
+                                }
                             }
                         }
                     #[cfg(windows)]
@@ -131,14 +136,51 @@ impl TincOperator {
 #[cfg(test)]
 mod test {
     use crate::{TincOperator, TincSettings, TincRunMode};
+    use crate::operator::TINC_BIN_FILENAME;
+    use sysinfo::{System, SystemExt, ProcessExt, Signal};
 
     #[test]
-    fn test_start() {
-        let mut tinc_settins = TincSettings::default();
-        tinc_settins.mode = TincRunMode::Center;
-        TincOperator::new(tinc_settins);
+    fn test_start_stop() {
+        let mut tinc_settings = TincSettings::default();
+        tinc_settings.mode = TincRunMode::Client;
+        TincOperator::new(tinc_settings);
         let tinc = TincOperator::instance();
-        tinc.start_tinc()
+        let _ = tinc.start_tinc()
             .map_err(|e|println!("{:?}", e));
+
+        let sys = System::new();
+        let mut find_tinc = false;
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                find_tinc = true;
+            }
+        }
+        assert!(find_tinc);
+
+        let mut tinc_settings = TincSettings::default();
+        tinc_settings.mode = TincRunMode::Client;
+        let sys = System::new();
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                #[cfg(unix)]
+                    {
+                        let config_buf = "--config=".to_string()
+                            + &tinc_settings.tinc_home.to_string();
+                        if info.cmd().contains(&config_buf) {
+                            info.kill(Signal::Term);
+                        }
+                    }
+                #[cfg(windows)]
+                    info.kill(Signal::Term);
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let sys = System::new();
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                assert!(false)
+            }
+        }
     }
 }

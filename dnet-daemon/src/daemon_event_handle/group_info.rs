@@ -33,7 +33,7 @@ pub fn handle_group_info(
                     })
                     .collect::<Vec<Team>>();
 
-                team.sort_by(|a, b|a.team_id.cmp(&b.team_id));
+                team.sort_by(|a, b|a.team_name.cmp(&b.team_name));
                 if let Ok(data) = serde_json::to_value(team) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");

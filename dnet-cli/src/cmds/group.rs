@@ -149,7 +149,7 @@ fn print_team(mut teams: Vec<Team>) {
     // Add a row per time
     table.set_titles(row!["Team Name", "Team Id", "Members Ip", "Self",
                                 "Alias", "Status", "Team Status", "Proxy Status"]);
-    teams.sort_by(|a, b|a.team_id.cmp(&b.team_id));
+    teams.sort_by(|a, b|a.team_name.cmp(&b.team_name));
     for mut team in teams {
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
         if team.members.len() == 0 {

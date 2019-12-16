@@ -1,9 +1,8 @@
+use std::process::Command;
+use sysinfo::{System, Signal, SystemExt, ProcessExt};
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 use crate::TincStream;
-#[cfg(unix)]
-use crate::TincTools;
 use super::{Error, Result, TincOperator, PID_FILENAME, TINC_BIN_FILENAME};
-use std::process::Command;
 
 impl TincOperator {
     pub fn start_tinc(&self) -> Result<()> {
@@ -79,23 +78,22 @@ impl TincOperator {
                         Ok(())
                     });
                 }
-            // TODO windows
-            #[cfg(unix)]
-                {
-                    if let Some(pid) = TincTools::get_tinc_pid_by_sys(&self.tinc_settings.tinc_home) {
+
+
+            let sys = System::new();
+            for (_, info) in sys.get_process_list() {
+                if info.name() == TINC_BIN_FILENAME {
+                    #[cfg(unix)]
                         {
-                            if let Ok(mut res) = Command::new("kill")
-                                .args(vec!["-15", &format!("{}", pid)])
-                                .spawn() {
-                                let _ = res.wait();
+                            let config_buf = "--config=".to_string() + tinc_home;
+                            if info.cmd().contains(&config_buf) {
+                                info.kill(Signal::Kill);
                             }
                         }
-                    }
                     #[cfg(windows)]
-                    {
-
-                    }
+                        info.kill(Signal::Kill);
                 }
+            }
             Ok(())
         }
     }

@@ -6,12 +6,12 @@ use ipconfig::Adapter;
 
 use crate::route::types::RouteInfo;
 
-static mut INDEX_IF: Option<u32> = None;
+static mut INDEX_IF: Option<(u32, String)> = None;
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     let mask = parse_netmask_from_cidr(netmask).to_string();
-    let index_if = get_index_if();
+    let index_if = get_index_if(dev);
     let res = Command::new("route")
         .args(vec!["add", &ip.clone().to_string(), "mask", &mask, &(ip.clone().to_string()), "if", &format!("{}", index_if)])
         .spawn();
@@ -146,12 +146,18 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
     route_info
 }
 
-fn get_index_if() -> u32 {
+fn get_index_if(dev: &str) -> u32 {
     unsafe {
-        if let None = INDEX_IF {
-            INDEX_IF = Some(Adapters::new().get_vnic_index(dev));
+        if let Some((index_if, save_dev)) = &INDEX_IF {
+            if save_dev == dev {
+                return *index_if;
+            }
         }
-        INDEX_IF.unwrap()
+
+        let index_if = Adapters::new().get_vnic_index(dev);
+        INDEX_IF = Some((index_if, dev.to_string()));
+
+        index_if
     }
 }
 

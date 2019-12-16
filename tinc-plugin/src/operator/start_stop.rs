@@ -1,5 +1,7 @@
 use std::process::Command;
-use sysinfo::{System, Signal, SystemExt, ProcessExt};
+use sysinfo::{System, SystemExt, ProcessExt};
+#[cfg(Unix)]
+use sysinfo::Signal;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 use crate::TincStream;
 use super::{Error, Result, TincOperator, PID_FILENAME, TINC_BIN_FILENAME};
@@ -96,7 +98,19 @@ impl TincOperator {
                             }
                         }
                     #[cfg(windows)]
-                        info.kill(Signal::Kill);
+                        {
+                            if let Ok(mut child) = Command::new("TASKKILL")
+                                .args(vec!["/f", "/pid", &format!("{}", info.pid())])
+                                .spawn() {
+                                let _ = child.wait();
+                            }
+
+                            if let Ok(mut child) = Command::new("sc")
+                                .args(vec!["delete", "tinc"])
+                                .spawn() {
+                                let _ = child.wait();
+                            }
+                        }
                 }
             }
             Ok(())
@@ -138,7 +152,10 @@ mod test {
     use crate::{TincOperator, TincSettings, TincRunMode};
     use crate::operator::TINC_BIN_FILENAME;
     use sysinfo::{System, SystemExt, ProcessExt, Signal};
+    use std::process::Command;
 
+
+    #[cfg(unix)]
     #[test]
     fn test_start_stop() {
         let mut tinc_settings = TincSettings::default();
@@ -180,6 +197,22 @@ mod test {
         for (_, info) in sys.get_process_list() {
             if info.name() == TINC_BIN_FILENAME {
                 assert!(false)
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_stop_tincd_windows() {
+        let sys = System::new();
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                println!("ok");
+                if let Ok(mut child) = Command::new("TASKKILL")
+                    .args(vec!["/f", "/pid", "16296"])
+                    .spawn() {
+                    child.wait();
+                }
             }
         }
     }

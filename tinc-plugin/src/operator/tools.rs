@@ -156,7 +156,10 @@ impl TincTools {
         Ok((priv_key, pubkey))
     }
 
-    pub fn get_tinc_pid_by_sys(tinc_home: &str) -> Option<u32> {
+    pub fn get_tinc_pid_by_sys(
+        #[cfg(unix)]
+        tinc_home: &str
+    ) -> Option<u32> {
         let sys = System::new();
         for (_, info) in sys.get_process_list() {
             if info.name() == TINC_BIN_FILENAME {

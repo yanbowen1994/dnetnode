@@ -7,7 +7,10 @@ use super::{PID_FILENAME, TINC_MEMORY_LIMIT, TINC_ALLOWED_OUT_MEMORY_TIMES};
 
 impl TincOperator {
     pub fn check_tinc_status(&self) -> Result<()> {
-        TincTools::get_tinc_pid_by_sys(&self.tinc_settings.tinc_home)
+        TincTools::get_tinc_pid_by_sys(
+            #[cfg(unix)]
+            &self.tinc_settings.tinc_home
+        )
             .ok_or(Error::TincNotExist)
             .and_then(|_|Ok(()))?;
         self.check_tinc_listen()

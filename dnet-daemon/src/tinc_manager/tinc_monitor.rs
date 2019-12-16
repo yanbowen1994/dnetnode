@@ -130,12 +130,13 @@ impl TincMonitor {
 
     fn disconnect(&self) -> Response {
         let mut info = get_mut_info().lock().unwrap();
+        info.status.tunnel = TunnelState::Disconnecting;
+        std::mem::drop(info);
         let res =
-            if info.status.tunnel == TunnelState::Connected
-                || info.status.tunnel == TunnelState::Connecting {
-                info.status.tunnel = TunnelState::Disconnecting;
-                std::mem::drop(info);
-
+            if let Err(err) = TincOperator::new().stop_tinc() {
+                Response::internal_error().set_msg(err.to_string())
+            }
+            else {
                 match self.inner_cmd_tx.send(InnerStatus::Stop) {
                     Ok(_) => {
                         Response::success()
@@ -144,11 +145,9 @@ impl TincMonitor {
                         Response::internal_error().set_msg("Can't stop tinc check.".to_string())
                     }
                 }
-            }
-            else {
-                std::mem::drop(info);
-                Response::success()
             };
+
+        info!("disconnect {:?}", res);
         res
     }
 }

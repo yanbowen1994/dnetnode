@@ -24,6 +24,7 @@ pub fn handle_logout(
         .and_then(|ipc_tx| {
             let response = send_tunnel_disconnect(tunnel_command_tx);
             get_mut_info().lock().unwrap().status.rpc = RpcState::Disconnected;
+            clean_all_running_teams();
             let _ = Daemon::oneshot_send(ipc_tx, response, "");
             Some(())
         });
@@ -82,4 +83,10 @@ fn send_rpc_disconnect(
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
         return None;
     }
+}
+
+fn clean_all_running_teams() {
+    let mut info = get_mut_info().lock().unwrap();
+    info.teams.running_teams = vec![];
+    std::mem::drop(info);
 }

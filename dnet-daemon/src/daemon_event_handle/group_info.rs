@@ -21,9 +21,10 @@ pub fn handle_group_info(
         if res.code == 200 {
             if let Some(team_id) = team_id {
                 let teams = get_info().lock().unwrap().get_current_team_connect();
-                let team = teams.into_iter()
-                    .filter_map(|team| {
+                let mut team = teams.into_iter()
+                    .filter_map(|mut team| {
                         if team.team_id == team_id {
+                            team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
                             Some(team)
                         }
                         else {
@@ -31,6 +32,8 @@ pub fn handle_group_info(
                         }
                     })
                     .collect::<Vec<Team>>();
+
+                team.sort_by(|a, b|a.team_id.cmp(&b.team_id));
                 if let Ok(data) = serde_json::to_value(team) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");
@@ -38,7 +41,13 @@ pub fn handle_group_info(
                 }
             }
             else {
-                let teams = get_info().lock().unwrap().get_current_team_connect();
+                let mut teams = get_info().lock().unwrap().get_current_team_connect();
+                let _ = teams.iter_mut()
+                    .map(|team|{
+                             team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
+                    })
+                    .collect::<Vec<()>>();
+
                 if let Ok(data) = serde_json::to_value(teams) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");

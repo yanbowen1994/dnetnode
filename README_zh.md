@@ -12,7 +12,7 @@ openwrt libc采用musl, libopenssl为对应架构, 对应libc下编译并使用�
 ## 编译说明
 1. 安装rust编译环境
 2. 修改./env.sh openssl目录和是否静态链接openssl  
-3. cargo build --release --package proxy-daemon --bin dnetovr
+3. cargo build --release --package proxy-daemon --bin dnet
 
 ## 生成ubuntu下.deb安装包
 [配置文件](./service_script/README.md)  
@@ -24,11 +24,11 @@ openwrt libc采用musl, libopenssl为对应架构, 对应libc下编译并使用�
 ├── lib
 │   └── systemd
 │       └── system
-│           └── dnetovr.service
+│           └── dnet.service
 └── root
-    ├── dnetovr
+    ├── dnet
     │   ├── cert.pem
-    │   ├── dnetovr
+    │   ├── dnet
     │   ├── key.pem
     │   └── settings.toml
     └── tinc
@@ -49,51 +49,64 @@ openwrt libc采用musl, libopenssl为对应架构, 对应libc下编译并使用�
 ## 安装说明
 ### 安装
 ```
-sudo dpkg -i dnetovr.deb
+sudo dpkg -i dnet.deb
 ```
 ### 删除
 ```
-sudo dpkg -P dnetovr
+sudo dpkg -P dnet
 ```
 ## 配置文件说明
 ```toml
-[tinc]
-#tinc 配置文件目录
-home_path = "/root/tinc/"
-
-[server]
-#conductor url 默认https
-url = "test.insight.netgear.com"
-#geo信息服务器url, 不可为空
-geo_url = "http://52.25.79.82:10000/geoip_json.php"
-
-[client]
-#debug等级[error, warn, info, debug, trace]
+[common]
+# dnet执行程序和配置文件目录
+home_path = "/opt/dnet"
+# 日志等级 "warn", "error", "debug", "info", "trace"
 log_level = "debug"
-#log文件存储地址, 为空时默认"/var/log/dnetovr/"
-log_dir = "/var/log/dnetovr/"
-#proxy连接到conductor的用户名,密码
+# 日志文件地址
+log_dir = "/var/log/dnet/"
+# 启动模式
+# client 客户端模式(pc, 路由器)
+# proxy 代理模式(pc)
+mode = "client"
+# conductor url 默认https
+conductor_url = "http://58.20.63.22"
+# 是否接受无效https的ssl认证
+accept_conductor_invalid_certs = true
+# 用户名密码 proxy模式必填, 客户端模式无效
 username = "admin"
 password = "password"
-#本地服务监听端口, 修改时需要与conductor同步修改
-local_port = "443"
-#本地服务证书文件
-local_https_server_certificate_file = "/root/dnetovr/cert.pem"
-#本地服务密钥文件
-local_https_server_privkey_file = "/root/dnetovr/key.pem"
-#代理类型
-proxy_type = "other"
+
+[proxy]
+# 本地地址和端口: 
+# 如果该代理上层网络net转发端口,
+# 填写上层设备wan地址, 及转发的端口
+# 注意: 本地web server将会监听这个端口, 及本机与上层是同一个端口号
+local_ip = "192.168.1.1"
+local_port = 10087
+# 本机的https证书和密钥地址
+local_https_server_certificate_file = "/opt/dnet/cert.pem"
+local_https_server_privkey_file = "/opt/dnet/key.pem"
+# 是否为公开代理
+public = true
+
+[tinc]
+# tinc监听的端口
+# 如果上层nat转发tinc的端口, 端口号需要保持一致
+port = 50069
+# 是否 外部启动tinc(仅用于调试)
+# 如果为true, 控制程序将不会启动tinc
+external_boot = true
 ```
 
 ### 启动服务
 ```
-sudo service dnetovr start
+sudo service dnet start
 ```
 ### 查看服务状态
 ```
-sudo service dnetovr status
+sudo service dnet status
 ```
 ### 关闭服务
 ```
-sudo service dnetovr stop
+sudo service dnet stop
 ```

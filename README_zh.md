@@ -25,23 +25,20 @@ openwrt libc采用musl, libopenssl为对应架构, 对应libc下编译并使用�
 │   └── systemd
 │       └── system
 │           └── dnet.service
-└── root
+└── opt
     ├── dnet
     │   ├── cert.pem
     │   ├── dnet
+    │   ├── dnet-daemon
     │   ├── key.pem
-    │   └── settings.toml
+    │   └── settings.example.toml
     └── tinc
         ├── lib
-        │   ├── libcrypto.so.1.1
         │   ├── liblzo2.so.2
         │   ├── libncurses.so.5
-        │   ├── libreadline.so.8 -> ./libreadline.so.8.0
-        │   ├── libreadline.so.8.0
-        │   ├── libssl.so.1.1
-        │   ├── libtinfo.so.5
+        │   ├── libreadline.so.8
         │   └── libz.so.1
-        ├── proxyReport
+        ├── tinc-report
         ├── tinc
         └── tincd
 ```

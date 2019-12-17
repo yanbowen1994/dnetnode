@@ -45,7 +45,7 @@ struct ResponseData {
 impl ResponseData {
     fn print(self) {
         let mut table = Table::new();
-        table.add_row(row!["Tunnel", "Cloude", "Daemon", "Vip"]);
+        table.add_row(row!["Tunnel", "Cloud", "Daemon", "Vip"]);
         table.add_row(row![
              format!("{:?}", self.status.tunnel),
              format!("{:?}", self.status.rpc),

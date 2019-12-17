@@ -53,7 +53,7 @@ if len(sys.argv) > 1 and (sys.argv[1] == "tinc" or sys.argv[1] == "init"):
     tinc_dir = "/root/tinc_src"
     if not os.path.exists(tinc_dir):
         os.chdir("/root")
-        os.system("git clone -b 1.1-vlan https://bowen.yan:siteview123%21%40%23@git.vlan.cn/CAN/tinc.git "
+        os.system("git clone -b Release-1.1pre17 https://bowen.yan:siteview123%21%40%23@git.vlan.cn/DNET/tinc.git "
              + tinc_dir)
         os.chdir(tinc_dir)
     else:

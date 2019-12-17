@@ -1,6 +1,7 @@
 use std::thread;
 use std::time::{Duration, Instant};
 use std::sync::mpsc;
+use std::sync::mpsc::Sender;
 
 use dnet_types::response::Response;
 use dnet_types::status::TunnelState;
@@ -58,8 +59,7 @@ impl TincMonitor {
                     let _ = res_tx.send(res);
                 }
                 TunnelCommand::Reconnect => {
-                    let res = Self::reconnect();
-                    let _ = res_tx.send(res);
+                    Self::reconnect(res_tx);
                 }
                 TunnelCommand::Connected => {
                     let inner_cmd_tx = self.inner_cmd_tx.clone();
@@ -113,9 +113,9 @@ impl TincMonitor {
         res
     }
 
-    fn reconnect() -> Response {
-        let res =
-            match TincOperator::new().restart_tinc() {
+    fn reconnect(res_tx: Sender<Response>) {
+        std::thread::spawn(move|| {
+            let res = match TincOperator::new().restart_tinc() {
                 Ok(_) => {
                     info!("tinc_monitor restart tinc");
                     Response::success()
@@ -125,7 +125,8 @@ impl TincMonitor {
                     Response::internal_error().set_msg(format!("{:?}", err))
                 },
             };
-        res
+            let _ = res_tx.send(res);
+        });
     }
 
     fn disconnect(&self) -> Response {
@@ -194,11 +195,11 @@ impl MonitorInner {
                         get_mut_info().lock().unwrap().status.tunnel = TunnelState::Connected;
                     }
                     else {
-                        get_mut_info().lock().unwrap().status.tunnel = TunnelState::Disconnected;
+                        let mut info = get_mut_info().lock().unwrap();
+                        info.status.tunnel = TunnelState::Disconnected;
+                        std::mem::drop(info);
                         let (tx, _) = mpsc::channel();
                         let _ = self.tunnel_command_tx.send((TunnelCommand::Reconnect, tx));
-                        info!("tinc check stop.");
-                        status = InnerStatus::Stop;
                     }
                     check_time = Instant::now();
                 }

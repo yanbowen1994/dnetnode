@@ -60,15 +60,15 @@ impl TincOperator {
 
         #[cfg(not(target_arch = "arm"))]
             {
-                let _ = Command::new(&(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME))
+                let mut res = Command::new(&(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME))
                     .args(args)
                     .spawn()
                     .map_err(|e| {
                         log::error!("StartTincError {:?}", e.to_string());
                         println!("StartTincError {:?}", e.to_string());
                         Error::StartTincError
-                    })?
-                    .wait();
+                    })?;
+                let _ = res.wait();
                 Ok(())
             }
     }
@@ -129,6 +129,7 @@ impl TincOperator {
                         }
                 }
             }
+            self.clean_tinc_pid();
             Ok(())
         }
     }

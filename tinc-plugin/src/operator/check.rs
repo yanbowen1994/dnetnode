@@ -12,8 +12,7 @@ impl TincOperator {
             &self.tinc_settings.tinc_home
         )
             .ok_or(Error::TincNotExist)
-            .and_then(|_|Ok(()))?;
-        self.check_tinc_listen()
+            .and_then(|_|Ok(()))
     }
 
     pub fn check_tinc_listen(&self) -> Result<()> {

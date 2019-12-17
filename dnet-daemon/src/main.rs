@@ -115,13 +115,13 @@ fn set_log(matches: &ArgMatches) -> Result<()> {
             }
         }
         None => {
-            let settings_log_level = settings.common.log_level.clone();
+            let settings_log_level = settings.common.log_level.clone().to_ascii_lowercase();
             match &settings_log_level[..] {
-                "Error" => log_level = log::LevelFilter::Error,
-                "Warn" => log_level = log::LevelFilter::Warn,
-                "Info" => log_level = log::LevelFilter::Info,
-                "Debug" => log_level = log::LevelFilter::Debug,
-                "Trace" => log_level = log::LevelFilter::Trace,
+                "error" => log_level = log::LevelFilter::Error,
+                "warn" => log_level = log::LevelFilter::Warn,
+                "info" => log_level = log::LevelFilter::Info,
+                "debug" => log_level = log::LevelFilter::Debug,
+                "trace" => log_level = log::LevelFilter::Trace,
                 _  => (),
             }
         }

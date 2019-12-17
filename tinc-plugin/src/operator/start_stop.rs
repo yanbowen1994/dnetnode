@@ -44,16 +44,33 @@ impl TincOperator {
             &conf_pidfile[..],
         ];
 
-        let _ = Command::new(&(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME))
-            .args(args)
-            .spawn()
-            .map_err(|e| {
-                log::error!("StartTincError {:?}", e.to_string());
-                println!("StartTincError {:?}", e.to_string());
-                Error::StartTincError
-            })?
-            .wait();
-        Ok(())
+        #[cfg(target_arch = "arm")]
+            {
+                let _ = Command::new(TINC_BIN_FILENAME)
+                    .args(args)
+                    .spawn()
+                    .map_err(|e| {
+                        log::error!("StartTincError {:?}", e.to_string());
+                        println!("StartTincError {:?}", e.to_string());
+                        Error::StartTincError
+                    })?
+                    .wait();
+                Ok(())
+            }
+
+        #[cfg(not(target_arch = "arm"))]
+            {
+                let _ = Command::new(&(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME))
+                    .args(args)
+                    .spawn()
+                    .map_err(|e| {
+                        log::error!("StartTincError {:?}", e.to_string());
+                        println!("StartTincError {:?}", e.to_string());
+                        Error::StartTincError
+                    })?
+                    .wait();
+                Ok(())
+            }
     }
 
     pub fn stop_tinc(&self) -> Result<()> {
@@ -80,7 +97,6 @@ impl TincOperator {
                         Ok(())
                     });
                 }
-
 
             let sys = System::new();
             for (_, info) in sys.get_process_list() {

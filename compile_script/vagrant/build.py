@@ -17,8 +17,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
     print("download openssl")
 
     os.system("wget https://github.com/openssl/openssl/archive/OpenSSL_1_1_1.tar.gz")
-    os.system("tar xvf OpenSSL_1_1_1.tar")
-    os.system("mv OpenSSL_1_1_1 " + openssl_dir)
+    os.system("tar xvf OpenSSL_1_1_1.tar.gz")
+    os.system("mv openssl-OpenSSL_1_1_1 " + openssl_dir)
     print("download openssl finish.")
 
     os.chdir(openssl_dir)
@@ -53,7 +53,7 @@ if len(sys.argv) > 1 and (sys.argv[1] == "tinc" or sys.argv[1] == "init"):
     tinc_dir = "/root/tinc_src"
     if not os.path.exists(tinc_dir):
         os.chdir("/root")
-        os.system("git clone -b Release-1.1pre17 https://bowen.yan:siteview123%21%40%23@git.vlan.cn/DNET/tinc.git "
+        os.system("git clone -b 1.1-vlan https://bowen.yan:siteview123%21%40%23@git.vlan.cn/CAN/tinc.git "
              + tinc_dir)
         os.chdir(tinc_dir)
     else:

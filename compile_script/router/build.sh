@@ -4,6 +4,8 @@ set -eux
 curPath=$(readlink -f "$(dirname "$0")")
 cd $curPath
 
+mkdir -p ./dnet/dnet/tinc
+
 source ../../env.sh
 cargo build --release --target=arm-unknown-linux-musleabihf --package=dnet-daemon
 cargo build --release --target=arm-unknown-linux-musleabihf --package=dnet-cgi

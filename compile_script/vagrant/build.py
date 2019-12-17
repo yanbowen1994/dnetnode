@@ -16,7 +16,9 @@ if len(sys.argv) > 1 and sys.argv[1] == "init":
 
     print("download openssl")
 
-    os.system("git clone -b OpenSSL_1_1_1 https://github.com/openssl/openssl.git " + openssl_dir)
+    os.system("wget https://github.com/openssl/openssl/archive/OpenSSL_1_1_1.tar.gz")
+    os.system("tar xvf OpenSSL_1_1_1.tar")
+    os.system("mv OpenSSL_1_1_1 " + openssl_dir)
     print("download openssl finish.")
 
     os.chdir(openssl_dir)

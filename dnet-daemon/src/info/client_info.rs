@@ -88,3 +88,14 @@ impl ClientInfo {
         Ok(uid)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use mac_address::get_mac_address;
+
+    #[test]
+    fn test_get_mac_address() {
+        let mac = get_mac_address().unwrap().unwrap().to_string();
+        println!("{:?}", mac);
+    }
+}

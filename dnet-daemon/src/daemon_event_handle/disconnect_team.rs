@@ -10,6 +10,7 @@ use crate::info::get_mut_info;
 use super::handle_settings;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::is_rpc_connected;
+use crate::settings::get_settings;
 
 pub fn disconnect_team(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -49,7 +50,9 @@ fn send_rpc_disconnect_team(
     let (res_tx, res_rx) = mpsc::channel();
     let _ = rpc_command_tx.send(
         RpcEvent::Client(RpcClientCmd::DisconnectTeam(team_id.to_owned(), res_tx)));
-    let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
+    let response = match res_rx.recv_timeout(Duration::from_secs(
+        get_settings().common.http_timeout as u64
+    )) {
         Ok(res) => res,
         Err(_) => Response::exec_timeout(),
     };

@@ -42,7 +42,9 @@ pub fn send_rpc_group_fresh(
 ) -> Response {
     let (res_tx, res_rx) = mpsc::channel();
     let _ = rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::FreshTeam(res_tx)));
-    if let Ok(res) = res_rx.recv_timeout(Duration::from_secs(5)) {
+    if let Ok(res) = res_rx.recv_timeout(Duration::from_secs(
+        get_settings().common.http_timeout as u64
+    )) {
         res
     }
     else {

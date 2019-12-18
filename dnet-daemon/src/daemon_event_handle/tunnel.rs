@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use dnet_types::response::Response;
 use crate::daemon::TunnelCommand;
+use crate::settings::get_settings;
 
 pub fn send_tunnel_connect(
     tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
@@ -30,7 +31,9 @@ pub fn send_tunnel_disconnect(
 ) -> Response {
     let (res_tx, res_rx) = mpsc::channel::<Response>();
     let _ = tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-    let res = res_rx.recv_timeout(Duration::from_secs(5))
+    let res = res_rx.recv_timeout(Duration::from_secs(
+        get_settings().common.http_timeout as u64
+    ))
         .map(|res|{
             if res.code == 200 {
                 ()

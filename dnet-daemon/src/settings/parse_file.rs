@@ -14,6 +14,7 @@ pub struct Common {
     pub accept_conductor_invalid_certs:         Option<bool>,
     pub username:                               Option<String>,
     pub password:                               Option<String>,
+    pub http_timeout:                           Option<u32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

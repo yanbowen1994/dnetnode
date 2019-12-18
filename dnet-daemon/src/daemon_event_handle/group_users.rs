@@ -6,6 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::daemon::Daemon;
+use crate::settings::get_settings;
 
 pub fn handle_group_users(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -23,7 +24,9 @@ fn send_rpc_team_users(
 ) -> Response {
     let (res_tx, res_rx) = mpsc::channel();
     let _ = rpc_command_tx.send(RpcEvent::Client(RpcClientCmd::TeamUsers(team_id, res_tx)));
-    if let Ok(res) = res_rx.recv_timeout(Duration::from_secs(5)) {
+    if let Ok(res) = res_rx.recv_timeout(Duration::from_secs(
+        get_settings().common.http_timeout as u64
+    )) {
         res
     }
     else {

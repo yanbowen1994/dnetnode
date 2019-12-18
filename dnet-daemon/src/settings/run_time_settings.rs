@@ -16,7 +16,7 @@ use super::default_settings::DEFAULT_LINUX_DEFAULT_HOME_PATH;
 use super::error::*;
 use std::net::IpAddr;
 use tinc_plugin::DEFAULT_TINC_PORT;
-use crate::settings::default_settings::DEFAULT_PROXY_PUBLIC;
+use crate::settings::default_settings::{DEFAULT_PROXY_PUBLIC, HTTP_TIMEOUT};
 
 static mut EL: *mut Settings = 0 as *mut _;
 
@@ -30,6 +30,7 @@ pub struct Common {
     pub mode:                               RunMode,
     pub username:                           String,
     pub password:                           String,
+    pub http_timeout:                       u32,
 }
 
 impl Common {
@@ -51,6 +52,7 @@ impl Common {
             mode,
             username,
             password,
+            http_timeout: HTTP_TIMEOUT,
         })
     }
 
@@ -212,6 +214,7 @@ impl Settings {
                         password = file_common.password.unwrap_or("".to_owned());
                     }
 
+                let http_timeout = file_common.http_timeout.unwrap_or(HTTP_TIMEOUT);
                 Ok(Common {
                     accept_conductor_invalid_certs,
                     conductor_url,
@@ -221,6 +224,7 @@ impl Settings {
                     mode,
                     username,
                     password,
+                    http_timeout,
                 })
         })
             .unwrap_or(Common::default()?);

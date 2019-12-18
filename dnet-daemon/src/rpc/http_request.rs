@@ -141,7 +141,7 @@ fn http_error(mut res: reqwest::Response) -> Result<serde_json::Value> {
 fn build_request_client(method: reqwest::Method, url: &str) -> Result<reqwest::RequestBuilder> {
     let token = get_info().lock().unwrap().node.token.clone();
     let client_build = reqwest::ClientBuilder::new()
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(get_settings().common.http_timeout as u64))
         .http1_title_case_headers()
         .gzip(false);
 
@@ -163,6 +163,9 @@ fn build_request_client(method: reqwest::Method, url: &str) -> Result<reqwest::R
                  .map_err(|_|Error::UrlParseError)?)
         .header(reqwest::header::CONTENT_TYPE,
                 " application/json;charset=UTF-8")
+        .header(reqwest::header::ORIGIN,
+        get_settings().common.conductor_url.clone()
+        )
         .header("x-access-token", token)
         .header(reqwest::header::USER_AGENT, "");
     Ok(request_builder)

@@ -9,6 +9,7 @@ use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::get_info;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
+use crate::settings::get_settings;
 
 pub fn group_out(
     ipc_tx:                 oneshot::Sender<Response>,
@@ -75,7 +76,9 @@ fn send_rpc_out_group(
     let (res_tx, res_rx) = mpsc::channel();
     let _ = rpc_command_tx.send(
         RpcEvent::Client(RpcClientCmd::OutTeam(team_id.to_owned(), res_tx)));
-    let response = match res_rx.recv_timeout(Duration::from_secs(3)) {
+    let response = match res_rx.recv_timeout(Duration::from_secs(
+        get_settings().common.http_timeout as u64
+    )) {
         Ok(res) => res,
         Err(_) => Response::exec_timeout(),
     };

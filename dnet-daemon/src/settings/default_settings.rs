@@ -1,5 +1,6 @@
 // common
 pub const DEFAULT_LOG_LEVEL: &str = "Error";
+pub const HTTP_TIMEOUT: u32 = 10;
 
 // proxy
 #[cfg(target_os = "linux")]

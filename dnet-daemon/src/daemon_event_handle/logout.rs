@@ -7,7 +7,7 @@ use dnet_types::response::Response;
 use dnet_types::status::RpcState;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::get_mut_settings;
+use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_mut_info, UserInfo};
 use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
@@ -69,7 +69,10 @@ fn send_rpc_disconnect(
     if let Ok(_) = rpc_command_tx.send(
         RpcEvent::Client(RpcClientCmd::Stop(rpc_stop_tx))
     ) {
-        if let Ok(_) = rpc_stop_rx.recv_timeout(Duration::from_secs(10)) {
+        if let Ok(_) = rpc_stop_rx.recv_timeout(
+            Duration::from_secs(
+                get_settings().common.http_timeout as u64
+            )) {
             return Some(ipc_tx);
         }
         else {

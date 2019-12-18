@@ -6,7 +6,7 @@ use futures::sync::oneshot;
 use dnet_types::user::User;
 use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::settings::get_mut_settings;
+use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::Daemon;
 use crate::info::get_info;
 use super::handle_settings;
@@ -29,7 +29,10 @@ pub fn handle_login(ipc_tx: oneshot::Sender<Response>,
             RpcEvent::Client(RpcClientCmd::RestartRpcConnect(rpc_restart_tx))
         ) {
             response =
-                if let Ok(mut res) = rpc_restart_rx.recv_timeout(Duration::from_secs(20)) {
+                if let Ok(mut res) = rpc_restart_rx.recv_timeout(
+                    Duration::from_secs(
+                        get_settings().common.http_timeout as u64 * 2
+                    )) {
                     info!("handle_login {:?}", res);
                     let info = get_info().lock().unwrap();
                     let user = info.user.clone();

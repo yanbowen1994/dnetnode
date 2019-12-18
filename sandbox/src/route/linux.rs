@@ -5,23 +5,17 @@ use crate::route::types::RouteInfo;
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    #[cfg(not(target_os = "windows"))]
-        {
-            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let _ = Command::new("ip")
-                .args(vec!["route", "add", &ip_mask, "dev", dev])
-                .output();
-        }
+    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let _ = Command::new("ip")
+        .args(vec!["route", "add", &ip_mask, "dev", dev])
+        .output();
 }
 
 pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    #[cfg(not(target_os = "windows"))]
-        {
-            let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-            let _ = Command::new("ip")
-                .args(vec!["route", "del", &ip_mask, "dev", dev])
-                .output();
-        }
+    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+    let _ = Command::new("ip")
+        .args(vec!["route", "del", &ip_mask, "dev", dev])
+        .output();
 }
 
 pub fn is_in_routing_table(routing_table: &Vec<RouteInfo>, ip: &IpAddr, netmask: u32, dev: &str) -> bool {

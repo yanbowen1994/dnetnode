@@ -192,7 +192,6 @@ impl Adapters {
     }
 }
 
-
 #[test]
 fn test() {
     let ip = IpAddr::from_str("12.12.12.12").unwrap();

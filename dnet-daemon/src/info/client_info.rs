@@ -1,7 +1,5 @@
 extern crate uuid;
 
-use mac_address::get_mac_address;
-
 use super::error::{Error, Result};
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
@@ -14,6 +12,7 @@ use router_plugin::get_sn;
 extern crate base64;
 
 use dnet_types::device_type::DeviceType;
+use sandbox::route::{get_default_route, get_mac};
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
@@ -58,11 +57,11 @@ impl ClientInfo {
     }
 
     fn get_uid(device_type: &DeviceType) -> Result<String> {
-        let mac = match get_mac_address() {
-            Ok(Some(ma)) => Some(ma.to_string().replace(":", "")),
-            Ok(None) => None,
-            Err(_) => None,
-        }.ok_or(Error::GetMac)?;
+        let mac = get_default_route()
+            .and_then(|route_info| {
+                get_mac(&route_info.dev)
+            })
+            .ok_or(Error::GetMac)?;
 
         let uid;
         match device_type {
@@ -86,16 +85,5 @@ impl ClientInfo {
             _ => uid = "unknown/".to_owned() + &mac,
         };
         Ok(uid)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use mac_address::get_mac_address;
-
-    #[test]
-    fn test_get_mac_address() {
-        let mac = get_mac_address().unwrap().unwrap().to_string();
-        println!("{:?}", mac);
     }
 }

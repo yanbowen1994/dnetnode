@@ -9,7 +9,12 @@ pub fn keep_route(local_vip: Option<IpAddr>, new_hosts: Vec<IpAddr>, dev: String
         .filter_map(|route| {
             if route.dev == dev {
                 if let Ok(ip) = IpAddr::from_str(&route.dst) {
-                    Some(ip)
+                    if 32 == route.mask {
+                        Some(ip)
+                    }
+                    else {
+                        None
+                    }
                 }
                 else {
                     None

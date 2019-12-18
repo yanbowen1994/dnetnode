@@ -1,4 +1,5 @@
 use std::process::{Command, Stdio};
+use std::net::IpAddr;
 
 use crate::{TincStream, TincTools};
 
@@ -21,6 +22,38 @@ impl TincOperator {
             .map_err(|_|Error::TincNotExist)?
             .connect_test()
             .map_err(|_|Error::TincNotExist)
+    }
+
+    pub fn get_tinc_connect_nodes(&self) -> Result<Vec<IpAddr>> {
+        let pid_file = std::path::Path::new(&self.tinc_settings.tinc_home)
+            .join(PID_FILENAME);
+        if !pid_file.as_path().is_file() {
+            return Err(Error::PidfileNotExist);
+        }
+        let pid_file = pid_file
+            .to_str()
+            .unwrap()
+            .to_string();
+        let mut tinc_stream = TincStream::new(&pid_file)
+            .map_err(|_|Error::PidfileNotExist)?;
+        let source_connections = tinc_stream.dump_nodes()
+            .map_err(|_|Error::TincNotExist)?;
+        let connections = source_connections.into_iter()
+            .filter_map(|source| {
+                if !source.node.contains("proxy") {
+                    if source.via.len() > 3 {
+                        TincTools::get_vip_by_filename(&source.node)
+                    }
+                    else {
+                        None
+                    }
+                }
+                else {
+                    None
+                }
+            })
+            .collect::<Vec<IpAddr>>();
+        Ok(connections)
     }
 
     pub fn check_tinc_memory(&mut self) -> Result<()> {

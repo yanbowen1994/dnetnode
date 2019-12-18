@@ -431,7 +431,12 @@ impl Executor {
                 Ok(connect_to_vec) => {
                     if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
                         if tunnel_restart {
-                            let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+                            let (res_tx, _) = std::sync::mpsc::channel();
+                            let _ = self.rpc_tx.send(RpcEvent::Client(
+                                RpcClientCmd::ReportDeviceSelectProxy(res_tx)));
+
+                            let _ = self.rpc_tx.send(RpcEvent::Executor(
+                                ExecutorEvent::NeedRestartTunnel));
                         }
                         return Ok(());
                     }

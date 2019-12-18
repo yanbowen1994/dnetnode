@@ -169,6 +169,7 @@ impl JavaDevice {
         let device_name = info.client_info.device_name.clone();
         let device_type = info.client_info.devicetype.clone() as i8;
         let pubkey = info.tinc_info.pub_key.clone();
+        let lan = Some(info.client_info.lan.clone());
         std::mem::drop(info);
 
         Self {
@@ -186,7 +187,7 @@ impl JavaDevice {
             hiddenFlag:                 false,
             id:                         None,
             ip:                         None,
-            lan:                        None,
+            lan,
             latitude:                   None,
             longitude:                  None,
             pubKey:                     pubkey,

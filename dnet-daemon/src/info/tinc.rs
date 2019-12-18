@@ -48,6 +48,7 @@ impl TincInfo {
             self.vip = Some(vip);
         }
         self.pub_key = self.load_local_pubkey()
+            .map_err(|e|error!("Must create tinc key pair before Info init. {:?}", e))
             .expect("Must create tinc key pair before Info init.");
     }
 

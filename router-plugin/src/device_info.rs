@@ -40,7 +40,6 @@ impl DeviceInfo {
                     cloud_led_on: false,
                 });
             }
-
     }
 
     #[cfg(target_arch = "arm")]

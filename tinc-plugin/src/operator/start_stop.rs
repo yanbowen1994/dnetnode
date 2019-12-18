@@ -34,6 +34,7 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     fn start_tinc_inner(&self) -> Result<()> {
+        self.clean_tinc_pid();
         let conf_tinc_home = "--config=".to_string()
             + &self.tinc_settings.tinc_home;
         let conf_pidfile = "--pidfile=".to_string()

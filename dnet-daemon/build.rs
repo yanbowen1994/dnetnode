@@ -15,7 +15,7 @@ fn commit_id() -> String {
         .output()
         .expect("Unable to get git commit id");
     ::std::str::from_utf8(&output.stdout)
-        .unwrap()
+        .unwrap_or("Unknown")
         .trim()
         .to_owned()
 }
@@ -26,7 +26,7 @@ fn commit_date() -> String {
         .output()
         .expect("Unable to get git commit date");
     ::std::str::from_utf8(&output.stdout)
-        .unwrap()
+        .unwrap_or("Unknown")
         .trim()
         .to_owned()
 }

@@ -5,8 +5,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(err_derive::Error, Debug)]
 #[allow(non_camel_case_types)]
 pub enum Error {
-    #[error(display = "tinc use too many memory.")]
-    OutOfMemory,
+    #[error(display = "Set route failed.")]
+    SetRoute,
 
     #[error(display = "local_vip_not_init")]
     local_vip_not_init,

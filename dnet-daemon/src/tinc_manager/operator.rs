@@ -102,7 +102,8 @@ impl TincOperator {
 
         #[cfg(unix)]
             {
-                let routing_table = sandbox::route::parse_routing_table();
+                let routing_table = sandbox::route::parse_routing_table()
+                    .ok_or(TincOperatorError::SetRoute)?;
                 let routing_table = routing_table
                     .iter()
                     .filter_map(|route_info| {
@@ -147,7 +148,8 @@ impl TincOperator {
                 }
                 std::mem::drop(info);
 
-                let routing_table = sandbox::route::parse_routing_table();
+                let routing_table = sandbox::route::parse_routing_table()
+                    .ok_or(TincOperatorError::SetRoute)?;
                 let routing_table = routing_table
                     .iter()
                     .filter_map(|route_info| {

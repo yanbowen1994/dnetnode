@@ -484,7 +484,9 @@ impl TincStream {
     pub fn recv_from_subscribe(socket: &socket2::Socket) -> Result<String> {
         let mut buffer: [u8; 2048] = [0; 2048];
         match socket.recv_from(&mut buffer) {
-            Ok(_) => return Ok(String::from_utf8(buffer.to_vec()).unwrap()),
+            Ok(_) => return Ok(String::from_utf8(buffer.to_vec())
+                .unwrap_or(String::new())
+            ),
             Err(e) => return Err(e),
         }
     }

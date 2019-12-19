@@ -235,8 +235,13 @@ fn parse_payload<F>(
                 Ok(HttpResponse::Ok().json(response))
             }
             else {
-                let by = &body.to_vec()[..];
-                let body = String::from_utf8_lossy(by).replace("\n", "");
+                let by = body.to_vec();
+                let body = String::from_utf8(by)
+                    .ok()
+                    .and_then(|body| {
+                        Some(body.replace("\n", ""))
+                    })
+                    .unwrap_or(String::new());
                 f(body)
             }
         })

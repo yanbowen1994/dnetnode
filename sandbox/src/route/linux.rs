@@ -51,13 +51,14 @@ pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
 }
 
 #[cfg(not(target_arch = "arm"))]
-pub fn parse_routing_table() -> Vec<RouteInfo> {
-    let output = String::from_utf8(Command::new("ip")
-            .args(vec!["route"])
-            .output()
-            .unwrap()
-            .stdout)
-        .unwrap();
+pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
+    let output = Command::new("ip")
+        .args(vec!["route"])
+        .output()
+        .ok()?
+        .stdout;
+    let output = String::from_utf8(output).ok()?;
+
     let route_infos = output
         .split("\n")
         .collect::<Vec<&str>>()
@@ -97,13 +98,12 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
             }
         })
         .collect::<Vec<RouteInfo>>();
-    route_infos
+    Some(route_infos)
 }
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-pub fn parse_routing_table() -> Vec<RouteInfo> {
-    String::from_utf8(Command::new("route").output().unwrap().stdout)
-        .unwrap()
+pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
+    String::from_utf8(Command::new("route").output().ok()?.stdout)?
         .split("\n")
         .collect::<Vec<&str>>()
         .iter()
@@ -113,8 +113,10 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
             }
             let mut bar = bar.as_bytes().to_vec();
             bar.dedup_by(|a, b|a == b && *a == 32);
-            let bar = String::from_utf8(bar)
-                .unwrap();
+            let bar = match String::from_utf8(bar) {
+                Ok(x) => x,
+                Err(_) => return None,
+            };
 
             let segments = bar
                 .split(" ")

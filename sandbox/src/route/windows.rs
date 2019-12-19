@@ -79,7 +79,8 @@ pub fn parse_routing_table() -> Vec<RouteInfo> {
     if let Ok(output) = Command::new("wmic")
         .args(vec!["path", "Win32_IP4RouteTable", "get", "Destination,Mask,InterfaceIndex", "/value"])
         .output() {
-        let output = String::from_utf8(output.stdout).unwrap();
+        let output = String::from_utf8(output.stdout)
+            .unwrap_or(String::new());
         let lines: Vec<&str> = output.split("\r\r\n\r\r\n\r\r\n")
             .collect::<Vec<&str>>();
         for line in lines {

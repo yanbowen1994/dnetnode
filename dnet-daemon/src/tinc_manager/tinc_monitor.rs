@@ -229,11 +229,6 @@ impl MonitorInner {
                 return Ok(());
             }
 
-            Err(TincOperatorError::OutOfMemory) => {
-                error!("check tinc process: tinc out of memory.");
-                return Err(TincOperatorError::OutOfMemory);
-            }
-
             Err(TincOperatorError::TincNotExist) => {
                 error!("check tinc process: tinc not exist.");
                 return Err(TincOperatorError::TincNotExist);
@@ -246,7 +241,6 @@ impl MonitorInner {
         }
     }
 
-    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
     pub fn fresh_tinc_nodes(&self) -> Result<()> {
         let tinc = TincOperator::new();
         let nodes = tinc.get_tinc_connect_nodes()?;

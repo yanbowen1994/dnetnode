@@ -22,7 +22,7 @@ use crate::route::types::RouteInfo;
 
 pub fn get_default_route() -> Option<RouteInfo> {
     let mut route = None;
-    let _ = parse_routing_table()
+    let _ = parse_routing_table()?
         .into_iter()
         .map(|route_info| {
             if route_info.dst == "0.0.0.0"

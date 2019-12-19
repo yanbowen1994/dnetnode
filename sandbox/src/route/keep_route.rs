@@ -6,7 +6,10 @@ use dnet_types::team::NetSegment;
 use super::*;
 
 pub fn keep_route(local_vip: Option<IpAddr>, new_hosts: Vec<NetSegment>, dev: String) {
-    let now_route = parse_routing_table();
+    let now_route = match parse_routing_table() {
+        Some(x) => x,
+        None => return,
+    };
     let old_hosts: Vec<NetSegment> = now_route.iter()
         .filter_map(|route| {
             if route.dev == dev {

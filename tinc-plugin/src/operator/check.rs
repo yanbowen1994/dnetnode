@@ -1,10 +1,9 @@
-use std::process::{Command, Stdio};
 use std::net::IpAddr;
 
 use crate::{TincStream, TincTools};
 
 use super::{Error, Result, TincOperator};
-use super::{PID_FILENAME, TINC_MEMORY_LIMIT, TINC_ALLOWED_OUT_MEMORY_TIMES};
+use super::PID_FILENAME;
 
 impl TincOperator {
     pub fn check_tinc_status(&self) -> Result<()> {
@@ -54,37 +53,5 @@ impl TincOperator {
             })
             .collect::<Vec<IpAddr>>();
         Ok(nodes)
-    }
-
-    pub fn check_tinc_memory(&mut self) -> Result<()> {
-        let mut res1 = Command::new("ps")
-            .arg("-aux")
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
-        let res2 = Command::new("grep")
-            .arg("tincd")
-            .stdin(res1.stdout.take().unwrap())
-            .output()
-            .unwrap();
-        let res = String::from_utf8_lossy( &res2.stdout).to_string();
-        let res_vec = res.split_ascii_whitespace().collect::<Vec<&str>>();
-
-        if res_vec.len() < 4 {
-            return Err(Error::TincNotExist);
-        }
-
-        let memory: f32 = res_vec[3].parse().map_err(|_|Error::TincNotExist)?;
-
-        if memory > TINC_MEMORY_LIMIT {
-            if self.tinc_out_memory_times >= TINC_ALLOWED_OUT_MEMORY_TIMES {
-                self.tinc_out_memory_times = 0;
-                return Err(Error::OutOfMemory);
-            }
-            else {
-                self.tinc_out_memory_times += 1;
-            }
-        }
-        Ok(())
     }
 }

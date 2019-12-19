@@ -58,7 +58,8 @@ impl ClientInfo {
             .and_then(|route_info| {
                 get_mac(&route_info.dev)
             })
-            .ok_or(Error::GetMac)?;
+            .ok_or(Error::GetMac)?
+            .replace(":", "");
 
         let uid;
         match device_type {

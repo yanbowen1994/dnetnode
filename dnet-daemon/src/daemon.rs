@@ -298,13 +298,17 @@ impl Daemon {
                     dnet_types::tinc_host_status_change::HostStatusChange::HostUp(host) => {
                         if let Some(vip) = TincTools::get_vip_by_filename(host) {
                             get_mut_info().lock().unwrap().tinc_info.current_connect.push(vip);
-                            send_to_rpc = true;
+                            if !host.contains("proxy") {
+                                send_to_rpc = true;
+                            }
                         }
                     }
                     dnet_types::tinc_host_status_change::HostStatusChange::HostDown(host) => {
                         if let Some(vip) = TincTools::get_vip_by_filename(host) {
                             get_mut_info().lock().unwrap().tinc_info.remove_current_connect(&vip);
-                            send_to_rpc = true;
+                            if !host.contains("proxy") {
+                                send_to_rpc = true;
+                            }
                         }
                     }
                 }

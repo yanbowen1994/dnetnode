@@ -6,10 +6,6 @@ use std::sync::mpsc::Sender;
 use dnet_types::response::Response;
 use dnet_types::status::TunnelState;
 use tinc_plugin::TincOperatorError;
-#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-use dnet_types::settings::RunMode;
-#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-use crate::settings::get_settings;
 
 use crate::tinc_manager::TincOperator;
 use crate::traits::TunnelTrait;
@@ -215,23 +211,17 @@ impl MonitorInner {
 
     fn exec_tinc_check(&mut self) -> Result<()> {
         let mut tinc = TincOperator::new();
-
-        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-            {
-                if get_settings().common.mode == RunMode::Client {
-                    if let Err(e) = self.fresh_tinc_nodes() {
-                        error!("fresh_tinc_connections failed {:?}", e);
-                        if self.tinc_socket_failed_times == 2 {
-                            self.tinc_socket_failed_times = 0;
-                            error!("fresh_tinc_connections send tunnel return.");
-                            return Err(e);
-                        }
-                        else {
-                            self.tinc_socket_failed_times += 1;
-                        }
-                    }
-                }
+        if let Err(e) = self.fresh_tinc_nodes() {
+            error!("fresh_tinc_connections failed {:?}", e);
+            if self.tinc_socket_failed_times == 2 {
+                self.tinc_socket_failed_times = 0;
+                error!("fresh_tinc_connections send tunnel return.");
+                return Err(e);
             }
+            else {
+                self.tinc_socket_failed_times += 1;
+            }
+        }
 
         match tinc.check_tinc_status() {
             Ok(_) => {

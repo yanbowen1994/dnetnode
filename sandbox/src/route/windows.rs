@@ -71,80 +71,81 @@ pub fn parse_netmask_from_cidr(netmask: u32) -> IpAddr {
     IpAddr::from(mask)
 }
 
-pub fn parse_routing_table() -> Vec<RouteInfo> {
+pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
     let adapters = Adapters::new();
 
     let mut route_info = vec![];
 
-    if let Ok(output) = Command::new("wmic")
+    let output = Command::new("wmic")
         .args(vec!["path", "Win32_IP4RouteTable", "get", "Destination,Mask,InterfaceIndex", "/value"])
-        .output() {
-        let output = String::from_utf8(output.stdout)
-            .unwrap_or(String::new());
-        let lines: Vec<&str> = output.split("\r\r\n\r\r\n\r\r\n")
-            .collect::<Vec<&str>>();
-        for line in lines {
-            let segments: Vec<&str> = line.split("\r\r\n")
-                .collect::<Vec<&str>>()
-                .into_iter()
-                .filter_map(|seg|{
-                    if seg == "" {
-                        None
-                    }
-                    else {
-                        Some(seg)
-                    }
-                })
-                .collect::<Vec<&str>>();
-            if segments.len() == 3 {
-                let mut dst = None;
-                let mut dev = None;
-                let mut mask = None;
-                for seg in segments {
-                    if seg.contains("Destination=") {
-                        dst = Some(seg.replace("Destination=", ""));
-                    }
-                    else if seg.contains("InterfaceIndex=") {
-                        dev = match seg.replace("InterfaceIndex=", "")
-                            .parse::<u32>()
-                            .ok()
-                            .and_then(|index| {
-                                adapters.get_vnic_dev(index)
-                            }) {
-                            Some(dev) => Some(dev),
-                            None => break,
-                        };
-                    }
-                    else if seg.contains("Mask=") {
-                        mask = match parse_netmask_to_cidr(
-                            &seg.replace("Mask=", "")) {
-                            Some(x) => Some(x),
-                            None => break,
-                        };
-                    }
-                }
+        .output()
+        .ok()?;
+    let output = String::from_utf8(output.stdout).ok()?;
 
-                if let Some(dst) = dst {
-                    if let Some(dev) = dev {
-                        if let Some(mask) = mask {
-                            let route = RouteInfo {
-                                dst,
-                                gw:         String::new(),
-                                mask,
-                                flags:      String::new(),
-                                metric:     0,
-                                ref_:       String::new(),
-                                use_:       String::new(),
-                                dev,
-                            };
-                            route_info.push(route);
-                        }
+    let lines: Vec<&str> = output.split("\r\r\n\r\r\n\r\r\n")
+        .collect::<Vec<&str>>();
+    for line in lines {
+        let segments: Vec<&str> = line.split("\r\r\n")
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .filter_map(|seg|{
+                if seg == "" {
+                    None
+                }
+                else {
+                    Some(seg)
+                }
+            })
+            .collect::<Vec<&str>>();
+        if segments.len() == 3 {
+            let mut dst = None;
+            let mut dev = None;
+            let mut mask = None;
+            for seg in segments {
+                if seg.contains("Destination=") {
+                    dst = Some(seg.replace("Destination=", ""));
+                }
+                else if seg.contains("InterfaceIndex=") {
+                    dev = match seg.replace("InterfaceIndex=", "")
+                        .parse::<u32>()
+                        .ok()
+                        .and_then(|index| {
+                            adapters.get_vnic_dev(index)
+                        }) {
+                        Some(dev) => Some(dev),
+                        None => break,
+                    };
+                }
+                else if seg.contains("Mask=") {
+                    mask = match parse_netmask_to_cidr(
+                        &seg.replace("Mask=", "")) {
+                        Some(x) => Some(x),
+                        None => break,
+                    };
+                }
+            }
+
+            if let Some(dst) = dst {
+                if let Some(dev) = dev {
+                    if let Some(mask) = mask {
+                        let route = RouteInfo {
+                            dst,
+                            gw:         String::new(),
+                            mask,
+                            flags:      String::new(),
+                            metric:     0,
+                            ref_:       String::new(),
+                            use_:       String::new(),
+                            dev,
+                        };
+                        route_info.push(route);
                     }
                 }
             }
         }
     }
-    route_info
+
+    Some(route_info)
 }
 
 fn get_index_if(dev: &str) -> u32 {

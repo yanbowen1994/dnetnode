@@ -50,13 +50,14 @@ pub(super) fn search_team_by_user() -> Result<()> {
     let mut info = get_mut_info().lock().unwrap();
     info.teams.all_teams = teams;
     info.fresh_running_from_all();
+
     let hosts = info.teams.get_connect_hosts(&info.tinc_info.vip);
     let local_vip = info.tinc_info.vip.clone();
     std::mem::drop(info);
     info!("route hosts {:?}", hosts);
     for host in &hosts {
         let host = host.clone();
-        std::thread::spawn(move ||ping(host));
+        std::thread::spawn(move ||ping(host.ip));
     }
     std::thread::spawn(move ||
         route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())

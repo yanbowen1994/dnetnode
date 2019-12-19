@@ -148,7 +148,7 @@ pub struct JavaDevice {
     pub hiddenFlag:                 bool,
     pub id:                         Option<String>,
     pub ip:                         Option<String>,
-    pub lan:                        Option<String>,
+    pub lan:                        String,
     pub latitude:                   Option<String>,
     pub longitude:                  Option<String>,
     pub pubKey:                     String,
@@ -169,7 +169,7 @@ impl JavaDevice {
         let device_name = info.client_info.device_name.clone();
         let device_type = info.client_info.devicetype.clone() as i8;
         let pubkey = info.tinc_info.pub_key.clone();
-        let lan = Some(info.client_info.lan.clone());
+        let lan = info.client_info.get_lan_str();
         std::mem::drop(info);
 
         Self {

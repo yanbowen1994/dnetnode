@@ -18,7 +18,6 @@ use dnet_types::device_type::DeviceType;
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
     pub devicetype:             DeviceType,
-    pub lan:                    String,
     pub wan:                    String,
     pub device_name:            String,
     #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
@@ -38,7 +37,6 @@ impl ClientInfo {
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
                 client_info = Self {
                     devicetype:          device_type,
-                    lan:                 "".to_string(),
                     wan:                 "".to_string(),
                     device_name,
                     device_password,
@@ -49,7 +47,6 @@ impl ClientInfo {
             {
                 client_info = Self {
                     devicetype:         device_type,
-                    lan:                "".to_string(),
                     wan:                "".to_string(),
                     device_name,
                 }
@@ -86,6 +83,23 @@ impl ClientInfo {
             _ => uid = "unknown/".to_owned() + &mac,
         };
         Ok(uid)
+    }
+
+    pub fn get_lan_str(&self) -> String {
+        // route mode
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+            {
+                serde_json::to_string(&self.device_info.lan)
+                    .map_err(|e| {
+                        error!("JavaDevice::new() parse lan failed. {:?}", e);
+                    })
+                    .unwrap_or("".to_string())
+            }
+        // x86
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                "".to_owned()
+            }
     }
 }
 

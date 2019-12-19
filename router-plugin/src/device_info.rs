@@ -1,6 +1,7 @@
+#[cfg(not(target_arch = "arm"))]
+use std::net::IpAddr;
 #[cfg(target_arch = "arm")]
 use std::net::Ipv4Addr;
-#[cfg(target_arch = "arm")]
 use std::str::FromStr;
 
 #[cfg(target_arch = "arm")]
@@ -19,14 +20,24 @@ impl DeviceInfo {
     pub fn get_info() -> Option<Self> {
         #[cfg(not(target_arch = "arm"))]
             {
+                // for test!
+                let lan1 = NetSegment {
+                    ip:     IpAddr::from_str("192.168.113.1").unwrap(),
+                    mask:   24,
+                };
+                let lan2 = NetSegment {
+                    ip:     IpAddr::from_str("192.168.114.1").unwrap(),
+                    mask:   24,
+                };
+                let lan = vec![lan1, lan2];
                 return Some(DeviceInfo {
-                    lan: vec![],
+                    lan,
                     cloud_led_on: false,
                 });
             }
         #[cfg(target_arch = "arm")]
             {
-                let mut lan = Self::get_lans(vec![
+                let lan = Self::get_lans(vec![
                     "br0".to_owned(),
                     "br1".to_owned(),
                     "br2".to_owned(),

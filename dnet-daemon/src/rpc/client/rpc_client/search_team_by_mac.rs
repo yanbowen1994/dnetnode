@@ -63,7 +63,7 @@ pub fn search_team_by_mac() -> Result<()> {
     info!("route hosts {:?}", hosts);
     for host in &hosts {
         let host = host.clone();
-        std::thread::spawn(move ||ping(host));
+        std::thread::spawn(move ||ping(host.ip));
     }
     std::thread::spawn(move ||
         route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())

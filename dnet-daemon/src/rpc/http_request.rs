@@ -71,6 +71,9 @@ pub fn get_mutipage(url: &str) -> Result<Vec<serde_json::Value>> {
             output.append(res.as_mut());
             break
         }
+        else if page > 50 {
+            break
+        }
         else {
             output.append(res.as_mut());
             page += 1;

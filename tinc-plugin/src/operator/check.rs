@@ -36,13 +36,13 @@ impl TincOperator {
             .to_string();
         let mut tinc_stream = TincStream::new(&pid_file)
             .map_err(|_|Error::PidfileNotExist)?;
-        let source_connections = tinc_stream.dump_nodes()
+        let source_connections = tinc_stream.dump_edges()
             .map_err(|_|Error::TincNotExist)?;
-        let connections = source_connections.into_iter()
+        let nodes = source_connections.into_iter()
             .filter_map(|source| {
-                if !source.node.contains("proxy") {
-                    if source.via.len() > 3 {
-                        TincTools::get_vip_by_filename(&source.node)
+                if !source.from.contains("proxy") {
+                    if source.from.len() > 3 {
+                        TincTools::get_vip_by_filename(&source.from)
                     }
                     else {
                         None
@@ -53,7 +53,7 @@ impl TincOperator {
                 }
             })
             .collect::<Vec<IpAddr>>();
-        Ok(connections)
+        Ok(nodes)
     }
 
     pub fn check_tinc_memory(&mut self) -> Result<()> {

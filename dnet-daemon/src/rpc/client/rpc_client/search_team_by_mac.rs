@@ -8,7 +8,6 @@ use crate::rpc::{Result, Error};
 use crate::info::{get_info, get_mut_info};
 use super::types::ResponseTeam;
 use crate::settings::default_settings::TINC_INTERFACE;
-use crate::rpc::client::rpc_client::select_proxy::ping;
 use crate::rpc::http_request::get_mutipage;
 
 pub fn search_team_by_mac() -> Result<()> {
@@ -61,10 +60,6 @@ pub fn search_team_by_mac() -> Result<()> {
     std::mem::drop(info);
 
     info!("route hosts {:?}", hosts);
-    for host in &hosts {
-        let host = host.clone();
-        std::thread::spawn(move ||ping(host));
-    }
     std::thread::spawn(move ||
         route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())
     );

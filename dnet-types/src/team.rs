@@ -1,3 +1,4 @@
+use std::fmt;
 use std::net::IpAddr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -76,14 +77,27 @@ pub struct TeamMember {
 }
 
 // mask CIDR.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct NetSegment {
     pub ip:     IpAddr,
     pub mask:   u32,
 }
 
 impl NetSegment {
+    pub fn new(ip: IpAddr, mask: u32) -> Self {
+        Self {
+            ip,
+            mask,
+        }
+    }
+
     pub fn to_string(&self) -> String {
         format!("{}/{}", self.ip.to_string(), self.mask)
+    }
+}
+
+impl fmt::Debug for NetSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}/{}", self.ip.to_string(), self.mask)
     }
 }

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use dnet_types::team::Team;
+use dnet_types::team::{Team, NetSegment};
 use tinc_plugin::{TincTeam, TincTools};
 use std::net::IpAddr;
 
@@ -83,14 +83,16 @@ impl TeamInfo {
     }
 
     pub fn get_connect_hosts(&self,
-                             self_vip: &Option<IpAddr>) -> Vec<IpAddr> {
-        let mut connects: Vec<IpAddr> = vec![];
+                             self_vip: &Option<IpAddr>) -> Vec<NetSegment> {
+        let mut connects: Vec<NetSegment> = vec![];
         if let Some(self_vip) = self_vip {
             for team_id in &self.running_teams {
                 if let Some(team) = self.all_teams.get(team_id) {
                     for member in &team.members {
                         if member.connect_status == true && member.vip != *self_vip {
-                            connects.push(member.vip.clone())
+                            let vip_segment = NetSegment::new(member.vip.clone(), 32);
+                            connects.push(vip_segment);
+                            connects.append(&mut (member.lan.clone()));
                         }
                     }
                 }

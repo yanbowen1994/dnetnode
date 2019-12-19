@@ -192,6 +192,11 @@ impl TincOperator {
         Ok(())
     }
 
+    pub fn get_tinc_connect_nodes(&self) -> Result<Vec<IpAddr>> {
+        let tinc = PluginTincOperator::mut_instance();
+        tinc.get_tinc_connect_nodes()
+    }
+
     pub fn restart_tinc(&mut self) -> Result<()> {
         self.set_info_to_local()?;
 //        self.set_tinc_team_init_file()?;

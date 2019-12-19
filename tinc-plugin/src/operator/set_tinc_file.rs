@@ -9,7 +9,6 @@ use crate::info::{TincRunMode, TincInfo};
 use super::{Error, Result, TincOperator, TincTools,
             PUB_KEY_FILENAME, TINC_UP_FILENAME, PRIV_KEY_FILENAME,
             HOST_UP_FILENAME, TINC_DOWN_FILENAME, HOST_DOWN_FILENAME};
-use crate::PID_FILENAME;
 
 impl TincOperator {
     pub fn set_info_to_local(&mut self, info: &TincInfo) -> Result<()> {
@@ -182,14 +181,6 @@ impl TincOperator {
         #[cfg(unix)]
             TincTools::set_script_permissions(&path)?;
         Ok(())
-    }
-
-    pub fn clean_tinc_pid(&self) {
-        let path = self.tinc_settings.tinc_home.clone() + PID_FILENAME;
-        let _ = fs::remove_file(path);
-
-        let path = self.tinc_settings.tinc_home.clone() + "tinc.socket";
-        let _ = fs::remove_file(path);
     }
 
     fn clean_host_up(&self) {

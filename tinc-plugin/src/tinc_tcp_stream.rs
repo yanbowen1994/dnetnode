@@ -91,6 +91,10 @@ impl TincStream {
     }
 
     fn parse_control_cookie(path: &str) -> Result<(String, String, String)> {
+        if !std::path::Path::new(path).is_file() {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "Tinc pid file, not find port setting. Maybe tinc tcp port never be set"));
+        }
         let mut file = File::open(path)
             .map_err(|e|
                 Error::new(

@@ -60,15 +60,21 @@ impl TincOperator {
 
         #[cfg(not(target_arch = "arm"))]
             {
-                let mut res = Command::new(&(self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME))
-                    .args(args)
-                    .spawn()
+                let duct_handle = duct::cmd(
+                    self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME.into(),
+                    args
+                ).unchecked();
+
+                let _ = duct_handle.stderr_null().stdout_null().start()
                     .map_err(|e| {
                         log::error!("StartTincError {:?}", e.to_string());
-                        println!("StartTincError {:?}", e.to_string());
+                        Error::StartTincError
+                    })?
+                    .wait()
+                    .map_err(|e| {
+                        log::error!("StartTincError {:?}", e.to_string());
                         Error::StartTincError
                     })?;
-                let _ = res.wait();
                 Ok(())
             }
     }
@@ -83,6 +89,7 @@ impl TincOperator {
                     let tinc_pid = self.tinc_settings.tinc_home.to_string() + PID_FILENAME;
                     if let Ok(mut tinc_stream) = TincStream::new(&tinc_pid) {
                         if let Ok(_) = tinc_stream.stop() {
+                            std::mem::drop(tinc_stream);
                             // TODO async send and ipc check.
                             std::thread::sleep(std::time::Duration::from_secs(1));
                             ()
@@ -129,7 +136,6 @@ impl TincOperator {
                         }
                 }
             }
-            self.clean_tinc_pid();
             Ok(())
         }
     }
@@ -169,8 +175,27 @@ mod test {
     use crate::{TincOperator, TincSettings, TincRunMode};
     use crate::operator::TINC_BIN_FILENAME;
     use sysinfo::{System, SystemExt, ProcessExt, Signal};
-    use std::process::Command;
 
+    #[cfg(unix)]
+    #[test]
+    fn test_start() {
+        let mut tinc_settings = TincSettings::default();
+        tinc_settings.mode = TincRunMode::Client;
+        TincOperator::new(tinc_settings);
+        let tinc = TincOperator::instance();
+        let _ = tinc.start_tinc()
+            .map_err(|e|println!("{:?}", e));
+
+        let sys = System::new();
+        let mut find_tinc = false;
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                find_tinc = true;
+            }
+        }
+        assert!(find_tinc);
+        std::thread::sleep(std::time::Duration::from_secs(40));
+    }
 
     #[cfg(unix)]
     #[test]

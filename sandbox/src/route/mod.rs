@@ -29,6 +29,9 @@ pub fn get_default_route() -> Option<RouteInfo> {
                 && route_info.mask == 0 {
                 route = Some(route_info)
             }
+            else if route_info.dst == "default" {
+                route = Some(route_info)
+            }
         })
         .collect::<Vec<()>>();
     route

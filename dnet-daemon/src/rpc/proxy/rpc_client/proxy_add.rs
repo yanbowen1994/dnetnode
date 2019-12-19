@@ -5,7 +5,7 @@ use crate::settings::get_settings;
 use crate::rpc::Result;
 use crate::rpc::http_request::post;
 use crate::info::get_mut_info;
-use crate::rpc::types::JavaProxy;
+use crate::rpc::proxy::types::JavaProxy;
 use crate::rpc::Error;
 
 pub fn proxy_add() -> Result<()> {

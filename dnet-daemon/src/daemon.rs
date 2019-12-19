@@ -100,14 +100,21 @@ impl Daemon {
         info!("Init local info.");
         Info::new().map_err(Error::InfoError)?;
 
-        let run_mode = &get_settings().common.mode;
         let rpc_command_tx;
-        if run_mode == &RunMode::Proxy || run_mode == &RunMode::Center {
-            rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone());
-        }
-        else {
-            rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
-        }
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+            {
+                let run_mode = &get_settings().common.mode;
+                if run_mode == &RunMode::Proxy || run_mode == &RunMode::Center {
+                    rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone());
+                }
+                else {
+                    rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
+                }
+            }
+        #[cfg(any(target_arch = "arm", feature = "router_debug"))]
+            {
+                rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
+            }
 
         let (tinc, tunnel_command_tx) =
             TincMonitor::new(daemon_event_tx.clone());

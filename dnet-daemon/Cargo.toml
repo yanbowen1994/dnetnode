@@ -12,8 +12,6 @@ path = "src/main.rs"
 router_debug = ["router-plugin"]
 
 [dependencies]
-actix = "0.8.3"
-actix-web = { version = "1.0.8", features = ["ssl"] }
 bytes = "0.4"
 clap = "^2.32"
 chrono = "0.4.6"
@@ -70,6 +68,10 @@ optional = true
 [target.arm-unknown-linux-musleabihf.dependencies]
 router-plugin = { path = "../router-plugin" }
 base64 = "0.11.0"
+
+[target.'cfg(all(target_arch = "x86_64", not(feature = "router_debug")))'.dependencies]
+actix = "0.8.3"
+actix-web = { version = "1.0.8", features = ["ssl"] }
 
 [target.'cfg(target_os="macos")'.dependencies]
 ceviche = "*"

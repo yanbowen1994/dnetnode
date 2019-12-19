@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/opt/dnet/dnet-daemon -d 1 -c /opt/dnet
+ExecStart=/opt/dnet/dnet-daemon -c /opt/dnet
 
 [Install]
 WantedBy=multi-user.target

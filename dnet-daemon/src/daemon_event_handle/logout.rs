@@ -5,12 +5,14 @@ use futures::sync::oneshot;
 
 use dnet_types::response::Response;
 use dnet_types::status::RpcState;
+use sandbox::route::keep_route;
 
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::{Daemon, TunnelCommand};
 use crate::info::{get_mut_info, UserInfo};
 use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
+use crate::settings::default_settings::TINC_INTERFACE;
 
 pub fn handle_logout(
     ipc_tx:             oneshot::Sender<Response>,
@@ -25,6 +27,7 @@ pub fn handle_logout(
             let response = send_tunnel_disconnect(tunnel_command_tx);
             get_mut_info().lock().unwrap().status.rpc = RpcState::Disconnected;
             clean_all_running_teams();
+            clean_route_table();
             let _ = Daemon::oneshot_send(ipc_tx, response, "");
             Some(())
         });
@@ -92,4 +95,8 @@ fn clean_all_running_teams() {
     let mut info = get_mut_info().lock().unwrap();
     info.teams.running_teams = vec![];
     std::mem::drop(info);
+}
+
+fn clean_route_table() {
+    keep_route(None, vec![], TINC_INTERFACE.to_string());
 }

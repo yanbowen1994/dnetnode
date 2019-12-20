@@ -4,9 +4,9 @@ use futures::sync::oneshot;
 
 use dnet_types::response::Response;
 use dnet_types::status::TunnelState;
+
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
-use crate::daemon::{Daemon, TunnelCommand};
-use super::tunnel::send_tunnel_connect;
+use crate::daemon::Daemon;
 use super::handle_settings;
 use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, daemon_event_handle_fresh_running_from_all, send_rpc_group_fresh};
@@ -15,7 +15,6 @@ use crate::info::get_info;
 pub fn connect(
     ipc_tx:                 oneshot::Sender<Response>,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,
-    tunnel_command_tx:      mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
 ) {
     info!("is_not_proxy");
     let _ = is_not_proxy(ipc_tx)
@@ -92,16 +91,16 @@ fn handle_connect_select_proxy(
     }
 }
 
-fn handle_tunnel_connect(
-    ipc_tx:             oneshot::Sender<Response>,
-    tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-) -> Option<oneshot::Sender<Response>> {
-    let response = send_tunnel_connect(tunnel_command_tx);
-    if response.code == 200 {
-        return Some(ipc_tx);
-    }
-    else {
-        let _ = Daemon::oneshot_send(ipc_tx, response, "");
-        return None;
-    }
-}
+//fn handle_tunnel_connect(
+//    ipc_tx:             oneshot::Sender<Response>,
+//    tunnel_command_tx:  mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
+//) -> Option<oneshot::Sender<Response>> {
+//    let response = send_tunnel_connect(tunnel_command_tx);
+//    if response.code == 200 {
+//        return Some(ipc_tx);
+//    }
+//    else {
+//        let _ = Daemon::oneshot_send(ipc_tx, response, "");
+//        return None;
+//    }
+//}

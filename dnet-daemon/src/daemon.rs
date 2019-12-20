@@ -219,13 +219,11 @@ impl Daemon {
     fn handle_ipc_command_event(&mut self, cmd: ManagementCommand) {
         match cmd {
             ManagementCommand::Connect(tx) => {
-                let tunnel_command_tx = self.tunnel_command_tx.clone();
                 let rpc_command_tx = self.rpc_command_tx.clone();
                 thread::spawn(|| daemon_event_handle::connect::connect(
                     tx,
                     rpc_command_tx,
-                    tunnel_command_tx)
-                );
+                ));
             }
 
             ManagementCommand::TeamDisconnect(tx, team_id) => {

@@ -30,7 +30,7 @@ pub fn handle_group_info(
             if let Some(team_id) = team_id {
                 let teams = get_info().lock().unwrap().get_current_team_connect();
                 let mut team = teams.into_iter()
-                    .filter_map(|mut team| {
+                    .filter_map(|team| {
                         if team.team_id == team_id {
                             Some(team)
                         }
@@ -66,7 +66,7 @@ pub fn handle_group_info(
 
 fn teams_sort(teams: &mut Vec<Team>) {
     teams.sort_by(|a, b|a.team_name.cmp(&b.team_name));
-    teams
+    let _ = teams
         .iter_mut()
         .map(|team| {
             team.members.sort_by(|a, b|a.vip.cmp(&b.vip));

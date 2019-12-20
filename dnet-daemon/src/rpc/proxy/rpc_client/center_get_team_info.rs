@@ -1,7 +1,7 @@
 use crate::settings::get_settings;
 
 use crate::rpc::{Error, Result};
-use crate::rpc::http_request::post;
+use crate::rpc::http_request::loop_post;
 use tinc_plugin::{TincTeam, PID_FILENAME};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -9,9 +9,10 @@ use std::net::IpAddr;
 pub fn center_get_team_info() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/member/getAllTeammembersVlanTagging";
-    let res_data = post(&url, "")?;
+    let res_data = loop_post(&url, "")?;
 
-    let tinc_team_add = serde_json::from_value::<HashMap<String, Vec<IpAddr>>>(res_data.clone())
+    let tinc_team_add = serde_json::from_value::<HashMap<String, Vec<IpAddr>>>(
+        res_data.clone())
         .map_err(|e|{
             error!("response: {:?}", e);
             Error::ResponseParse(res_data.to_string())

@@ -3,7 +3,7 @@ use serde_json;
 use crate::settings::get_settings;
 
 use crate::rpc::Result;
-use crate::rpc::http_request::post;
+use crate::rpc::http_request::loop_post;
 use crate::info::get_mut_info;
 use crate::rpc::proxy::types::JavaProxy;
 use crate::rpc::Error;
@@ -13,7 +13,7 @@ pub fn proxy_add() -> Result<()> {
     let data = JavaProxy::new().to_json();
 
     debug!("Request {}", data);
-    let res_data = post(&url, &data.to_string())?;
+    let res_data = loop_post(&url, &data.to_string())?;
     let res_proxy: JavaProxy = serde_json::from_value(res_data.clone())
         .map_err(|_|Error::ResponseParse(res_data.to_string()))?;
     info!("Response {:?}", res_proxy);

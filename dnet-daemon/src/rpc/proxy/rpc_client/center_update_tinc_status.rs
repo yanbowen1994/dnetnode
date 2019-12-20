@@ -1,7 +1,7 @@
 use crate::settings::get_settings;
 
 use crate::rpc::Result;
-use crate::rpc::http_request::post;
+use crate::rpc::http_request::loop_post;
 use tinc_plugin::TincTools;
 use dnet_types::tinc_host_status_change::HostStatusChange;
 
@@ -32,6 +32,6 @@ pub fn center_update_tinc_status(change: HostStatusChange) -> Result<()> {
 	    "vip": vip,
     }).to_string();
     info!("update_tinc_status: {:?}", data);
-    let _ = post(&url, &data)?;
+    let _ = loop_post(&url, &data)?;
     Ok(())
 }

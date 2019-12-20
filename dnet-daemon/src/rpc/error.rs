@@ -30,6 +30,7 @@ impl Error {
     pub fn to_response(&self) -> Response {
         match self {
             Error::http(code) => Response::new_from_code(*code),
+            Error::Reqwest(err) => Response::internal_error().set_msg(format!("{:?}", err)),
             _ => Response::internal_error().set_msg(self.to_string())
         }
     }

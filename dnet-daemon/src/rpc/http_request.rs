@@ -12,15 +12,15 @@ use super::error::*;
 const PAGESIZE: usize = 10;
 
 pub fn post(url: &str, data: &str) -> Result<serde_json::Value> {
-    let res = loop_post(url, data)?;
+    let res = url_post(url, data)?;
     http_error(res)
 }
 
-fn loop_post(url: &str, data: &str) -> Result<reqwest::Response> {
+pub fn loop_post(url: &str, data: &str) -> Result<serde_json::Value> {
     let mut wait_sec = 0;
     loop {
         match url_post(&url, &data) {
-            Ok(x) => return Ok(x),
+            Ok(res) => return Ok(http_error(res)?),
             Err(e) => {
                 error!("{:?}", e);
                 sleep(std::time::Duration::from_secs(wait_sec));

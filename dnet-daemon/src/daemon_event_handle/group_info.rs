@@ -32,7 +32,6 @@ pub fn handle_group_info(
                 let mut team = teams.into_iter()
                     .filter_map(|mut team| {
                         if team.team_id == team_id {
-                            team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
                             Some(team)
                         }
                         else {
@@ -41,7 +40,7 @@ pub fn handle_group_info(
                     })
                     .collect::<Vec<Team>>();
 
-                team.sort_by(|a, b|a.team_name.cmp(&b.team_name));
+                teams_sort(&mut team);
                 if let Ok(data) = serde_json::to_value(team) {
                     let res = Response::success().set_data(Some(data));
                     let _ = Daemon::oneshot_send(ipc_tx, res, "");
@@ -50,11 +49,7 @@ pub fn handle_group_info(
             }
             else {
                 let mut teams = get_info().lock().unwrap().get_current_team_connect();
-                let _ = teams.iter_mut()
-                    .map(|team|{
-                             team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
-                    })
-                    .collect::<Vec<()>>();
+                teams_sort(&mut teams);
 
                 if let Ok(data) = serde_json::to_value(teams) {
                     let res = Response::success().set_data(Some(data));
@@ -67,4 +62,20 @@ pub fn handle_group_info(
             let _ = Daemon::oneshot_send(ipc_tx, res, "");
         }
     }
+}
+
+fn teams_sort(teams: &mut Vec<Team>) {
+    teams.sort_by(|a, b|a.team_name.cmp(&b.team_name));
+    teams
+        .iter_mut()
+        .map(|team| {
+            team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
+            let _ = team.members
+                .iter_mut()
+                .map(|mut member| {
+                    member.pubkey = String::new();
+                })
+                .collect::<Vec<()>>();
+        })
+        .collect::<Vec<()>>();
 }

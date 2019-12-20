@@ -12,22 +12,9 @@ impl TincOperator {
             Ok(())
         }
         else {
-            #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-                {
-                    match self.check_tinc_listen() {
-                        Ok(_) => {
-                            if let Err(Error::StopTincError) = self.stop_tinc() {
-                                return Err(Error::StopTincError);
-                            }
-                        },
-                        Err(_) => (),
-                    }
-                }
-            #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-                {
-                    let _ = self.stop_tinc();
-                }
-
+            if let Err(Error::StopTincError) = self.hard_stop() {
+                return Err(Error::StopTincError);
+            }
             self.start_tinc_inner()
         }
     }
@@ -85,8 +72,6 @@ impl TincOperator {
                         if let Ok(_) = tinc_stream.stop() {
                             std::mem::drop(tinc_stream);
                             // TODO async send and ipc check.
-                            std::thread::sleep(std::time::Duration::from_secs(1));
-                            ()
                         }
                     }
                 }
@@ -98,40 +83,43 @@ impl TincOperator {
                         Ok(())
                     });
                 }
-
-            let sys = System::new();
-            for (_, info) in sys.get_process_list() {
-                if info.name() == TINC_BIN_FILENAME {
-                    #[cfg(unix)]
-                        {
-                            let config_buf = "--config=".to_string()
-                                + &self.tinc_settings.tinc_home.to_string();
-                            if info.cmd().contains(&config_buf) {
-                                if let Ok(mut res) = Command::new("kill")
-                                    .args(vec!["-15", &format!("{}", info.pid())])
-                                    .spawn() {
-                                    let _ = res.wait();
-                                }
-                            }
-                        }
-                    #[cfg(windows)]
-                        {
-                            if let Ok(mut child) = Command::new("TASKKILL")
-                                .args(vec!["/f", "/pid", &format!("{}", info.pid())])
-                                .spawn() {
-                                let _ = child.wait();
-                            }
-
-                            if let Ok(mut child) = Command::new("sc")
-                                .args(vec!["delete", "tinc"])
-                                .spawn() {
-                                let _ = child.wait();
-                            }
-                        }
-                }
-            }
-            Ok(())
+            self.hard_stop()
         }
+    }
+
+    pub fn hard_stop(&self) -> Result<()> {
+        let sys = System::new();
+        for (_, info) in sys.get_process_list() {
+            if info.name() == TINC_BIN_FILENAME {
+                #[cfg(unix)]
+                    {
+                        let config_buf = "--config=".to_string()
+                            + &self.tinc_settings.tinc_home.to_string();
+                        if info.cmd().contains(&config_buf) {
+                            if let Ok(mut res) = Command::new("kill")
+                                .args(vec!["-15", &format!("{}", info.pid())])
+                                .spawn() {
+                                let _ = res.wait();
+                            }
+                        }
+                    }
+                #[cfg(windows)]
+                    {
+                        if let Ok(mut child) = Command::new("TASKKILL")
+                            .args(vec!["/f", "/pid", &format!("{}", info.pid())])
+                            .spawn() {
+                            let _ = child.wait();
+                        }
+
+                        if let Ok(mut child) = Command::new("sc")
+                            .args(vec!["delete", "tinc"])
+                            .spawn() {
+                            let _ = child.wait();
+                        }
+                    }
+            }
+        }
+        Ok(())
     }
 
     pub fn restart_tinc(&mut self) -> Result<()> {

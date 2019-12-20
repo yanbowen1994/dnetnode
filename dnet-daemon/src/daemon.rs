@@ -250,10 +250,8 @@ impl Daemon {
             }
 
             ManagementCommand::GroupInfo(ipc_tx, team_id) => {
-                let rpc_command_tx = self.rpc_command_tx.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
-                    rpc_command_tx,
                     Some(team_id), ),
                 );
             }
@@ -268,10 +266,8 @@ impl Daemon {
             }
 
             ManagementCommand::GroupList(ipc_tx) => {
-                let rpc_command_tx = self.rpc_command_tx.clone();
                 thread::spawn(|| daemon_event_handle::group_info::handle_group_info(
                     ipc_tx,
-                    rpc_command_tx,
                     None,
                 ));
             }

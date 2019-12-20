@@ -44,10 +44,6 @@ pub fn connect(
             if need_tunnel_connect() {
                 info!("handle_connect_select_proxy");
                 handle_connect_select_proxy(ipc_tx, rpc_command_tx)
-                    .and_then(|ipc_tx| {
-                        info!("handle_tunnel_connect");
-                        handle_tunnel_connect(ipc_tx, tunnel_command_tx)
-                    })
             }
             else {
                 Some(ipc_tx)

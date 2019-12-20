@@ -103,7 +103,8 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
-    String::from_utf8(Command::new("route").output().ok()?.stdout)?
+    let tables = String::from_utf8(Command::new("route").output().ok()?.stdout)
+        .ok()?
         .split("\n")
         .collect::<Vec<&str>>()
         .iter()
@@ -137,7 +138,8 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
                 dev:      segments[7].to_owned(),
             })
         })
-        .collect::<Vec<RouteInfo>>()
+        .collect::<Vec<RouteInfo>>();
+    Some(tables)
 }
 
 #[test]

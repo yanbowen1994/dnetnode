@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::Write;
-use crate::{TincStream, TincTools, TincOperatorError};
+use crate::{tinc_tcp_stream::TincStream, TincTools, TincOperatorError};
 use std::net::IpAddr;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

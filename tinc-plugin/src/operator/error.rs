@@ -5,6 +5,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(err_derive::Error, Debug)]
 #[allow(non_camel_case_types)]
 pub enum Error {
+    #[error(display = "Set Tinc Stream Error.")]
+    TincStreamError,
+
     #[error(display = "Set route failed.")]
     SetRoute,
 

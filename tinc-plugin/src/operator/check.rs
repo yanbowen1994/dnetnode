@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use crate::{TincStream, TincTools};
+use crate::{tinc_tcp_stream::TincStream, TincTools};
 
 use super::{Error, Result, TincOperator};
 use super::PID_FILENAME;
@@ -34,7 +34,10 @@ impl TincOperator {
             .unwrap()
             .to_string();
         let mut tinc_stream = TincStream::new(&pid_file)
-            .map_err(|_|Error::PidfileNotExist)?;
+            .map_err(|e|{
+                println!("{:?}", e);
+                Error::TincStreamError
+            })?;
         let source_connections = tinc_stream.dump_edges()
             .map_err(|_|Error::TincNotExist)?;
         let nodes = source_connections.into_iter()

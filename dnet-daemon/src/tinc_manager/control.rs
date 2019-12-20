@@ -1,8 +1,8 @@
-use tinc_plugin::TincStream;
+use tinc_plugin::tinc_tcp_stream::{TincStream, Result, Error};
 
-pub fn tinc_connections(pid_path: &str) -> ::std::io::Result<(u32, u32, u32)> {
+pub fn tinc_connections(pid_path: &str) -> Result<(u32, u32, u32)> {
     if !std::path::Path::new(pid_path).is_file() {
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "No pid file."));
+        return Err(Error::pid_path);
     }
 
     let mut tinc_stream = TincStream::new(pid_path)?;

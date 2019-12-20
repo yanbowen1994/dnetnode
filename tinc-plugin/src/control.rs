@@ -1,4 +1,4 @@
-use std::io::Result;
+use super::tinc_tcp_stream::Result;
 
 use super::tinc_tcp_stream::TincStream;
 use crate::tinc_tcp_stream::SourceConnection;

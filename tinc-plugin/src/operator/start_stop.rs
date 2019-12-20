@@ -3,7 +3,7 @@ use sysinfo::{System, SystemExt, ProcessExt};
 #[cfg(Unix)]
 use sysinfo::Signal;
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
-use crate::TincStream;
+use crate::tinc_tcp_stream::TincStream;
 use super::{Error, Result, TincOperator, PID_FILENAME, TINC_BIN_FILENAME};
 
 impl TincOperator {
@@ -44,39 +44,33 @@ impl TincOperator {
             &conf_pidfile[..],
         ];
 
-        #[cfg(target_arch = "arm")]
+        let tincd_path;
+
+        #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {
-                let _ = Command::new(TINC_BIN_FILENAME)
-                    .args(args)
-                    .spawn()
-                    .map_err(|e| {
-                        log::error!("StartTincError {:?}", e.to_string());
-                        println!("StartTincError {:?}", e.to_string());
-                        Error::StartTincError
-                    })?
-                    .wait();
-                Ok(())
+                tincd_path = self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME;
+            }
+        #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+            {
+                tincd_path = TINC_BIN_FILENAME.to_string();
             }
 
-        #[cfg(not(target_arch = "arm"))]
-            {
-                let duct_handle = duct::cmd(
-                    self.tinc_settings.tinc_home.to_string() + TINC_BIN_FILENAME.into(),
-                    args
-                ).unchecked();
+        let duct_handle = duct::cmd(
+            tincd_path,
+            args
+        ).unchecked();
 
-                let _ = duct_handle.stderr_null().stdout_null().start()
-                    .map_err(|e| {
-                        log::error!("StartTincError {:?}", e.to_string());
-                        Error::StartTincError
-                    })?
-                    .wait()
-                    .map_err(|e| {
-                        log::error!("StartTincError {:?}", e.to_string());
-                        Error::StartTincError
-                    })?;
-                Ok(())
-            }
+        let _ = duct_handle.stderr_null().stdout_null().start()
+            .map_err(|e| {
+                log::error!("StartTincError {:?}", e.to_string());
+                Error::StartTincError
+            })?
+            .wait()
+            .map_err(|e| {
+                log::error!("StartTincError {:?}", e.to_string());
+                Error::StartTincError
+            })?;
+        Ok(())
     }
 
     pub fn stop_tinc(&self) -> Result<()> {

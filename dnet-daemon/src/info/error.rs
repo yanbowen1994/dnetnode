@@ -1,4 +1,5 @@
 use tinc_plugin::TincOperatorError;
+use tinc_plugin::tinc_tcp_stream::Error as TincStreamError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -8,7 +9,7 @@ pub enum Error {
     PubkeyFile(#[error(cause)] ::std::io::Error),
 
     #[error(display = "Can not get tinc dump info.")]
-    TincDump(#[error(cause)] ::std::io::Error),
+    TincDump(#[error(cause)] TincStreamError),
 
     #[error(display = "Can read tinc-up file.")]
     GetVip(#[error(cause)] TincOperatorError),

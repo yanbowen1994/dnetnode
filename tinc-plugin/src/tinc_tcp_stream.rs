@@ -1,12 +1,104 @@
 use std::io::Write;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result, Read};
+use std::io::Read;
 use std::time::Duration;
 use std::str::FromStr;
 use std::net::{SocketAddrV4, Ipv4Addr, Shutdown, SocketAddr, TcpStream, IpAddr};
+use std::collections::HashMap;
 
 use socket2::{Domain, Protocol, Type};
-use std::collections::HashMap;
+
+#[derive(err_derive::Error, Debug)]
+#[allow(non_camel_case_types)]
+pub enum Error {
+    #[error(display = "tinc_socket_connect")]
+    tinc_socket_connect(String),
+
+    #[error(display = "send_line")]
+    send_line,
+
+    #[error(display = "pid_path")]
+    pid_path,
+
+    #[error(display = "parse_pid_file")]
+    parse_pid_file,
+
+    #[error(display = "reload")]
+    reload,
+
+    #[error(display = "restart")]
+    restart,
+
+    #[error(display = "dump_nodes")]
+    dump_nodes,
+
+    #[error(display = "dump_edges")]
+    dump_edges,
+
+    #[error(display = "dump_subnets")]
+    dump_subnets,
+
+    #[error(display = "dump_connections")]
+    dump_connections,
+
+    #[error(display = "dump_graph")]
+    dump_graph,
+
+    #[error(display = "purge")]
+    purge,
+
+    #[error(display = "set_debug")]
+    set_debug,
+
+    #[error(display = "retry")]
+    retry,
+
+    #[error(display = "connect")]
+    connect,
+
+    #[error(display = "disconnect")]
+    disconnect,
+
+    #[error(display = "dump_traffic")]
+    dump_traffic,
+
+    #[error(display = "pcap")]
+    pcap,
+
+    #[error(display = "log_level")]
+    log_level,
+
+    #[error(display = "dump_group")]
+    dump_group,
+
+    #[error(display = "del_group")]
+    del_group,
+
+    #[error(display = "del_group_node")]
+    del_group_node,
+
+    #[error(display = "subscribe")]
+    subscribe,
+
+    #[error(display = "recv_from_subscribe")]
+    recv_from_subscribe,
+
+    #[error(display = "parse_source_subnet")]
+    parse_source_subnet,
+
+    #[error(display = "parse_source_node")]
+    parse_source_node,
+
+    #[error(display = "parse_source_connection")]
+    parse_source_connection,
+
+    #[error(display = "parse_source_edge")]
+    parse_source_edge,
+
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
 use crate::TincTools;
 
 #[allow(dead_code)]
@@ -71,12 +163,14 @@ pub struct TincStream {
 }
 impl TincStream {
     pub fn new(pid_path: &str) -> Result<Self> {
-        let (control_cookie, tinc_ip, tinc_port) = Self::parse_control_cookie(pid_path)?;
+        let (control_cookie, tinc_ip, tinc_port) =
+            Self::parse_control_cookie(pid_path)?;
         let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
-        let addr = SocketAddr::from_str(&(tinc_ip + ":" + &tinc_port))
-            .map_err(|_|ErrorKind::InvalidData)?;
+        let addr = SocketAddr::from_str(&(tinc_ip.clone() + ":" + &tinc_port))
+            .map_err(|_|Error::tinc_socket_connect(tinc_ip + ":" + &tinc_port))?;
 
-        let stream = TcpStream::connect(&addr)?;
+        let stream = TcpStream::connect(&addr)
+            .map_err(|_| Error::tinc_socket_connect("connect".to_string()))?;
         let _ = stream.set_read_timeout(Some(Duration::from_millis(400)));
 
         let mut tinc_stream = TincStream{stream};
@@ -86,40 +180,42 @@ impl TincStream {
     }
 
     fn send_line(&mut self, buf: &[u8]) -> Result<()> {
-        self.stream.write(buf)?;
+        self.stream.write(buf)
+            .map_err(|_|Error::send_line)?;
         return Ok(());
     }
 
     fn parse_control_cookie(path: &str) -> Result<(String, String, String)> {
         if !std::path::Path::new(path).is_file() {
-            return Err(Error::new(ErrorKind::InvalidData,
-                                  "Tinc pid file, not find port setting. Maybe tinc tcp port never be set"));
+            return Err(Error::pid_path);
         }
         let mut file = File::open(path)
-            .map_err(|e|
-                Error::new(
-                    ErrorKind::NotFound,
-                    "tinc pid file ".to_owned() + &(e.to_string()
-                    )))?;
+            .map_err(|_| Error::pid_path)?;
 
         let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
+        file.read_to_string(&mut contents)
+            .map_err(|_| Error::pid_path)?;
         let iter: Vec<&str> = contents.split_whitespace().collect();
         if iter.len() < 3 {
             error!("Tinc pid file, not find port setting. Maybe tinc tcp port never be set");
-            return Err(Error::new(ErrorKind::InvalidData, "Tinc pid file, not find port setting. Maybe tinc tcp port never be set"));
+            return Err(Error::parse_pid_file);
         }
 
         let control_cookie = iter[1];
 
-        let mut _tinc_ip: &str = "";
+        let mut tinc_ip: &str = "";
         let mut _tinc_port: &str = "";
 
         if iter.len() >= 5 {
-            _tinc_ip = iter[2];
+            if iter[2] == "::1" {
+                tinc_ip = "127.0.0.1"
+            }
+            else {
+                tinc_ip = iter[2];
+            }
             _tinc_port = iter[4];
         }
-        return Ok((control_cookie.to_string(), _tinc_ip.to_string(), _tinc_port.to_string()));
+        return Ok((control_cookie.to_string(), tinc_ip.to_string(), _tinc_port.to_string()));
     }
 
     pub fn connect_test(&mut self) -> Result<()> {
@@ -149,7 +245,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqReload as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Reload failed."));
+        return Err(Error::reload);
     }
 
     pub fn restart(&mut self) -> Result<()> {
@@ -159,7 +255,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqRestart as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Restart failed."));
+        return Err(Error::restart);
     }
 
     pub fn dump_nodes(&mut self) -> Result<Vec<SourceNode>> {
@@ -177,7 +273,7 @@ impl TincStream {
         else {
             error!("dump_nodes check_res");
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump nodes failed."));
+        return Err(Error::dump_nodes);
     }
 
     pub fn dump_edges(&mut self) -> Result<Vec<SourceEdge>> {
@@ -196,7 +292,7 @@ impl TincStream {
         else {
             error!("dump_edges check_res");
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump edges failed."));
+        return Err(Error::dump_edges);
     }
 
     pub fn dump_subnets(&mut self) -> Result<Vec<SourceSubnet>> {
@@ -208,7 +304,7 @@ impl TincStream {
                 return Ok(source_subnet);
             }
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump subnets failed."));
+        return Err(Error::dump_subnets);
     }
 
     pub fn dump_connections(&mut self) -> Result<Vec<SourceConnection>> {
@@ -220,7 +316,7 @@ impl TincStream {
                 return Ok(source_connection);
             }
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump connections failed."));
+        return Err(Error::dump_connections);
     }
 
     pub fn dump_graph(&mut self) -> Result<()> {
@@ -230,7 +326,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqDumpGraph as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump graph failed."));
+        return Err(Error::dump_graph);
     }
 
     pub fn purge(&mut self) -> Result<()> {
@@ -240,7 +336,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqPurge as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Purge failed."));
+        return Err(Error::purge);
     }
 
     pub fn set_debug(&mut self, debug_level: i8) -> Result<()> {
@@ -250,7 +346,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqSetDebug as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Set debug failed."));
+        return Err(Error::set_debug);
     }
 
     pub fn retry(&mut self) -> Result<()> {
@@ -260,7 +356,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqRetry as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Retry failed."));
+        return Err(Error::retry);
     }
 
     pub fn connect(&mut self) -> Result<()> {
@@ -270,7 +366,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqConnect as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Connect failed."));
+        return Err(Error::connect);
     }
 
     pub fn disconnect(&mut self) -> Result<()> {
@@ -280,7 +376,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqDisconnect as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Disconnect failed."));
+        return Err(Error::disconnect);
     }
 
     pub fn dump_traffic(&mut self) -> Result<()> {
@@ -290,7 +386,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqDumpTraffic as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Dump traffic failed."));
+        return Err(Error::dump_traffic);
     }
 
     pub fn pcap(&mut self) -> Result<()> {
@@ -300,7 +396,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqPcap as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Pcap failed."));
+        return Err(Error::pcap);
     }
 
     pub fn log(&mut self) -> Result<()> {
@@ -310,7 +406,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqLog as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+        return Err(Error::log_level);
     }
 
     pub fn dump_group(&mut self) -> Result<HashMap<String, Vec<IpAddr>>> {
@@ -324,7 +420,7 @@ impl TincStream {
             let group_info = Self::parse_source_group_info(&res);
             return Ok(group_info);
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+        return Err(Error::dump_group);
     }
 
     fn parse_source_group_info(source_groups: &str) -> HashMap<String, Vec<IpAddr>> {
@@ -382,7 +478,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+        return Err(Error::del_group);
     }
 
     pub fn add_group_node(&mut self,
@@ -440,7 +536,7 @@ impl TincStream {
         if Self::check_res(&res, Request::Control as i8, RequestType::ReqGroup as i8) {
             return Ok(());
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Log failed."));
+        return Err(Error::del_group_node);
     }
 
     pub fn subscribe(pid_path: &str) -> Result<socket2::Socket> {
@@ -450,13 +546,11 @@ impl TincStream {
         let addr = socket2::SockAddr::from(
             SocketAddrV4::new(
                 Ipv4Addr::from_str(&tinc_ip)
-                    .map_err(|e|Error::new(
-                        ErrorKind::InvalidData,
-                        e.to_string()))?,
+                    .map_err(|_|Error::subscribe)?,
                 tinc_port.parse::<u16>()
-                    .map_err(|e|Error::new(
-                        ErrorKind::InvalidData,
-                        e.to_string()))?));
+                    .map_err(|_|Error::subscribe)?
+            )
+        );
 
         let mut socket = socket2::Socket::new(
             Domain::ipv4(),
@@ -465,20 +559,24 @@ impl TincStream {
         ).unwrap();
         if let Ok(_) = socket.connect(&addr) {
             let buf = format!("{} ^{} {}\n", 0, control_cookie, 17);
-            socket.set_write_timeout(Some(Duration::from_millis(200)))?;
-            socket.write_all(buf.as_bytes())?;
+            socket.set_write_timeout(Some(Duration::from_millis(200)))
+                .map_err(|_|Error::subscribe)?;
+            socket.write_all(buf.as_bytes())
+                .map_err(|_|Error::subscribe)?;
 
             let cmd = format!("{} {} subscribe true\n",
                              Request::Control as i8,
                              RequestType::SubScribe as i8,
             );
 
-            socket.write_all(cmd.as_bytes())?;
-            socket.set_read_timeout(Some(Duration::from_millis(400)))?;
+            socket.write_all(cmd.as_bytes())
+                .map_err(|_|Error::subscribe)?;
+            socket.set_read_timeout(Some(Duration::from_millis(400)))
+                .map_err(|_|Error::subscribe)?;
             return Ok(socket);
         }
         let _ = socket.shutdown(Shutdown::Both);
-        Err(Error::new(ErrorKind::NotConnected, "Connect failed."))
+        Err(Error::subscribe)
     }
 
     pub fn recv_from_subscribe(socket: &socket2::Socket) -> Result<String> {
@@ -487,7 +585,7 @@ impl TincStream {
             Ok(_) => return Ok(String::from_utf8(buffer.to_vec())
                 .unwrap_or(String::new())
             ),
-            Err(e) => return Err(e),
+            Err(_) => return Err(Error::recv_from_subscribe),
         }
     }
 
@@ -653,7 +751,7 @@ impl SourceNode {
             };
             return Ok(source_node);
         }
-        return Err(Error::new(ErrorKind::InvalidData, "Parse SourceNode failed."));
+        return Err(Error::parse_source_node);
     }
 
     pub fn from_nodes(source_info: &str) -> Result<Vec<Self>> {
@@ -712,7 +810,7 @@ impl SourceEdge{
                 weight,
             });
         }
-        return Err(Error::new(ErrorKind::InvalidData, ""));
+        return Err(Error::parse_source_edge);
     }
 
     fn from_edges(source_info: &str) -> Result<Vec<Self>> {
@@ -746,7 +844,7 @@ impl SourceSubnet{
                 addr,
             });
         }
-        return Err(Error::new(ErrorKind::InvalidData, ""));
+        return Err(Error::parse_source_subnet);
     }
 
     fn from_subnets(source_info: &str) -> Result<Vec<Self>> {
@@ -795,7 +893,7 @@ impl SourceConnection{
                 status_int,
             });
         }
-        return Err(Error::new(ErrorKind::InvalidData, ""));
+        return Err(Error::parse_source_connection);
     }
 
     fn from_connections(source_info: &str) -> Result<Vec<Self>> {

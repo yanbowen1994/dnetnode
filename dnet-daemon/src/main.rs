@@ -4,6 +4,7 @@ use std::path::PathBuf;
 #[macro_use]
 extern crate log;
 use clap::{App, Arg, ArgMatches};
+use sysinfo::{System, SystemExt, ProcessExt};
 
 extern crate dnet_daemon;
 use dnet_daemon::settings::{Settings, get_settings, Error as SettingsError};
@@ -34,6 +35,11 @@ pub enum Error {
 use dnet_daemon::daemon::Daemon;
 
 fn main() {
+    if is_another_daemon_start() {
+        println!("Another dnet-daemon is running");
+        std::process::exit(1);
+    }
+
     let mut exit_code = match init() {
         Ok(_) => {
             0
@@ -83,6 +89,32 @@ pub fn init() -> Result<()> {
     set_log(&matches)?;
 
     Ok(())
+}
+
+fn is_another_daemon_start() -> bool {
+    let daemon_name;
+    #[cfg(unix)]
+        {
+            daemon_name = "dnet-daemon";
+        }
+    #[cfg(windows)]
+        {
+            daemon_name = "dnet-daemon.exe";
+        }
+
+    let sys = System::new();
+    let mut i = 0;
+    for (_, info) in sys.get_process_list() {
+        if info.name() == daemon_name {
+            i += 1;
+        }
+    }
+    if i > 1 {
+        true
+    }
+    else {
+        false
+    }
 }
 
 fn get_config(matches: &ArgMatches) -> Result<()> {

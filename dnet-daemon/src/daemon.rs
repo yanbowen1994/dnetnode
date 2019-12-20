@@ -1,9 +1,13 @@
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 use futures::sync::oneshot;
 
 use dnet_types::status::{TunnelState, RpcState};
+use dnet_types::settings::RunMode;
+use dnet_types::response::Response;
+use tinc_plugin::TincTools;
 
 use crate::traits::TunnelTrait;
 use crate::info::{self, Info, get_mut_info, get_info};
@@ -12,12 +16,10 @@ use crate::tinc_manager::{TincMonitor, TincOperator};
 use crate::cmd_api::management_server::{ManagementInterfaceServer, ManagementCommand, ManagementInterfaceEventBroadcaster};
 use crate::mpsc::IntoSender;
 use crate::settings::get_settings;
-use dnet_types::settings::RunMode;
-use dnet_types::response::Response;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcProxyCmd};
-use std::time::Duration;
 use super::daemon_event_handle;
-use tinc_plugin::TincTools;
+#[cfg(windows)]
+use crate::settings::default_settings::TINC_INTERFACE;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -179,12 +181,22 @@ impl Daemon {
     fn handle_shutdown(&mut self) {
         let (res_tx, res_rx) = mpsc::channel::<Response>();
         let _ = self.tunnel_command_tx.send((TunnelCommand::Disconnect, res_tx));
-        let _ = res_rx.recv_timeout(Duration::from_secs(5));
+        match res_rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(_) => (),
+            Err(_) => {
+                error!("handle_shutdown timeout.")
+            }
+        }
+
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
                 info!("stop dnet firewall config.");
                 let tunnel_port = get_settings().tinc.port;
                 router_plugin::firewall::stop_firewall(tunnel_port);
+            }
+        #[cfg(windows)]
+            {
+                sandbox::route::keep_route(None, vec![], TINC_INTERFACE.to_string());
             }
         self.shutdown_sign = true;
     }

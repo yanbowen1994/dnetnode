@@ -349,8 +349,9 @@ impl Daemon {
         get_mut_info().lock().unwrap().status.rpc = RpcState::Connected;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
-                let (res_tx, _) = mpsc::channel();
-                let _ = self.tunnel_command_tx.send((TunnelCommand::Connect, res_tx));
+                let _response = daemon_event_handle::tunnel::send_tunnel_connect(
+                    self.tunnel_command_tx.clone(),
+                );
             }
         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
             {

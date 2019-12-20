@@ -16,6 +16,7 @@ pub fn post(url: &str, data: &str) -> Result<serde_json::Value> {
     http_error(res)
 }
 
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 pub fn loop_post(url: &str, data: &str) -> Result<serde_json::Value> {
     let mut wait_sec = 0;
     loop {

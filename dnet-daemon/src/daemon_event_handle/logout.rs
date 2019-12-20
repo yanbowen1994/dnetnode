@@ -10,7 +10,7 @@ use sandbox::route::keep_route;
 use crate::rpc::rpc_cmd::{RpcEvent, RpcClientCmd};
 use crate::settings::{get_mut_settings, get_settings};
 use crate::daemon::{Daemon, TunnelCommand};
-use crate::info::{get_mut_info, UserInfo};
+use crate::info::{get_mut_info, UserInfo, TincInfo};
 use crate::daemon_event_handle::tunnel::send_tunnel_disconnect;
 use crate::settings::default_settings::TINC_INTERFACE;
 
@@ -58,9 +58,12 @@ fn clean_settings_user() {
 }
 
 fn clean_info_user() {
+    let mut tinc_info = TincInfo::new();
+    tinc_info.load_local();
     let mut info = get_mut_info().lock().unwrap();
     info.user = UserInfo::new();
     info.node.token = "".to_owned();
+    info.tinc_info = tinc_info;
 }
 
 fn send_rpc_disconnect(

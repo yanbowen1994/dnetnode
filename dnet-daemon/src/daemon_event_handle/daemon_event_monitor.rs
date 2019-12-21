@@ -25,15 +25,19 @@ impl DaemonEventMonitor {
         rpc_command_tx: mpsc::Sender<RpcEvent>,
         daemon_event_tx: mpsc::Sender<DaemonEvent>,
         tunnel_command_tx: mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>,
-    ) -> mpsc::Sender<ManagementCommand> {
+    ) -> Option<mpsc::Sender<ManagementCommand>> {
         let (daemon_monitor_cmd_tx, daemon_monitor_cmd_rx) = mpsc::channel();
         let daemon_event_monitor = DaemonEventMonitor {
             rpc_command_tx,
             daemon_event_tx,
             tunnel_command_tx,
         };
-        thread::spawn(||daemon_event_monitor.spawn(daemon_monitor_cmd_rx));
-        daemon_monitor_cmd_tx
+        thread::Builder::new()
+            .name("DaemonEventMonitor".to_string())
+            .spawn(||daemon_event_monitor.spawn(daemon_monitor_cmd_rx))
+            .ok()?;
+
+        Some(daemon_monitor_cmd_tx)
     }
 
     fn spawn(mut self, daemon_monitor_cmd_rx: mpsc::Receiver<ManagementCommand>) {
@@ -185,14 +189,12 @@ impl DaemonEventMonitor {
     ) {
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
-        thread::spawn( ||
-            daemon_event_handle::group_out::group_out(
-                ipc_tx,
-                team_id,
-                rpc_command_tx,
-                tunnel_command_tx,
-            )
-        );
+        daemon_event_handle::group_out::group_out(
+            ipc_tx,
+            team_id,
+            rpc_command_tx,
+            tunnel_command_tx,
+        )
     }
 
     fn handle_logout(&self,
@@ -200,13 +202,11 @@ impl DaemonEventMonitor {
     ) {
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
-        thread::spawn(move ||
-            daemon_event_handle::logout::handle_logout(
-                ipc_tx,
-                rpc_command_tx,
-                tunnel_command_tx,
-            )
-        );
+        daemon_event_handle::logout::handle_logout(
+            ipc_tx,
+            rpc_command_tx,
+            tunnel_command_tx,
+        )
     }
 
 

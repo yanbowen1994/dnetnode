@@ -60,8 +60,10 @@ pub fn search_team_by_mac() -> Result<()> {
     std::mem::drop(info);
 
     info!("route hosts {:?}", hosts);
-    std::thread::spawn(move ||
-        route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())
+    let _ = std::thread::Builder::new()
+        .name("keep_route".to_string())
+        .spawn(move ||
+            route::keep_route(local_vip, hosts, TINC_INTERFACE.to_string())
     );
     Ok(())
 }

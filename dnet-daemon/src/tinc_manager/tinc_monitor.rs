@@ -39,8 +39,12 @@ impl TunnelTrait for TincMonitor {
         return (tinc_monitor, tunnel_command_tx)
     }
 
-    fn start_monitor(self) {
-        thread::spawn(move ||self.run());
+    fn start_monitor(self) -> Option<()> {
+        thread::Builder::new()
+            .name("TincMonitor".to_string())
+            .spawn(move ||self.run())
+            .map(|_|())
+            .ok()
     }
 }
 
@@ -63,9 +67,11 @@ impl TincMonitor {
                 }
                 TunnelCommand::Connected => {
                     let inner_cmd_tx = self.inner_cmd_tx.clone();
-                    thread::spawn(move || {
-                        let _ = inner_cmd_tx.send(InnerStatus::Start);
-                        let _ = res_tx.send(Response::success());
+                    let _ = thread::Builder::new()
+                        .name("TincMonitor_start_Inner".to_string())
+                        .spawn(move || {
+                            let _ = inner_cmd_tx.send(InnerStatus::Start);
+                            let _ = res_tx.send(Response::success());
                     });
                 }
                 TunnelCommand::Disconnected => {
@@ -114,7 +120,9 @@ impl TincMonitor {
     }
 
     fn reconnect(res_tx: Sender<Response>) {
-        std::thread::spawn(move|| {
+        let _ = std::thread::Builder::new()
+            .name("tinc_monitor_reconnect".to_string())
+            .spawn(move|| {
             let res = match TincOperator::new().restart_tinc() {
                 Ok(_) => {
                     info!("tinc_monitor restart tinc");

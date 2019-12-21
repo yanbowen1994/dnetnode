@@ -36,6 +36,15 @@ pub enum Error {
 
     #[error(display = "Tunnel init failed.")]
     TunnelInit(#[error(cause)] tinc_plugin::TincOperatorError),
+
+    #[error(display = "Tunnel Monitor init failed.")]
+    InitTunnelMonitor,
+
+    #[error(display = "Tunnel Monitor init failed.")]
+    InitRpcMonitor,
+
+    #[error(display = "DaemonEventMonitor init failed.")]
+    InitDaemonEventMonitor,
 }
 
 #[derive(Clone, Debug)]
@@ -108,27 +117,32 @@ impl Daemon {
             {
                 let run_mode = &get_settings().common.mode;
                 if run_mode == &RunMode::Proxy || run_mode == &RunMode::Center {
-                    rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone());
+                    rpc_command_tx = RpcMonitor::new::<rpc::proxy::RpcMonitor>(daemon_event_tx.clone())
+                        .ok_or(Error::InitRpcMonitor)?;
                 }
                 else {
-                    rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
+                    rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone())
+                        .ok_or(Error::InitRpcMonitor)?;
                 }
             }
         #[cfg(any(target_arch = "arm", feature = "router_debug"))]
             {
-                rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone());
+                rpc_command_tx = RpcMonitor::new::<rpc::client::RpcMonitor>(daemon_event_tx.clone())
+                    .ok_or(Error::InitRpcMonitor)?;
             }
 
         let (tinc, tunnel_command_tx) =
             TincMonitor::new(daemon_event_tx.clone());
-        tinc.start_monitor();
+        tinc.start_monitor()
+            .ok_or(Error::InitTunnelMonitor)?;
 
         let daemon_monitor_cmd_tx =
             daemon_event_handle::daemon_event_monitor::DaemonEventMonitor::start(
                 rpc_command_tx.clone(),
                 daemon_event_tx.clone(),
                 tunnel_command_tx.clone()
-            );
+            )
+                .ok_or(Error::InitDaemonEventMonitor)?;
 
         Ok(Daemon {
             daemon_event_tx,
@@ -259,7 +273,9 @@ impl Daemon {
         server: ManagementInterfaceServer,
         _exit_tx: mpsc::Sender<DaemonEvent>,
     ) {
-        thread::spawn(move || {
+        let _ = thread::Builder::new()
+            .name("management_interface_wait_thread".to_string())
+            .spawn(move || {
             server.wait();
             info!("Management interface shut down");
 //            let _ = exit_tx.send(DaemonEvent::ManagementInterfaceExited);

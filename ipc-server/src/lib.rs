@@ -64,7 +64,10 @@ impl IpcServer {
             .start(path)
             .map_err(Error::StartServerError)
             .and_then(|(fut, start, server)| {
-                thread::spawn(move || tokio::run(fut));
+                thread::Builder::new()
+                    .name("IpcServer".to_string())
+                    .spawn(move || tokio::run(fut))
+                    .map_err(|_|Error::ServerThreadPanicError);
                 if let Some(error) = start
                     .wait()
                     .map_err(|_cancelled| Error::ServerThreadPanicError)?

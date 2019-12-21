@@ -1,5 +1,6 @@
 pub mod common;
 pub mod connect;
+pub mod daemon_event_monitor;
 pub mod disconnect_team;
 pub mod group_info;
 pub mod group_join;

@@ -11,7 +11,7 @@ use super::common::is_not_proxy;
 use crate::daemon_event_handle::common::{is_rpc_connected, send_rpc_group_fresh, daemon_event_handle_fresh_running_from_all};
 use crate::settings::get_settings;
 
-pub fn group_out(
+pub fn group_leave(
     ipc_tx:                 oneshot::Sender<Response>,
     team_id:                String,
     rpc_command_tx:         mpsc::Sender<RpcEvent>,

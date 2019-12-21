@@ -94,8 +94,8 @@ impl DaemonEventMonitor {
                     self.handle_group_join(ipc_tx, team_id);
                 }
 
-                ManagementCommand::GroupOut(ipc_tx, team_id) => {
-                    self.handle_group_out(ipc_tx, team_id);
+                ManagementCommand::GroupLeave(ipc_tx, team_id) => {
+                    self.handle_group_leave(ipc_tx, team_id);
                 }
 
                 ManagementCommand::Login(ipc_tx, user) => {
@@ -179,14 +179,14 @@ impl DaemonEventMonitor {
         );
     }
 
-    fn handle_group_out(&self,
-                        ipc_tx:        oneshot::Sender<Response>,
-                        team_id:       String,
+    fn handle_group_leave(&self,
+                          ipc_tx:        oneshot::Sender<Response>,
+                          team_id:       String,
     ) {
         let rpc_command_tx = self.rpc_command_tx.clone();
         let tunnel_command_tx = self.tunnel_command_tx.clone();
         thread::spawn( ||
-            daemon_event_handle::group_out::group_out(
+            daemon_event_handle::group_leave::group_leave(
                 ipc_tx,
                 team_id,
                 rpc_command_tx,

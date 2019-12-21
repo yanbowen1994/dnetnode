@@ -115,8 +115,8 @@ impl DaemonRpcClient {
         self.call("group_join", &team_id)
     }
 
-    pub fn group_out(&mut self, team_id: String) -> Result<Response> {
-        self.call("group_out", &team_id)
+    pub fn group_leave(&mut self, team_id: String) -> Result<Response> {
+        self.call("group_leave", &team_id)
     }
 
     pub fn login(&mut self, user: String) -> Result<Response> {

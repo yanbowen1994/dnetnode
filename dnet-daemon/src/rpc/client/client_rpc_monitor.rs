@@ -203,9 +203,19 @@ impl RpcMonitor {
         info!("handle_select_proxy");
         match self.client.client_get_online_proxy() {
             Ok(connect_to_vec) => {
-                if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
-                    if tunnel_restart {
-                        let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+                match rpc_client::select_proxy(connect_to_vec) {
+                    Ok(tunnel_restart) => {
+                        if tunnel_restart {
+                            let _ = self.rpc_tx.send(
+                                RpcEvent::Executor(
+                                    ExecutorEvent::NeedRestartTunnel
+                                ));
+                        }
+                    }
+                    Err(e) => {
+                        let res = e.to_response();
+                        error!("handle_select_proxy {:?}", res);
+                        return res;
                     }
                 }
             }

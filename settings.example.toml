@@ -3,7 +3,7 @@ home_path = "/opt/dnet"
 log_level = "debug"
 log_dir = "/var/log/dnet/"
 mode = "proxy"
-conductor_url = "https://api.vlan.cn"
+conductor_url = "https://huayi-api.vlan.cn"
 accept_conductor_invalid_certs = true
 username = "proxyovr"
 password = "password"
@@ -17,8 +17,4 @@ public = true
 
 [tinc]
 port = 50069
-tinc_memory_limit = 85
-tinc_check_frequency = 3
-tinc_allowed_out_memory_times = 5
-tinc_allowed_tcp_failed_times = 5
 external_boot = false

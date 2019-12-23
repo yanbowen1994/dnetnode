@@ -48,6 +48,17 @@ pub fn handle_login(ipc_tx: oneshot::Sender<Response>,
         else {
             response = Response::internal_error();
         }
+        if response.code == 200 {
+            let (rpc_fresh_tx, rpc_fresh_rx) = mpsc::channel::<Response>();
+            let _ = rpc_command_tx.send(
+                RpcEvent::Client(
+                    RpcClientCmd::FreshTeam(rpc_fresh_tx)));
+            let _ = rpc_fresh_rx.recv_timeout(
+                Duration::from_secs(
+                    get_settings().common.http_timeout as u64
+                )
+            );
+        }
 
         let _ = Daemon::oneshot_send(ipc_tx, response, "");
     }

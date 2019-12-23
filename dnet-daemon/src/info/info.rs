@@ -108,9 +108,9 @@ impl Info {
 
     pub fn get_current_team_connect(&mut self) -> Vec<Team> {
         if let Err(e) = self.tinc_info.fresh_tinc_nodes() {
-            error!("get_current_team_connect {:?}", e);
-            return vec![];
+            warn!("get_current_team_connect {:?}", e);
         }
+
         let mut teams = self.teams.all_teams
             .values()
             .cloned()

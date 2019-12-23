@@ -20,6 +20,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(display = "Connection with conductor timeout")]
     RpcTimeout,
+    #[error(display = "InitWebServer")]
+    InitWebServer,
+    #[error(display = "InitRpcMonitor")]
+    InitRpcMonitor,
 }
 
 pub struct RpcMonitor {
@@ -28,28 +32,44 @@ pub struct RpcMonitor {
 }
 
 impl RpcTrait for RpcMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcEvent> {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Option<mpsc::Sender<RpcEvent>> {
         let (rpc_tx, rpc_rx) = mpsc::channel();
         let client = RpcClient::new();
         RpcMonitor {
             client,
             daemon_event_tx,
-        }.start_monitor(rpc_rx);
-        return rpc_tx;
+        }.start_monitor(rpc_rx)
+            .ok()?;
+        return Some(rpc_tx);
     }
 }
 
 impl RpcMonitor {
-    fn start_monitor(self, rpc_rx: Receiver<RpcEvent>) {
+    fn start_monitor(self, rpc_rx: Receiver<RpcEvent>) -> Result<()> {
         let web_server_tx = self.daemon_event_tx.clone();
-        thread::spawn(move ||
-            web_server(Arc::new(Mutex::new(
-                TincOperator::new())),
-                       web_server_tx,
+
+        thread::Builder::new()
+            .name("web_server".to_string())
+            .spawn(||
+                web_server(Arc::new(Mutex::new(
+                    TincOperator::new())),
+                           web_server_tx,
+                )
             )
-        );
-        thread::spawn(||cmd_handle(rpc_rx));
-        thread::spawn(||self.run());
+            .map_err(|_|Error::InitWebServer)?;
+
+
+        thread::Builder::new()
+            .name("rpc_cmd_handle".to_string())
+            .spawn(||cmd_handle(rpc_rx))
+            .map_err(|_|Error::InitRpcMonitor)?;
+
+        thread::Builder::new()
+            .name("RpcMonitor".to_string())
+            .spawn(||self.run())
+            .map_err(|_|Error::InitRpcMonitor)?;
+
+        Ok(())
     }
 
     fn run(self) {
@@ -188,11 +208,13 @@ fn cmd_handle(rpc_rx: Receiver<RpcEvent>) {
             RpcEvent::Proxy(cmd) => {
                 match cmd {
                     RpcProxyCmd::HostStatusChange(host_status_change) => {
-                        thread::spawn( move||
-                            if let Err(e) = RpcClient::new()
-                                .center_update_tinc_status(host_status_change) {
-                                error!("{:?}", e.to_response());
-                            }
+                        let _ = thread::Builder::new()
+                            .name("update_tinc_status".to_string())
+                            .spawn( move||
+                                if let Err(e) = RpcClient::new()
+                                    .center_update_tinc_status(host_status_change) {
+                                    error!("{:?}", e.to_response());
+                                }
                         );
                     }
                 }

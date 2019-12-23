@@ -10,7 +10,7 @@ pub enum RpcRequest {
 }
 
 pub trait RpcTrait {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcEvent>;
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Option<mpsc::Sender<RpcEvent>>;
 }
 
 pub trait InfoTrait {
@@ -22,5 +22,5 @@ pub trait TunnelTrait
     where Self: std::marker::Sized
 {
     fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> (Self, mpsc::Sender<(TunnelCommand, mpsc::Sender<Response>)>);
-    fn start_monitor(self);
+    fn start_monitor(self) -> Option<()>;
 }

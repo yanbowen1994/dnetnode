@@ -4,7 +4,7 @@ use tinc_plugin::{TincInfo as PluginTincInfo, TincRunMode};
 use dnet_types::settings::RunMode;
 use dnet_types::proxy::ProxyInfo;
 use dnet_types::team::Team;
-use dnet_types::status::Status;
+use dnet_types::status::{Status, TunnelState};
 
 use crate::settings::get_settings;
 use super::error::{Error, Result};
@@ -120,7 +120,7 @@ impl Info {
                         }
                         else if let Some(self_vip) = self.tinc_info.vip {
                             if self_vip == member.vip {
-                                member.is_local_tinc_host_up  = Some(true);
+                                member.is_local_tinc_host_up  = Some(self.status.tunnel == TunnelState::Connected);
                             }
                         }
                     })

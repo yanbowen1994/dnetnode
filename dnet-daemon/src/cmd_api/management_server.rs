@@ -55,8 +55,8 @@ build_rpc_trait! {
         #[rpc(meta, name = "group_join")]
         fn group_join(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
-        #[rpc(meta, name = "group_out")]
-        fn group_out(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
+        #[rpc(meta, name = "group_leave")]
+        fn group_leave(&self, Self::Metadata, String) -> BoxFuture<Response, Error>;
 
         #[rpc(meta, name = "group_list")]
         fn group_list(&self, Self::Metadata) -> BoxFuture<Response, Error>;
@@ -94,7 +94,7 @@ pub enum ManagementCommand {
     GroupJoin(OneshotSender<Response>, String),
 
     /// Get the current geographical location.
-    GroupOut(OneshotSender<Response>, String),
+    GroupLeave(OneshotSender<Response>, String),
 
     HostStatusChange(OneshotSender<()>, HostStatusChange),
 
@@ -310,11 +310,11 @@ for ManagementInterface<T>
         Box::new(future)
     }
 
-    fn group_out(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
+    fn group_leave(&self, _: Self::Metadata, team_id: String) -> BoxFuture<Response, Error> {
         log::info!("management interface group join.");
         let (tx, rx) = sync::oneshot::channel();
         let future = self
-            .send_command_to_daemon(ManagementCommand::GroupOut(tx, team_id))
+            .send_command_to_daemon(ManagementCommand::GroupLeave(tx, team_id))
             .and_then(|_| rx.map_err(|_| Error::internal_error()));
         Box::new(future)
     }

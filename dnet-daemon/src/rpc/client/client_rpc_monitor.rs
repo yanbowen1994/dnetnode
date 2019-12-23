@@ -30,7 +30,7 @@ pub struct RpcMonitor {
 }
 
 impl RpcTrait for RpcMonitor {
-    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> mpsc::Sender<RpcEvent> {
+    fn new(daemon_event_tx: mpsc::Sender<DaemonEvent>) -> Option<mpsc::Sender<RpcEvent>> {
         let (rpc_tx, rpc_rx) = mpsc::channel();
 
         let client = RpcClient::new();
@@ -41,8 +41,9 @@ impl RpcTrait for RpcMonitor {
             rpc_tx: rpc_tx.clone(),
             run_status: RunStatus::Stop,
             executor_tx: None,
-        }.start_monitor();
-        rpc_tx
+        }.start_monitor()
+            .ok()?;
+        Some(rpc_tx)
     }
 }
 
@@ -87,7 +88,10 @@ impl RpcMonitor {
                         }
 
                         RpcClientCmd::RestartRpcConnect(rpc_restart_tx) => {
-                            self.restart_executor();
+                            let _ = self.restart_executor()
+                                .map_err(|e| {
+                                    error!("restart_executor {:?}", e);
+                                });
                             rpc_restart_tx_cache = Some(rpc_restart_tx);
                         },
 
@@ -151,7 +155,7 @@ impl RpcMonitor {
         }
     }
 
-    fn restart_executor(&mut self) {
+    fn restart_executor(&mut self) -> Result<()> {
         if let Some(tx) = &self.executor_tx {
             let (stop_tx, stop_rx) = mpsc::channel();
             if let Ok(_) = tx.send((ExecutorCmd::Stop, Some(stop_tx))) {
@@ -161,11 +165,12 @@ impl RpcMonitor {
         self.start_executor()
     }
 
-    fn start_executor(&mut self) {
+    fn start_executor(&mut self) -> Result<()> {
         let executor = Executor::new(self.rpc_tx.clone());
         let executor_tx = executor.executor_tx.clone();
-        executor.spawn();
+        executor.spawn()?;
         self.executor_tx= Some(executor_tx);
+        Ok(())
     }
 
     fn stop_executor(&mut self) {
@@ -198,9 +203,19 @@ impl RpcMonitor {
         info!("handle_select_proxy");
         match self.client.client_get_online_proxy() {
             Ok(connect_to_vec) => {
-                if let Ok(tunnel_restart) = rpc_client::select_proxy(connect_to_vec) {
-                    if tunnel_restart {
-                        let _ = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::NeedRestartTunnel));
+                match rpc_client::select_proxy(connect_to_vec) {
+                    Ok(tunnel_restart) => {
+                        if tunnel_restart {
+                            let _ = self.rpc_tx.send(
+                                RpcEvent::Executor(
+                                    ExecutorEvent::NeedRestartTunnel
+                                ));
+                        }
+                    }
+                    Err(e) => {
+                        let res = e.to_response();
+                        error!("handle_select_proxy {:?}", res);
+                        return res;
                     }
                 }
             }
@@ -218,8 +233,12 @@ impl RpcMonitor {
 
 #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 impl RpcMonitor {
-    fn start_monitor(self) {
-        thread::spawn(|| self.start_cmd_recv());
+    fn start_monitor(self) -> Result<()> {
+        thread::Builder::new()
+            .name("RpcMonitor".to_string())
+            .spawn(|| self.start_cmd_recv())
+            .map(|_|())
+            .map_err(|_|ClientError::InitMonitor)
     }
 
     fn handle_connect_team(&self, team_id: String) -> Response {
@@ -277,9 +296,13 @@ impl RpcMonitor {
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
 impl RpcMonitor {
-    fn start_monitor(mut self) {
-        self.start_executor();
-        thread::spawn(|| self.start_cmd_recv());
+    fn start_monitor(mut self) -> Result<()> {
+        self.start_executor()?;
+        thread::Builder::new()
+            .name("RpcMonitor".to_string())
+            .spawn(|| self.start_cmd_recv())
+            .map(|_|())
+            .map_err(|_|ClientError::InitMonitor)
     }
 
     // init means copy info.team to info.client.running_teams
@@ -331,8 +354,12 @@ impl Executor {
         }
     }
 
-    fn spawn(self) {
-        thread::spawn(||self.start_monitor());
+    fn spawn(self) -> Result<()> {
+        thread::Builder::new()
+            .name("rpc_executor".to_string())
+            .spawn(||self.start_monitor())
+            .map(|_|())
+            .map_err(|_|ClientError::InitMonitor)
     }
 
     fn start_monitor(mut self) {

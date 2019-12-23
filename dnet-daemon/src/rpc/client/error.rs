@@ -8,4 +8,7 @@ pub enum Error {
 
     #[error(display = "Connection with conductor timeout")]
     TeamNotFound,
+
+    #[error(display = "Monitor init failed.")]
+    InitMonitor,
 }

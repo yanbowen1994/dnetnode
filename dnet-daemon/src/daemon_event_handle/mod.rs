@@ -1,9 +1,10 @@
 pub mod common;
 pub mod connect;
+pub mod daemon_event_monitor;
 pub mod disconnect_team;
 pub mod group_info;
 pub mod group_join;
-pub mod group_out;
+pub mod group_leave;
 pub mod group_users;
 pub mod handle_settings;
 pub mod login;

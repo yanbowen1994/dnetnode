@@ -11,7 +11,13 @@ static mut INDEX_IF: Option<(u32, String)> = None;
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
     let mask = parse_netmask_from_cidr(netmask).to_string();
-    let index_if = get_index_if(dev);
+    let index_if = match get_index_if(dev) {
+        Some(x) => x,
+        None => {
+            warn!("dev {} not found in system", dev);
+            return;
+        }
+    };
     let res = Command::new("route")
         .args(vec!["add", &ip.clone().to_string(), "mask", &mask, &(ip.clone().to_string()), "if", &format!("{}", index_if)])
         .spawn();
@@ -72,7 +78,8 @@ pub fn parse_netmask_from_cidr(netmask: u32) -> IpAddr {
 }
 
 pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
-    let adapters = Adapters::new();
+    let mut adapters = Adapters::new();
+    adapters.load_adapters()?;
 
     let mut route_info = vec![];
 
@@ -148,18 +155,19 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
     Some(route_info)
 }
 
-fn get_index_if(dev: &str) -> u32 {
+fn get_index_if(dev: &str) -> Option<u32> {
     unsafe {
         if let Some((index_if, save_dev)) = &INDEX_IF {
             if save_dev == dev {
-                return *index_if;
+                return Some(*index_if);
             }
         }
-
-        let index_if = Adapters::new().get_vnic_index(dev);
+        let mut adapters = Adapters::new();
+        adapters.load_adapters()?;
+        let index_if = adapters.get_vnic_index(dev);
         INDEX_IF = Some((index_if, dev.to_string()));
 
-        index_if
+        Some(index_if)
     }
 }
 
@@ -169,10 +177,19 @@ struct Adapters {
 
 impl Adapters {
     fn new() -> Self {
-        let adapters = ipconfig::get_adapters().unwrap();
         Self {
-            adapters,
+            adapters: vec![],
         }
+    }
+
+    fn load_adapters(&mut self) -> Option<()> {
+        let adapters = ipconfig::get_adapters()
+            .map_err(|e| {
+                error!("{:?}", e);
+            })
+            .ok()?;
+        self.adapters = adapters;
+        Ok(())
     }
 
     fn get_vnic_dev(&self, index: u32) -> Option<String> {

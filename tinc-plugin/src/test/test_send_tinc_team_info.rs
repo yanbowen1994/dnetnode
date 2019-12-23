@@ -3,7 +3,7 @@ mod create_test_env;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
-use tinc_plugin::{TincOperator, tinc_tcp_stream::TincStream};
+use tinc_plugin::tinc_tcp_stream::TincStream;
 use std::time::Duration;
 
 fn test_add_group_node() {

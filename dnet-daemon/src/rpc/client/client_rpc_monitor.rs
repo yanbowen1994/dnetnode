@@ -109,9 +109,9 @@ impl RpcMonitor {
                         },
                         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                         RpcClientCmd::DisconnectTeam(team_id, res_tx) => {
-                                let response = self.handle_disconnect_team(team_id);
-                                let _ = res_tx.send(response);
-                            },
+                            let response = self.handle_disconnect_team(team_id);
+                            let _ = res_tx.send(response);
+                        },
 
                         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
                         _ => ()
@@ -394,9 +394,9 @@ impl Executor {
                         info!("rpc init success");
                     },
                     Err(e) => {
-                        let res = e.to_response();
                         #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
                             {
+                                let res = e.to_response();
                                 if res.code == 623 {
                                     ()
                                 }

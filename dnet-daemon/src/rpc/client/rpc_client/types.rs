@@ -92,7 +92,13 @@ pub struct ResponseTeamMember {
 impl ResponseTeamMember {
     pub fn parse_to_team_member(self) -> Option<TeamMember> {
         let vip = IpAddr::from_str(&self.ip).ok()?;
-        let lan: Vec<NetSegment> = serde_json::from_str(&self.ip).ok().unwrap_or(vec![]);
+        let lan: Vec<NetSegment> =
+            if let Some(lan) = &self.lan {
+                serde_json::from_str(lan).ok().unwrap_or(vec![])
+            }
+            else {
+                vec![]
+            };
         let is_self =
             self.deviceName == Some(get_info().lock().unwrap().client_info.device_name.clone());
 

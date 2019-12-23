@@ -2,7 +2,7 @@ use std::net::IpAddr;
 use std::fs::File;
 use std::io::Read;
 
-use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME, DEFAULT_TINC_PORT};
+use tinc_plugin::{ConnectTo, PUB_KEY_FILENAME, PID_FILENAME, DEFAULT_TINC_PORT, TincOperatorError};
 
 use crate::settings::get_settings;
 use crate::tinc_manager::{TincOperator, tinc_connections};
@@ -91,4 +91,16 @@ impl TincInfo {
         }
     }
 
+    pub fn fresh_tinc_nodes(&mut self) -> std::result::Result<(), TincOperatorError> {
+        let tinc = TincOperator::new();
+        let nodes = tinc.get_tinc_connect_nodes()?;
+        info!("fresh_tinc_connections {:?}", nodes);
+
+        for node in nodes {
+            if !self.current_connect.contains(&node) {
+                self.current_connect.push(node);
+            }
+        }
+        Ok(())
+    }
 }

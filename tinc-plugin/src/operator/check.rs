@@ -38,6 +38,41 @@ impl TincOperator {
                 println!("{:?}", e);
                 Error::TincStreamError
             })?;
+        let source_nodes = tinc_stream.dump_nodes()
+            .map_err(|_|Error::TincNotExist)?;
+        let nodes = source_nodes.into_iter()
+            .filter_map(|source| {
+                if !source.node.contains("proxy") {
+                    if source.via.len() > 3 {
+                        TincTools::get_vip_by_filename(&source.node)
+                    }
+                    else {
+                        None
+                    }
+                }
+                else {
+                    None
+                }
+            })
+            .collect::<Vec<IpAddr>>();
+        Ok(nodes)
+    }
+
+    pub fn get_tinc_connect_nodes_by_edges(&self) -> Result<Vec<IpAddr>> {
+        let pid_file = std::path::Path::new(&self.tinc_settings.tinc_home)
+            .join(PID_FILENAME);
+        if !pid_file.as_path().is_file() {
+            return Err(Error::PidfileNotExist);
+        }
+        let pid_file = pid_file
+            .to_str()
+            .unwrap()
+            .to_string();
+        let mut tinc_stream = TincStream::new(&pid_file)
+            .map_err(|e|{
+                println!("{:?}", e);
+                Error::TincStreamError
+            })?;
         let source_connections = tinc_stream.dump_edges()
             .map_err(|_|Error::TincNotExist)?;
         let nodes = source_connections.into_iter()

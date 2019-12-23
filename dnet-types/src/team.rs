@@ -81,23 +81,35 @@ pub struct TeamMember {
 pub struct NetSegment {
     pub ip:     IpAddr,
     pub mask:   u32,
+    pub gw:     Option<IpAddr>,
 }
 
 impl NetSegment {
-    pub fn new(ip: IpAddr, mask: u32) -> Self {
+    pub fn new(ip: IpAddr, mask: u32, gw: Option<IpAddr>) -> Self {
         Self {
             ip,
             mask,
+            gw,
         }
     }
 
     pub fn to_string(&self) -> String {
-        format!("{}/{}", self.ip.to_string(), self.mask)
+        if let Some(gw) = self.gw {
+            format!("{}/{}/{}", self.ip.to_string(), self.mask, gw.to_string())
+        }
+        else {
+            format!("{}/{}", self.ip.to_string(), self.mask)
+        }
     }
 }
 
 impl fmt::Debug for NetSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}/{}", self.ip.to_string(), self.mask)
+        if let Some(gw) = self.gw {
+            write!(f, "{}/{}/{}", self.ip.to_string(), self.mask, gw.to_string())
+        }
+        else {
+            write!(f, "{}/{}", self.ip.to_string(), self.mask)
+        }
     }
 }

@@ -1,14 +1,31 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::process::Command;
+
 use crate::route::types::RouteInfo;
+use crate::route::replace_ip_last_to_zero;
 
 // netmask CIDR
-pub fn add_route(ip: &IpAddr, netmask: u32, dev: &str) {
-    let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
-    let _ = Command::new("ip")
-        .args(vec!["route", "add", &ip_mask, "dev", dev])
-        .output();
+pub fn add_route(ip: &IpAddr, netmask: u32, dev: Option<String>, gw: Option<IpAddr>) {
+    if let Some(gw) = gw {
+        if let Some(ip) = replace_ip_last_to_zero(ip) {
+            let ip_mask = ip + "/" + &format!("{}", netmask);
+            let gw = gw.to_string();
+            let res = Command::new("route")
+                .args(vec!["add", "-net", &ip_mask, "gw", &gw])
+                .output();
+            info!("add_route {} gw {:?} res {:?}", ip_mask, gw, res);
+        }
+        else {
+            warn!("add_route ipv6 not support")
+        }
+    }
+    else if let Some(dev) = dev {
+        let ip_mask = ip.clone().to_string() + "/" + &format!("{}", netmask);
+        let _ = Command::new("ip")
+            .args(vec!["route", "add", &ip_mask, "dev", &dev])
+            .output();
+    }
 }
 
 pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
@@ -142,19 +159,32 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
     Some(tables)
 }
 
-#[test]
-fn test() {
-    let ip = IpAddr::from_str("12.12.12.12").unwrap();
-    add_route(&ip, 32, "enp3s0");
+#[cfg(test)]
+mod test {
+    use std::net::IpAddr;
+    use std::str::FromStr;
+    use crate::route::{add_route, del_route};
+    use crate::route::imp::parse_routing_table;
 
-    let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
-    let stdout = String::from_utf8(stdout).unwrap();
-    assert!(stdout.contains("12.12.12.12"));
-    del_route(&ip, 32, "enp3s0");
+    #[test]
+    fn test() {
+        let ip = IpAddr::from_str("12.12.12.12").unwrap();
+        add_route(&ip, 32, Some("enp3s0".to_string()), None);
 
-    let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
-    let stdout = String::from_utf8(stdout).unwrap();
-    assert!(!stdout.contains("12.12.12.12"));
+        let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
+        let stdout = String::from_utf8(stdout).unwrap();
+        assert!(stdout.contains("12.12.12.12"));
+        del_route(&ip, 32, "enp3s0");
 
-    parse_routing_table();
+        let stdout = duct::cmd!("route").stdout_capture().run().unwrap().stdout;
+        let stdout = String::from_utf8(stdout).unwrap();
+        assert!(!stdout.contains("12.12.12.12"));
+
+        parse_routing_table();
+    }
+
+    #[test]
+    fn test_parse_routing_table() {
+        println!("{:#?}", parse_routing_table());
+    }
 }

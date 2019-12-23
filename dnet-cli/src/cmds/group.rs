@@ -148,7 +148,7 @@ fn print_team(mut teams: Vec<Team>) {
     let mut table = Table::new();
     // Add a row per time
     table.set_titles(row!["Team Name", "Team Id", "Members Ip", "Self",
-                                "Alias", "Status", "Team Status", "Proxy Status"]);
+                                "Alias", "Lan", "Status", "Team Status", "Proxy Status"]);
     teams.sort_by(|a, b|a.team_name.cmp(&b.team_name));
     for mut team in teams {
         team.members.sort_by(|a, b|a.vip.cmp(&b.vip));
@@ -156,6 +156,7 @@ fn print_team(mut teams: Vec<Team>) {
             table.add_row(row![
                             team.team_name.clone().unwrap_or("".to_string()),
                             team.team_id,
+                            "",
                             "",
                             "",
                             "",
@@ -213,12 +214,24 @@ fn print_team(mut teams: Vec<Team>) {
                     None => "",
                 };
 
+                let mut lan = vec![];
+                for this in member.lan {
+                    lan.push(format!("{}/{}", this.ip.to_string(), this.mask));
+                }
+                let lan = if lan.len() > 0 {
+                    format!("{:?}", lan)
+                }
+                else {
+                    String::new()
+                };
+
                 table.add_row(row![
                             team.team_name.clone().unwrap_or("".to_string()),
                             team.team_id,
                             member.vip,
                             is_self,
                             member.device_name.unwrap_or("".to_string()),
+                            lan,
                             host_status,
                             connect_status,
                             tinc_status,

@@ -20,7 +20,7 @@ pub struct TincInfo {
     pub connect_to:             Vec<ConnectTo>,
     pub last_runtime:           Option<String>,
     pub current_connect:        Vec<IpAddr>,
-    tinc_home:          String,
+    tinc_home:                  String,
 }
 impl TincInfo {
     pub fn new() -> Self {

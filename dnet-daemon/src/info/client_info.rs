@@ -13,11 +13,13 @@ extern crate base64;
 
 use dnet_types::device_type::DeviceType;
 use sandbox::route::{get_default_route, get_mac};
+use dnet_types::team::NetSegment;
+use sandbox::interface::get_default_interface;
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
     pub devicetype:             DeviceType,
-    pub wan:                    String,
+    pub wan:                    NetSegment,
     pub device_name:            String,
     #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
     pub device_password:        String,
@@ -28,7 +30,8 @@ impl ClientInfo {
     pub fn new() -> Result<Self> {
         let device_type = DeviceType::get_device_type();
         let device_name = Self::get_uid(&device_type)?;
-
+        let wan = get_default_interface()
+            .ok_or(Error::ParseWan)?;
         let client_info;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
@@ -36,7 +39,7 @@ impl ClientInfo {
                 let device_info = DeviceInfo::get_info().ok_or(Error::GetDeviceInfo)?;
                 client_info = Self {
                     devicetype:          device_type,
-                    wan:                 "".to_string(),
+                    wan,
                     device_name,
                     device_password,
                     device_info,
@@ -46,7 +49,7 @@ impl ClientInfo {
             {
                 client_info = Self {
                     devicetype:         device_type,
-                    wan:                "".to_string(),
+                    wan,
                     device_name,
                 }
             }

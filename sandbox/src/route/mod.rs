@@ -19,6 +19,7 @@ pub use imp::{
     parse_netmask_to_cidr,
 };
 use crate::route::types::RouteInfo;
+use std::net::IpAddr;
 
 pub fn get_default_route() -> Option<RouteInfo> {
     let mut route = None;
@@ -49,6 +50,21 @@ pub fn get_mac(dev: &str) -> Option<String> {
     Some(mac.to_string())
 }
 
+pub fn replace_ip_last_to_zero(ip: &IpAddr) -> Option<String> {
+    if ip.is_ipv4() {
+        let ip_string = ip.to_string();
+        let ip_segment = ip_string.split(".").collect::<Vec<&str>>();
+        let new_ip = format!("{}.{}.{}.{}",
+                             ip_segment[0],
+                             ip_segment[1],
+                             ip_segment[2],
+                             0);
+        Some(new_ip)
+    }
+    else {
+        None
+    }
+}
 
 #[test]
 fn test_get_default_route() {

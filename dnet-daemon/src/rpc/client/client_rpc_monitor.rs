@@ -332,6 +332,7 @@ enum ExecutorStatus {
     Inited,
     Uninit,
     Running,
+    Failed,
 }
 
 struct Executor {
@@ -401,7 +402,7 @@ impl Executor {
                         info!("Rpc Executor get online proxy.");
                     } else {
                         error!("exec_online_proxy failed.");
-                        self.status = ExecutorStatus::Uninit;
+                        self.status = ExecutorStatus::Failed;
                     }
                 }
 
@@ -418,13 +419,20 @@ impl Executor {
                 }
             }
 
-            if self.status == ExecutorStatus::Uninit {
+            if self.status == ExecutorStatus::Uninit
+                || self.status == ExecutorStatus::Failed {
                 match self.init() {
                     Ok(_) => {
                         if let Err(_) = self.rpc_tx.send(RpcEvent::Executor(ExecutorEvent::InitFinish)) {
                             return;
                         }
-                        self.status = ExecutorStatus::Inited;
+                        if self.status == ExecutorStatus::Uninit {
+                            self.status = ExecutorStatus::Inited;
+                        }
+
+                        if self.status == ExecutorStatus::Failed {
+                            self.status = ExecutorStatus::Running;
+                        }
                         info!("rpc init success");
                     },
                     Err(e) => {

@@ -6,7 +6,7 @@ pub(super) fn search_team_by_user() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryMyAll";
 
-    search_team_inner(url)?;
+    search_team_inner(url, false)?;
 
     Ok(())
 }

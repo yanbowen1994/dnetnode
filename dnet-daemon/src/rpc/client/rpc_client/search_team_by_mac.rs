@@ -18,15 +18,20 @@ pub fn search_team_by_mac() -> Result<()> {
     let url = get_settings().common.conductor_url.clone()
         + "/vlan/team/queryByDeviceSerial?deviceSerial=" + &device_id;
 
-    search_team_inner(url)?;
+    search_team_inner(url, true)?;
 
     Ok(())
 }
 
-pub fn search_team_inner(mut url: String) -> Result<()> {
+pub fn search_team_inner(mut url: String, has_other_param: bool) -> Result<()> {
     let mut teams_vec: Vec<Team> = vec![];
     for i in 0..MAX_PAGE {
-        url = url + &format!("&pageNum={}&pageSize={}", i, PAGESIZE);
+        if has_other_param {
+            url = url + &format!("&pageNum={}&pageSize={}", i, PAGESIZE);
+        }
+        else {
+            url = url + &format!("?pageNum={}&pageSize={}", i, PAGESIZE);
+        }
         let recv = get(&url)?;
         let recv = get_records(&url, recv)?;
 

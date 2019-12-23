@@ -189,7 +189,7 @@ impl Adapters {
             })
             .ok()?;
         self.adapters = adapters;
-        Ok(())
+        Some(())
     }
 
     fn get_vnic_dev(&self, index: u32) -> Option<String> {

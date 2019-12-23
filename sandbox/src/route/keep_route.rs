@@ -8,7 +8,10 @@ use super::*;
 pub fn keep_route(local_vip: Option<IpAddr>, new_hosts: Vec<NetSegment>, dev: String) {
     let now_route = match parse_routing_table() {
         Some(x) => x,
-        None => return,
+        None => {
+            error!("parse_routing_table");
+            return;
+        },
     };
     let old_hosts: Vec<NetSegment> = now_route.iter()
         .filter_map(|route| {

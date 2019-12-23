@@ -407,7 +407,14 @@ impl Executor {
 
                 if start - fresh_team > Duration::from_secs(5) {
                     fresh_team = start;
-                    let _ = self.client.search_team_by_mac();
+                    #[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+                        {
+                            let _ = self.client.search_team_by_user();
+                        }
+                    #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+                        {
+                            let _ = self.client.search_team_by_mac();
+                        }
                 }
             }
 

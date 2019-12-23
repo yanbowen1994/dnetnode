@@ -25,7 +25,7 @@ pub fn search_team_by_mac() -> Result<()> {
 
 pub fn search_team_inner(mut url: String, has_other_param: bool) -> Result<()> {
     let mut teams_vec: Vec<Team> = vec![];
-    for i in 0..MAX_PAGE {
+    for i in 1..MAX_PAGE {
         if has_other_param {
             url = url + &format!("&pageNum={}&pageSize={}", i, PAGESIZE);
         }
@@ -43,7 +43,7 @@ pub fn search_team_inner(mut url: String, has_other_param: bool) -> Result<()> {
         }
     }
 
-    log_of_team(&teams_vec);
+    log_of_team(&url, &teams_vec);
 
     let mut teams = HashMap::new();
     for team in teams_vec {
@@ -66,7 +66,7 @@ pub fn search_team_inner(mut url: String, has_other_param: bool) -> Result<()> {
     Ok(())
 }
 
-fn log_of_team(teams_vec: &Vec<Team>) {
+fn log_of_team(url: &str, teams_vec: &Vec<Team>) {
     let mut connect_id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
     let mut disconnect_id_member: HashMap<String, Vec<&IpAddr>> = HashMap::new();
     for team in teams_vec {
@@ -83,7 +83,14 @@ fn log_of_team(teams_vec: &Vec<Team>) {
         connect_id_member.insert(team.team_id.clone(), connect_members);
         disconnect_id_member.insert(team.team_id.clone(), disconnect_members);
     }
-    info!("connect: {:?} disconnect:{:?}", connect_id_member, disconnect_id_member);
+    if url.contains("queryByDeviceSerial") {
+        info!("search_team_by_mac connect: {:?} disconnect:{:?}", connect_id_member, disconnect_id_member);
+    }
+    else {
+        info!("search_team_by_user connect: {:?} disconnect:{:?}", connect_id_member, disconnect_id_member);
+
+
+    }
 }
 
 fn parse_to_team(res_data: Vec<serde_json::Value>) -> Result<Vec<Team>> {

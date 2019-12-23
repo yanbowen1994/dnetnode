@@ -9,7 +9,13 @@ use crate::info::get_info;
 
 use super::error::*;
 
-const PAGESIZE: usize = 10;
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
+pub const PAGESIZE: usize = 10;
+
+#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+pub const PAGESIZE: usize = 3;
+
+pub const MAX_PAGE: usize = 50;
 
 pub fn post(url: &str, data: &str) -> Result<serde_json::Value> {
     let res = url_post(url, data)?;
@@ -173,4 +179,19 @@ fn build_request_client(method: reqwest::Method, url: &str) -> Result<reqwest::R
         .header("x-access-token", token)
         .header(reqwest::header::USER_AGENT, "");
     Ok(request_builder)
+}
+
+pub fn get_records(url: &str, res: serde_json::Value) -> Result<Vec<serde_json::Value>> {
+    let res = res
+        .get("records")
+        .ok_or(Error::ResponseParse(url.to_string() + "Not Found records."))?
+        .to_owned();
+    let out = res.as_array()
+        .ok_or(Error::ResponseParse(url.to_string() + " Can not parse to array."))
+        .map_err(|err| {
+            error!("get_mutipage {:?}", err);
+            err
+        })?
+        .to_owned();
+    Ok(out)
 }

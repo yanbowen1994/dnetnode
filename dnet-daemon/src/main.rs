@@ -29,17 +29,14 @@ pub enum Error {
     #[error(display = "Can not create log dir.")]
     CreateLogDir(#[error(cause)] ::std::io::Error),
     #[error(display = "Daemon Error.")]
-    DaemonError(#[error(cause)] dnet_daemon::daemon::Error)
+    DaemonError(#[error(cause)] dnet_daemon::daemon::Error),
+    #[error(display = "Cannot start multiple daemons at the same time.")]
+    AnotherDaemonRunning,
 }
 
 use dnet_daemon::daemon::Daemon;
 
 fn main() {
-    if is_another_daemon_start() {
-        println!("Another dnet-daemon is running");
-        std::process::exit(1);
-    }
-
     let mut exit_code = match init() {
         Ok(_) => {
             0
@@ -83,6 +80,10 @@ pub fn init() -> Result<()> {
                 .takes_value(true)
         ])
         .get_matches();
+
+    if is_another_daemon_start() {
+        return Err(Error::AnotherDaemonRunning);
+    }
 
     get_config(&matches)?;
 

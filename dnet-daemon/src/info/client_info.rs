@@ -31,7 +31,7 @@ impl ClientInfo {
         let device_type = DeviceType::get_device_type();
         let device_name = Self::get_uid(&device_type)?;
         let wan = get_default_interface()
-            .ok_or(Error::ParseWan)?;
+            .map_err(Error::ParseWan)?;
         let client_info;
         #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
             {
@@ -61,7 +61,7 @@ impl ClientInfo {
             .and_then(|route_info| {
                 get_mac(&route_info.dev)
             })
-            .ok_or(Error::GetMac)?
+            .map_err(Error::ParseDeviceMac)?
             .replace(":", "");
 
         let uid;

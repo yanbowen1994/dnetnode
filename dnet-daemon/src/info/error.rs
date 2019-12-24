@@ -6,7 +6,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
     #[error(display = "Can not get device wan info.")]
-    ParseWan,
+    ParseDeviceMac(#[error(cause)] sandbox::route::error::Error),
+
+    #[error(display = "Can not get device wan info.")]
+    ParseWan(#[error(cause)] sandbox::interface::error::Error),
 
     #[error(display = "Can not read pubkey file.")]
     PubkeyFile(#[error(cause)] ::std::io::Error),

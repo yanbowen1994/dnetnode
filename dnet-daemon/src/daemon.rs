@@ -5,6 +5,7 @@ use std::time::Duration;
 use futures::sync::oneshot;
 
 use dnet_types::status::{TunnelState, RpcState};
+#[cfg(all(not(target_arch = "arm"), not(feature = "router_debug")))]
 use dnet_types::settings::RunMode;
 use dnet_types::response::Response;
 

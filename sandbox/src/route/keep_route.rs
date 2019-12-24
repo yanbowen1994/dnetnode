@@ -7,9 +7,9 @@ use super::*;
 
 pub fn keep_route(_local_vip: Option<IpAddr>, new_hosts: Vec<NetSegment>, dev: String) {
     let now_route = match parse_routing_table() {
-        Some(x) => x,
-        None => {
-            error!("parse_routing_table");
+        Ok(x) => x,
+        Err(e) => {
+            error!("keep_route {:?}", e);
             return;
         },
     };

@@ -6,8 +6,8 @@ use tinc_plugin::{TincRunMode, TincOperator as PluginTincOperator,
                   TincOperatorError, TincTools, TincSettings};
 use dnet_types::settings::RunMode;
 
-#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-use dnet_types::team::NetSegment;
+//#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+//use dnet_types::team::NetSegment;
 
 use crate::info::{get_info, get_mut_info};
 use crate::settings::get_settings;

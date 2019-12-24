@@ -7,10 +7,12 @@ mod imp;
 mod imp;
 
 mod keep_route;
-pub use keep_route::keep_route;
 pub mod types;
+pub mod error;
 
+use std::net::IpAddr;
 
+pub use keep_route::keep_route;
 pub use imp::{
     add_route,
     del_route,
@@ -18,10 +20,10 @@ pub use imp::{
     parse_routing_table,
     parse_netmask_to_cidr,
 };
-use crate::route::types::RouteInfo;
-use std::net::IpAddr;
+use self::types::RouteInfo;
+use self::error::{Error, Result};
 
-pub fn get_default_route() -> Option<RouteInfo> {
+pub fn get_default_route() -> Result<RouteInfo> {
     let mut route = None;
     let _ = parse_routing_table()?
         .into_iter()
@@ -35,19 +37,32 @@ pub fn get_default_route() -> Option<RouteInfo> {
             }
         })
         .collect::<Vec<()>>();
-    route
+    if let Some(route) = route {
+        Ok(route)
+    }
+    else {
+        Err(Error::default_route_not_found)
+    }
 }
 
-pub fn get_mac(dev: &str) -> Option<String> {
-    let get_frist_dev_mac = || mac_address::get_mac_address()
-        .ok()
-        .and_then(|x|x);
+pub fn get_mac(dev: &str) -> Result<String> {
+    let mac = if let Ok(mac) = mac_address::mac_address_by_name(dev) {
+        if let Some(mac) = mac {
+            mac
+        }
+        else {
+            mac_address::get_mac_address()
+                .map_err(Error::get_mac_address)?
+                .ok_or(Error::get_mac_address_empty)?
+        }
+    }
+    else {
+        mac_address::get_mac_address()
+            .map_err(Error::get_mac_address)?
+            .ok_or(Error::get_mac_address_empty)?
+    };
 
-    let mac = mac_address::mac_address_by_name(dev)
-        .ok()
-        .unwrap_or(get_frist_dev_mac())
-        .unwrap_or(get_frist_dev_mac()?);
-    Some(mac.to_string())
+    Ok(mac.to_string())
 }
 
 pub fn replace_ip_last_to_zero(ip: &IpAddr) -> Option<String> {

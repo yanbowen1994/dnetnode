@@ -2,8 +2,9 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::process::Command;
 
-use crate::route::types::RouteInfo;
-use crate::route::replace_ip_last_to_zero;
+use super::types::RouteInfo;
+use super::replace_ip_last_to_zero;
+use super::error::{Error, Result};
 
 // netmask CIDR
 pub fn add_route(ip: &IpAddr, netmask: u32, dev: Option<String>, gw: Option<IpAddr>) {
@@ -35,7 +36,11 @@ pub fn del_route(ip: &IpAddr, netmask: u32, dev: &str) {
         .output();
 }
 
-pub fn is_in_routing_table(routing_table: &Vec<RouteInfo>, ip: &IpAddr, netmask: u32, dev: &str) -> bool {
+pub fn is_in_routing_table(routing_table: &Vec<RouteInfo>,
+                           ip: &IpAddr,
+                           netmask: u32,
+                           dev: &str
+) -> bool {
     for route_info in routing_table {
 //      Skip default route,
         if let Ok(cur_ip) = IpAddr::from_str(&route_info.dst) {
@@ -68,13 +73,14 @@ pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
 }
 
 #[cfg(not(target_arch = "arm"))]
-pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
+pub fn parse_routing_table() -> Result<Vec<RouteInfo>> {
     let output = Command::new("ip")
         .args(vec!["route"])
         .output()
-        .ok()?
+        .map_err(Error::exec_ip_route_cmd)?
         .stdout;
-    let output = String::from_utf8(output).ok()?;
+    let output = String::from_utf8(output)
+        .map_err(|_|Error::parse_ip_route_cmd)?;
 
     let route_infos = output
         .split("\n")
@@ -115,13 +121,18 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
             }
         })
         .collect::<Vec<RouteInfo>>();
-    Some(route_infos)
+    Ok(route_infos)
 }
 
 #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
-    let tables = String::from_utf8(Command::new("route").output().ok()?.stdout)
-        .ok()?
+pub fn parse_routing_table() -> Result<Vec<RouteInfo>> {
+    let output = Command::new("route")
+        .output()
+        .map_err(Error::exec_route_cmd)?
+        .stdout;
+
+    let tables = String::from_utf8(output)
+        .map_err(|_|Error::parse_route_cmd)?
         .split("\n")
         .collect::<Vec<&str>>()
         .iter()
@@ -156,7 +167,7 @@ pub fn parse_routing_table() -> Option<Vec<RouteInfo>> {
             })
         })
         .collect::<Vec<RouteInfo>>();
-    Some(tables)
+    Ok(tables)
 }
 
 #[cfg(test)]

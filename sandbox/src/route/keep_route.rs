@@ -39,7 +39,15 @@ pub fn keep_route(_local_vip: Option<IpAddr>, new_hosts: Vec<NetSegment>, dev: S
 
     for host in &new_hosts {
         if !is_in_routing_table(&now_route, &host.ip, host.mask, &dev) {
-            if host.mask == 32 {
+            if let Some(gw) = &host.gw {
+                if gw == &host.ip {
+                    add_route(&host.ip, host.mask, Some(dev.clone()), None);
+                }
+                else {
+                    add_route(&host.ip, host.mask, None, host.gw);
+                }
+            }
+            else if host.mask == 32 {
                 add_route(&host.ip, host.mask, Some(dev.clone()), None);
             }
             else {

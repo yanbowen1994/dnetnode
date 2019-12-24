@@ -217,6 +217,11 @@ impl Daemon {
                 info!("stop dnet firewall config.");
                 let tunnel_port = get_settings().tinc.port;
                 router_plugin::firewall::stop_firewall(tunnel_port);
+                let info = get_mut_info().lock().unwrap();
+                if let Some(local_vip) = info.tinc_info.vip.clone() {
+                    std::mem::drop(info);
+                    router_plugin::firewall::start_tunnel_firewall(&local_vip);
+                }
             }
         #[cfg(windows)]
             {

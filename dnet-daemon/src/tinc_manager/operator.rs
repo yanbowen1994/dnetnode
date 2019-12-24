@@ -55,6 +55,17 @@ impl TincOperator {
 
     /// 启动tinc 返回duct::handle
     pub fn start_tinc(&mut self) -> Result<()> {
+            #[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
+                {
+                    let info = get_info().lock().unwrap();
+                    let local_vip = info.tinc_info.vip
+                        .clone()
+                        .ok_or(TincOperatorError::TincInfoProxyVipNotFound)?;
+                    std::mem::drop(info);
+                    router_plugin::firewall::start_tunnel_firewall(&local_vip);
+                }
+
+
         self.set_info_to_local()?;
 //        self.set_tinc_team_init_file()?;
 

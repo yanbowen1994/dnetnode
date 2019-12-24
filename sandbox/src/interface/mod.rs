@@ -48,6 +48,9 @@ pub fn get_lans(if_name: Vec<String>) -> Option<Vec<NetSegment>> {
                 let ip = if route_info.dst == "default" {
                     IpAddr::from(Ipv4Addr::new(0, 0, 0, 0))
                 }
+                else if route_info.dst == "239.0.0.0" {
+                    return None;
+                }
                 else {
                     IpAddr::from_str(&route_info.dst)
                         .ok()?

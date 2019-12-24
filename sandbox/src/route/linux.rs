@@ -72,7 +72,6 @@ pub fn parse_netmask_to_cidr(netmask: &str) -> Option<u32> {
     None
 }
 
-#[cfg(not(target_arch = "arm"))]
 pub fn parse_routing_table() -> Result<Vec<RouteInfo>> {
     let output = Command::new("ip")
         .args(vec!["route"])
@@ -122,52 +121,6 @@ pub fn parse_routing_table() -> Result<Vec<RouteInfo>> {
         })
         .collect::<Vec<RouteInfo>>();
     Ok(route_infos)
-}
-
-#[cfg(all(target_os = "linux", any(target_arch = "arm", feature = "router_debug")))]
-pub fn parse_routing_table() -> Result<Vec<RouteInfo>> {
-    let output = Command::new("route")
-        .output()
-        .map_err(Error::exec_route_cmd)?
-        .stdout;
-
-    let tables = String::from_utf8(output)
-        .map_err(|_|Error::parse_route_cmd)?
-        .split("\n")
-        .collect::<Vec<&str>>()
-        .iter()
-        .filter_map(|bar| {
-            if bar.contains("Destination") {
-                return None;
-            }
-            let mut bar = bar.as_bytes().to_vec();
-            bar.dedup_by(|a, b|a == b && *a == 32);
-            let bar = match String::from_utf8(bar) {
-                Ok(x) => x,
-                Err(_) => return None,
-            };
-
-            let segments = bar
-                .split(" ")
-                .collect::<Vec<&str>>();
-
-            if segments.len() < 8 {
-                return None;
-            }
-
-            Some(RouteInfo {
-                dst:      segments[0].to_owned(),
-                gw:       segments[1].to_owned(),
-                mask:     segments[2].parse().unwrap_or(32),
-                flags:    segments[3].to_owned(),
-                metric:   segments[4].parse().unwrap_or(0),
-                ref_:     segments[5].to_owned(),
-                use_:     segments[6].to_owned(),
-                dev:      segments[7].to_owned(),
-            })
-        })
-        .collect::<Vec<RouteInfo>>();
-    Ok(tables)
 }
 
 #[cfg(test)]

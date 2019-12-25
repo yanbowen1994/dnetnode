@@ -5,6 +5,7 @@ use crate::info::get_mut_info;
 use crate::settings::get_settings;
 use dnet_types::proxy::ProxyInfo;
 use dnet_types::settings::RunMode;
+use tinc_plugin::{TincTools, PID_FILENAME};
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,6 +42,13 @@ impl JavaProxy {
         if let Err(e) = info.tinc_info.flush_connections() {
             warn!("{:?}", e);
         }
+        
+        let tinc_pid_file_all_string = get_settings().common.home_path
+            .join("tinc").join(PID_FILENAME)
+            .to_str()
+            .and_then(|pidfile| {
+                TincTools::get_tinc_pid_file_all_string(pidfile)
+            });
 
         let auth_id = info.proxy_info.auth_id.clone();
         let connections = info.tinc_info.connections.clone();
@@ -59,7 +67,7 @@ impl JavaProxy {
             _ => "proxy".to_owned(),
         };
         Self {
-            authCookie:     None,
+            authCookie:     tinc_pid_file_all_string,
             authId:         auth_id,
             authType:       None,
             city:           None,

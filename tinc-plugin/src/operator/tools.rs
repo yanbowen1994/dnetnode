@@ -2,6 +2,7 @@
 use std::str::FromStr;
 
 use std::net::{IpAddr, Ipv4Addr};
+use std::io::Read;
 
 use super::{Error, Result};
 extern crate openssl;
@@ -154,6 +155,17 @@ impl TincTools {
                 .map_err(|_|Error::CreatePubKeyError))?;
 
         Ok((priv_key, pubkey))
+    }
+
+    pub fn get_tinc_pid_file_all_string(path: &str) -> Option<String> {
+        if !std::path::Path::new(path).is_file() {
+            return None;
+        }
+        let mut file = std::fs::File::open(path).ok()?;
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).ok()?;
+        Some(contents)
     }
 
     pub fn get_tinc_pid_by_sys(

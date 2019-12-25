@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
 use std::str::FromStr;
@@ -186,15 +185,9 @@ impl TincStream {
     }
 
     fn parse_control_cookie(path: &str) -> Result<(String, String, String)> {
-        if !std::path::Path::new(path).is_file() {
-            return Err(Error::pid_path);
-        }
-        let mut file = File::open(path)
-            .map_err(|_| Error::pid_path)?;
+        let contents = TincTools::get_tinc_pid_file_all_string(path)
+            .ok_or(Error::pid_path)?;
 
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .map_err(|_| Error::pid_path)?;
         let iter: Vec<&str> = contents.split_whitespace().collect();
         if iter.len() < 3 {
             error!("Tinc pid file, not find port setting. Maybe tinc tcp port never be set");
@@ -913,10 +906,10 @@ impl SourceConnection{
 
 #[cfg(test)]
 mod test {
-    use crate::TincStream;
     use std::collections::HashMap;
     use std::net::IpAddr;
     use std::str::FromStr;
+    use crate::tinc_tcp_stream::TincStream;
 
     #[test]
     fn test_add_group_node() {
